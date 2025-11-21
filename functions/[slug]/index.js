@@ -19,68 +19,323 @@ function getCookie(request, name) {
   return null;
 }
 
-// --- 1. 登录页面 HTML ---
+// --- 1. 登录页面 HTML (已升级为与主页一致的 UI) ---
 const loginHtml = `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>访问验证</title>
     <style>
-        :root { --bg-color: #111827; --container-bg: #1f2937; --text-color: #f3f4f6; --accent-color: #facc15; --input-bg: #374151; --border-color: #4b5563; }
-        body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
-        .container { background-color: var(--container-bg); padding: 2rem; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 90%; }
-        input { width: 100%; padding: 0.75rem; margin: 1rem 0; border-radius: 0.5rem; border: 1px solid var(--border-color); background-color: var(--input-bg); color: white; box-sizing: border-box; }
-        button { background-color: var(--accent-color); color: #000; font-weight: bold; padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; cursor: pointer; width: 100%; transition: opacity 0.2s; }
-        button:hover { opacity: 0.9; }
-        .error { color: #f87171; margin-top: 0.5rem; font-size: 0.9rem; display: none; }
+        /* 配色方案变量 - 与主页保持一致 */
+        :root {
+            --accent-color: #facc15; 
+            --accent-hover: #eab308; 
+            --error-color: #f87171; 
+            --success-color: #4ade80;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        [data-theme="light"] {
+            --bg-color: #f3f4f6;
+            --container-bg: #ffffff;
+            --input-bg: #f9fafb;
+            --border-color: #e5e7eb;
+            --text-color: #1f2937;
+            --subtle-text: #6b7280;
+            --particle-color: rgba(0, 0, 0, 0.08);
+        }
+        [data-theme="dark"] {
+            --bg-color: #111827;
+            --container-bg: #1f2937;
+            --input-bg: #374151;
+            --border-color: #4b5563;
+            --text-color: #f3f4f6;
+            --subtle-text: #9ca3af;
+            --particle-color: rgba(255, 255, 255, 0.08);
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            padding: 1rem; 
+            box-sizing: border-box; 
+            overflow: hidden;
+        }
+
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .container { 
+            width: 100%; 
+            max-width: 400px; /* 登录框稍微窄一点 */
+            background-color: var(--container-bg); 
+            border-radius: .75rem; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); 
+            padding: 2rem; 
+            position: relative;
+            z-index: 1;
+            text-align: center;
+        }
+
+        h1 { margin-bottom: 1.5rem; font-size: 1.8rem; }
+        
+        input { 
+            width: 100%; 
+            padding: .75rem 1rem; 
+            margin-bottom: 1rem;
+            background-color: var(--bg-color); 
+            border: 1px solid var(--border-color); 
+            border-radius: .5rem; 
+            color: var(--text-color); 
+            font-size: 1rem; 
+            box-sizing: border-box;
+            transition: border-color .2s, box-shadow .2s; 
+        }
+        input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(250, 204, 21, .3); }
+        
+        button { 
+            width: 100%;
+            padding: .75rem 1.5rem; 
+            background-color: var(--accent-color); 
+            color: #000; 
+            border: none; 
+            border-radius: .5rem; 
+            font-weight: 600; 
+            font-size: 1rem; 
+            cursor: pointer; 
+            transition: background-color .2s; 
+        }
+        button:hover { background-color: var(--accent-hover); }
+        button:disabled { opacity: 0.7; cursor: not-allowed; }
+        
+        .error { 
+            color: var(--error-color); 
+            margin-top: 1rem; 
+            font-size: 0.9rem; 
+            display: none; 
+            background-color: rgba(248, 113, 113, .1);
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--error-color);
+        }
+
+        /* 右上角工具栏 */
+        .top-bar {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            z-index: 10;
+        }
+        .icon-btn {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s, transform 0.2s;
+            padding: 0;
+        }
+        .icon-btn:hover {
+            background-color: var(--input-bg);
+            transform: scale(1.05);
+        }
+        .icon-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+        /* SVG strokes for theme icons */
+        .icon-btn svg[stroke] { fill: none; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>请输入访问口令</h2>
-        <form id="login-form">
-            <input type="password" id="password" placeholder="输入口令..." required>
-            <button type="submit" id="btn">验证</button>
-            <div class="error" id="error-msg">口令错误</div>
-        </form>
-    </div>
-    <script>
-        const form = document.getElementById('login-form');
-        const btn = document.getElementById('btn');
-        const errMsg = document.getElementById('error-msg');
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            btn.disabled = true;
-            btn.innerText = '验证中...';
-            const password = document.getElementById('password').value;
-            
-            try {
-                const res = await fetch('/api/auth', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
-                });
-                
-                if (res.ok) {
-                    window.location.reload();
-                } else {
-                    errMsg.style.display = 'block';
-                    btn.disabled = false;
-                    btn.innerText = '验证';
+<canvas id="particle-canvas"></canvas>
+
+<div class="top-bar">
+    <a href="https://github.com/Jacky088/Edgeone-ShortURL" target="_blank" class="icon-btn" title="Jacky088/Edgeone-ShortURL">
+        <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+    </a>
+    <button id="theme-toggle" class="icon-btn" title="切换模式">
+        <svg id="icon-sun" style="display: none;" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"></path>
+        </svg>
+        <svg id="icon-moon" style="display: none;" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path>
+        </svg>
+    </button>
+</div>
+
+<div class="container">
+    <h1>请输入访问口令</h1>
+    <form id="login-form">
+        <input type="password" id="password" placeholder="输入口令..." required>
+        <button type="submit" id="btn">验证</button>
+    </form>
+    <div class="error" id="error-msg">口令错误</div>
+</div>
+
+<script>
+    // --- Theme & Particle Logic (Shared with Index) ---
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const iconSun = document.getElementById('icon-sun');
+    const iconMoon = document.getElementById('icon-moon');
+    const htmlEl = document.documentElement;
+
+    const storedTheme = localStorage.getItem('theme');
+    if (storedTheme) setTheme(storedTheme);
+    else setTheme('light');
+
+    function setTheme(theme) {
+        htmlEl.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        if (theme === 'dark') {
+            iconSun.style.display = 'block';
+            iconMoon.style.display = 'none';
+        } else {
+            iconSun.style.display = 'none';
+            iconMoon.style.display = 'block';
+        }
+        if (window.initParticles) window.initParticles(); 
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+        const currentTheme = htmlEl.getAttribute('data-theme');
+        setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    });
+
+    // Particle Canvas
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let animationId;
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', () => { resizeCanvas(); window.initParticles(); });
+
+    class Particle {
+        constructor() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.vx = (Math.random() - 0.5) * 0.5;
+            this.vy = (Math.random() - 0.5) * 0.5;
+            this.size = Math.random() * 2 + 1;
+        }
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+            if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+        }
+        draw(color) {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+    }
+
+    window.initParticles = function() {
+        if (animationId) cancelAnimationFrame(animationId);
+        particles = [];
+        resizeCanvas();
+        const particleCount = Math.min(100, (canvas.width * canvas.height) / 15000); 
+        for (let i = 0; i < particleCount; i++) particles.push(new Particle());
+        animate();
+    }
+
+    function animate() {
+        const style = getComputedStyle(document.documentElement);
+        const color = style.getPropertyValue('--particle-color').trim();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach((p, index) => {
+            p.update();
+            p.draw(color);
+            for (let j = index + 1; j < particles.length; j++) {
+                const p2 = particles[j];
+                const dx = p.x - p2.x;
+                const dy = p.y - p2.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 100) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 0.5;
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
                 }
-            } catch (err) {
-                alert('网络错误');
+            }
+        });
+        animationId = requestAnimationFrame(animate);
+    }
+    window.initParticles();
+
+    // --- Login Form Logic ---
+    const form = document.getElementById('login-form');
+    const btn = document.getElementById('btn');
+    const errMsg = document.getElementById('error-msg');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        btn.disabled = true;
+        btn.innerText = '验证中...';
+        const password = document.getElementById('password').value;
+        
+        try {
+            const res = await fetch('/api/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+            
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                errMsg.style.display = 'block';
+                errMsg.textContent = '口令错误';
                 btn.disabled = false;
                 btn.innerText = '验证';
             }
-        });
-    </script>
+        } catch (err) {
+            errMsg.style.display = 'block';
+            errMsg.textContent = '网络错误';
+            btn.disabled = false;
+            btn.innerText = '验证';
+        }
+    });
+</script>
 </body>
 </html>`;
 
-// --- 2. 主生成器 HTML (UI 重构版) ---
+// --- 2. 主生成器 HTML (保持不变，含粒子与主题) ---
 const indexHtml = `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -385,7 +640,7 @@ const indexHtml = `<!DOCTYPE html>
     window.initParticles();
 
 
-    // --- Core Shortener Logic (Unchanged) ---
+    // --- Core Shortener Logic ---
     const form = document.getElementById('link-form');
     const urlInput = document.getElementById('url-input');
     const slugInput = document.getElementById('slug-input');
@@ -468,7 +723,7 @@ const indexHtml = `<!DOCTYPE html>
 </html>
 `;
 
-// --- 3. 管理后台 HTML ---
+// --- 3. 管理后台 HTML (保持不变) ---
 const adminHtml = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -596,7 +851,7 @@ export async function onRequest({ request, params, env }) {
       return new Response('Error: KV Binding "my_kv" not found. Please check EdgeOne settings.', { status: 500 });
   }
 
-  // --- 鉴权状态检查 (核心逻辑) ---
+  // --- 鉴权状态检查 ---
   let isAuthorized = true; 
   if (envPassword) {
     const sessionHash = getCookie(request, 'auth_session');
@@ -625,6 +880,7 @@ export async function onRequest({ request, params, env }) {
         const newVisits = (linkData.visits || 0) + 1;
         linkData.visits = newVisits;
         
+        // 使用 await 确保写入完成
         await DB.put(cleanSlug, JSON.stringify(linkData)); 
         return Response.redirect(linkData.original, 302);
       } else {
