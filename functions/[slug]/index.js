@@ -19,7 +19,7 @@ function getCookie(request, name) {
   return null;
 }
 
-// 1. 登录页面 HTML
+// --- 1. 登录页面 HTML ---
 const loginHtml = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -80,7 +80,7 @@ const loginHtml = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// 2. 主生成器 HTML (保持原样，只做微调)
+// --- 2. 主生成器 HTML ---
 const indexHtml = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -165,10 +165,9 @@ const indexHtml = `<!DOCTYPE html>
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
-            
-            // 处理未授权情况 (Cookie 失效等)
+
             if (res.status === 401) {
-                window.location.reload(); // 刷新触发登录页
+                window.location.reload();
                 return;
             }
 
@@ -221,7 +220,7 @@ const indexHtml = `<!DOCTYPE html>
 </html>
 `;
 
-// 3. 管理后台 HTML
+// --- 3. 管理后台 HTML ---
 const adminHtml = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -240,7 +239,7 @@ const adminHtml = `<!DOCTYPE html>
         a { color: var(--accent-color); text-decoration: none; }
         a:hover { text-decoration: underline; }
         @media (max-width: 600px) {
-            th:nth-child(2), td:nth-child(2) { display: none; } /* 移动端隐藏长链接列 */
+            th:nth-child(2), td:nth-child(2) { display: none; } 
         }
     </style>
 </head>
@@ -332,61 +331,67 @@ const adminHtml = `<!DOCTYPE html>
 </html>
 `;
 
+// --- 4. 主处理函数 ---
 export async function onRequest({ request, params, env }) {
   const { slug } = params;
   const adminPath = env.ADMIN_PATH;
   const envPassword = env.PASSWORD;
 
-  // 1. 处理 Admin 路由 (优先级最高)
+  // A. 处理 Admin 路由
   if (adminPath && slug === adminPath) {
     return new Response(adminHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
 
-  // 2. 处理短链接跳转 (读取 KV)
-  // 如果有 slug 且不是 'favicon.ico'，尝试去 KV 查找
+  // B. 处理短链接跳转 (核心逻辑修复)
   if (slug && slug !== 'favicon.ico') {
     try {
-      const link = await my_kv.get(slug);
-      if (link) {
-        const linkData = JSON.parse(link);
-        // 异步更新访问计数，不阻塞跳转
-        // 注意：在高并发下可能不准确，但为了性能可接受
+      // 关键修复：移除 URL 可能存在的尾部斜杠 (如 /bd/ -> bd)
+      // 并去除首尾空格
+      const cleanSlug = slug.trim().replace(/\/+$/, '');
+
+      const linkStr = await my_kv.get(cleanSlug);
+      
+      if (linkStr) {
+        const linkData = JSON.parse(linkStr);
+        
+        // 异步更新访问计数
         const newVisits = (linkData.visits || 0) + 1;
         linkData.visits = newVisits;
-        request.waitUntil(my_kv.put(slug, JSON.stringify(linkData))); 
+        request.waitUntil(my_kv.put(cleanSlug, JSON.stringify(linkData))); 
         
+        // 执行跳转
         return Response.redirect(linkData.original, 302);
+      } else {
+        // 关键修复：如果提供了 slug 但 KV 里没找到，返回 404，而不是继续向下执行
+        // 这样就不会误显示登录页面了
+        return new Response('404 Not Found - 该短链接不存在', { status: 404 });
       }
     } catch (err) {
+      // 如果发生严重错误 (如 KV 挂了)，返回 500
       console.error(`KV Error: ${err.message}`);
+      return new Response('Internal Server Error', { status: 500 });
     }
-    // 如果 KV 里没找到，且不是空 slug，显示 404 或回到主页
-    // 这里选择渲染主页（Generator），但在前端逻辑里，
-    // 用户通常访问的是根路径 /，如果访问 /unknown-slug，可以返回 404 或重定向到首页
-    // 你的原逻辑是返回 indexHtml status 404，这里保持一致，但要注意权限
   }
 
-  // 3. 处理主页渲染 (访问根路径或未知的 Slug)
-  // 在渲染生成器页面前，检查是否需要验证
+  // C. 处理主页 (生成器) 和 权限验证
+  // 只有当 slug 为 undefined (即访问根目录 / ) 时才会执行到这里
+  
   if (envPassword) {
     const sessionHash = getCookie(request, 'auth_session');
     const validHash = await sha256(envPassword);
 
     if (!sessionHash || sessionHash !== validHash) {
-      // 验证失败或未登录，显示登录页
-      // 如果是 404 路径进来的（错误的短链），可能也应该显示登录页或者直接 404
-      // 这里的逻辑是：只要没匹配到短链，就当做访问主页/生成页，因此需要鉴权
+      // 未登录或 Cookie 无效，显示登录页
       return new Response(loginHtml, { 
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
-        // 如果 slug 存在但未找到 KV，状态码 404，否则 200
-        status: (slug && slug !== 'favicon.ico') ? 404 : 200 
+        status: 200 // 访问主页是正常的，返回 200
       });
     }
   }
 
-  // 验证通过，或者没设置密码，显示生成器页面
+  // 验证通过，显示生成器页面
   return new Response(indexHtml, {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
-    status: (slug && slug !== 'favicon.ico') ? 404 : 200
+    status: 200
   });
 }
