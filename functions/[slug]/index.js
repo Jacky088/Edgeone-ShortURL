@@ -19,6 +19,15 @@ function getCookie(request, name) {
   return null;
 }
 
+// ==========================================
+// 定义图标数据 (Base64/DataURI) - 确保颜色固定，不受 CSS 干扰
+// ==========================================
+// 月亮图标 (深色线条，用于日间模式)
+const ICON_MOON_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%231f2937' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z'/%3E%3C/svg%3E";
+// 太阳图标 (亮黄色线条，用于夜间模式)
+const ICON_SUN_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23facc15' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='5'/%3E%3Cpath d='M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42'/%3E%3C/svg%3E";
+
+
 // --- 1. 登录页面 HTML ---
 const loginHtml = `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
@@ -27,97 +36,47 @@ const loginHtml = `<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>访问验证</title>
     <style>
-        :root {
-            --error-color: #f87171; 
-            --success-color: #4ade80;
-            transition: background-color 0.3s, color 0.3s;
-        }
+        :root { --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
         [data-theme="light"] {
             --accent-color: #ca8a04;
             --accent-hover: #a16207;
-            --bg-color: #f3f4f6;
-            --container-bg: #ffffff;
-            --input-bg: #f9fafb;
-            --border-color: #e5e7eb;
-            --text-color: #1f2937;
-            --subtle-text: #6b7280;
-            --particle-color: rgba(0, 0, 0, 0.08);
+            --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08);
         }
         [data-theme="dark"] {
             --accent-color: #facc15;
             --accent-hover: #eab308;
-            --bg-color: #111827;
-            --container-bg: #1f2937;
-            --input-bg: #374151;
-            --border-color: #4b5563;
-            --text-color: #f3f4f6;
-            --subtle-text: #9ca3af;
-            --particle-color: rgba(255, 255, 255, 0.08);
+            --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08);
         }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            background-color: var(--bg-color); 
-            color: var(--text-color); 
-            margin: 0; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            min-height: 100vh; 
-            padding: 1rem; 
-            box-sizing: border-box; 
-            overflow: hidden;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; box-sizing: border-box; overflow: hidden; }
         #particle-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
-        .container { 
-            width: 100%; max-width: 400px; 
-            background-color: var(--container-bg); 
-            border-radius: .75rem; 
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); 
-            padding: 2rem; position: relative; z-index: 1; text-align: center;
-        }
+        .container { width: 100%; max-width: 400px; background-color: var(--container-bg); border-radius: .75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); padding: 2rem; position: relative; z-index: 1; text-align: center; }
         h1 { margin-bottom: 1.5rem; font-size: 1.8rem; }
-        input { 
-            width: 100%; padding: .75rem 1rem; margin-bottom: 1rem;
-            background-color: var(--bg-color); border: 1px solid var(--border-color); 
-            border-radius: .5rem; color: var(--text-color); font-size: 1rem; box-sizing: border-box;
-            transition: border-color .2s, box-shadow .2s; 
-        }
+        input { width: 100%; padding: .75rem 1rem; margin-bottom: 1rem; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: .5rem; color: var(--text-color); font-size: 1rem; box-sizing: border-box; transition: border-color .2s, box-shadow .2s; }
         input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(var(--accent-color), .3); }
-        button { 
-            width: 100%; padding: .75rem 1.5rem; background-color: var(--accent-color); 
-            color: #fff; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; 
-            cursor: pointer; transition: background-color .2s; 
-        }
+        button { width: 100%; padding: .75rem 1.5rem; background-color: var(--accent-color); color: #fff; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color .2s; }
         [data-theme="light"] button { color: #fff; } 
         [data-theme="dark"] button { color: #000; }
         button:hover { background-color: var(--accent-hover); }
         button:disabled { opacity: 0.7; cursor: not-allowed; }
-        .error { 
-            color: var(--error-color); margin-top: 1rem; font-size: 0.9rem; display: none; 
-            background-color: rgba(248, 113, 113, .1); padding: 0.5rem; border-radius: 0.5rem; 
-            border: 1px solid var(--error-color);
-        }
+        .error { color: var(--error-color); margin-top: 1rem; font-size: 0.9rem; display: none; background-color: rgba(248, 113, 113, .1); padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--error-color); }
         .top-bar { position: fixed; top: 1rem; right: 1rem; display: flex; gap: 0.5rem; align-items: center; z-index: 10; }
-        .icon-btn {
-            background: var(--container-bg); border: 1px solid var(--border-color); color: var(--text-color);
-            width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; text-decoration: none; transition: background-color 0.2s, transform 0.2s; padding: 0;
-        }
+        .icon-btn { background: var(--container-bg); border: 1px solid var(--border-color); color: var(--text-color); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; transition: background-color 0.2s, transform 0.2s; padding: 0; }
         .icon-btn:hover { background-color: var(--input-bg); transform: scale(1.05); }
         
-        /* 统一图标样式：全部使用 fill: currentColor */
-        .icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
+        /* 图标样式 - GitHub 保持 SVG 填充 currentColor，切换图标使用 img 标签 */
+        .icon-btn svg.icon-github { width: 20px; height: 20px; fill: currentColor; }
+        .icon-btn img.icon-theme { width: 20px; height: 20px; display: block; }
     </style>
 </head>
 <body>
 <canvas id="particle-canvas"></canvas>
 <div class="top-bar">
     <a href="https://github.com/Jacky088/Edgeone-ShortURL" target="_blank" class="icon-btn" title="Jacky088/Edgeone-ShortURL">
-        <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <svg class="icon-github" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
     <button id="theme-toggle" class="icon-btn" title="切换模式">
-        <svg id="icon-sun" style="display: none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" /></svg>
-        <svg id="icon-moon" style="display: block;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clip-rule="evenodd" /></svg>
+        <img id="icon-sun" class="icon-theme" src="${ICON_SUN_SRC}" style="display: none;" alt="Light Mode">
+        <img id="icon-moon" class="icon-theme" src="${ICON_MOON_SRC}" style="display: block;" alt="Dark Mode">
     </button>
 </div>
 <div class="container">
@@ -226,20 +185,19 @@ const indexHtml = `<!DOCTYPE html>
         .top-bar { position: fixed; top: 1rem; right: 1rem; display: flex; gap: 0.5rem; align-items: center; z-index: 10; }
         .icon-btn { background: var(--container-bg); border: 1px solid var(--border-color); color: var(--text-color); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; transition: background-color 0.2s, transform 0.2s; padding: 0; }
         .icon-btn:hover { background-color: var(--input-bg); transform: scale(1.05); }
-        
-        /* 统一图标样式：全部使用 fill: currentColor */
-        .icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
+        .icon-btn svg.icon-github { width: 20px; height: 20px; fill: currentColor; }
+        .icon-btn img.icon-theme { width: 20px; height: 20px; display: block; }
     </style>
 </head>
 <body>
 <canvas id="particle-canvas"></canvas>
 <div class="top-bar">
     <a href="https://github.com/Jacky088/Edgeone-ShortURL" target="_blank" class="icon-btn" title="Jacky088/Edgeone-ShortURL">
-        <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <svg class="icon-github" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
     <button id="theme-toggle" class="icon-btn" title="切换模式">
-        <svg id="icon-sun" style="display: none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" /></svg>
-        <svg id="icon-moon" style="display: block;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clip-rule="evenodd" /></svg>
+        <img id="icon-sun" class="icon-theme" src="${ICON_SUN_SRC}" style="display: none;" alt="Light Mode">
+        <img id="icon-moon" class="icon-theme" src="${ICON_MOON_SRC}" style="display: block;" alt="Dark Mode">
     </button>
 </div>
 <div class="container">
@@ -257,7 +215,6 @@ const indexHtml = `<!DOCTYPE html>
     <div id="success-message"></div>
 </div>
 <script>
-    // UI & Theme
     const themeToggleBtn = document.getElementById('theme-toggle'); 
     const iconSun = document.getElementById('icon-sun'); 
     const iconMoon = document.getElementById('icon-moon'); 
@@ -340,10 +297,8 @@ const adminHtml = `<!DOCTYPE html>
         .top-bar { position: fixed; top: 1rem; right: 1rem; display: flex; gap: 0.5rem; align-items: center; z-index: 10; }
         .icon-btn { background: var(--container-bg); border: 1px solid var(--border-color); color: var(--text-color); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; transition: background-color 0.2s, transform 0.2s; padding: 0; }
         .icon-btn:hover { background-color: var(--input-bg); transform: scale(1.05); }
-        
-        /* 统一图标样式 */
-        .icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
-        
+        .icon-btn svg.icon-github { width: 20px; height: 20px; fill: currentColor; }
+        .icon-btn img.icon-theme { width: 20px; height: 20px; display: block; }
         @media (max-width: 600px) { th:nth-child(2), td:nth-child(2) { display: none; } }
     </style>
 </head>
@@ -351,11 +306,11 @@ const adminHtml = `<!DOCTYPE html>
 <canvas id="particle-canvas"></canvas>
 <div class="top-bar">
     <a href="https://github.com/Jacky088/Edgeone-ShortURL" target="_blank" class="icon-btn" title="Jacky088/Edgeone-ShortURL">
-        <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <svg class="icon-github" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
     <button id="theme-toggle" class="icon-btn" title="切换模式">
-        <svg id="icon-sun" style="display: none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" /></svg>
-        <svg id="icon-moon" style="display: block;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clip-rule="evenodd" /></svg>
+        <img id="icon-sun" class="icon-theme" src="${ICON_SUN_SRC}" style="display: none;" alt="Light Mode">
+        <img id="icon-moon" class="icon-theme" src="${ICON_MOON_SRC}" style="display: block;" alt="Dark Mode">
     </button>
 </div>
 <div class="container">
