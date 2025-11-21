@@ -33,7 +33,7 @@ const loginHtml = `<!DOCTYPE html>
             transition: background-color 0.3s, color 0.3s;
         }
         [data-theme="light"] {
-            --accent-color: #ca8a04; /* 日间模式：更深的琥珀色，提高对比度 */
+            --accent-color: #ca8a04;
             --accent-hover: #a16207;
             --bg-color: #f3f4f6;
             --container-bg: #ffffff;
@@ -44,7 +44,7 @@ const loginHtml = `<!DOCTYPE html>
             --particle-color: rgba(0, 0, 0, 0.08);
         }
         [data-theme="dark"] {
-            --accent-color: #facc15; /* 夜间模式：保持原有的亮黄色 */
+            --accent-color: #facc15;
             --accent-hover: #eab308;
             --bg-color: #111827;
             --container-bg: #1f2937;
@@ -88,8 +88,8 @@ const loginHtml = `<!DOCTYPE html>
             color: #fff; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; 
             cursor: pointer; transition: background-color .2s; 
         }
-        [data-theme="light"] button { color: #fff; } /* 日间模式按钮文字白色 */
-        [data-theme="dark"] button { color: #000; } /* 夜间模式按钮文字黑色 */
+        [data-theme="light"] button { color: #fff; } 
+        [data-theme="dark"] button { color: #000; }
         button:hover { background-color: var(--accent-hover); }
         button:disabled { opacity: 0.7; cursor: not-allowed; }
         .error { 
@@ -104,19 +104,22 @@ const loginHtml = `<!DOCTYPE html>
             cursor: pointer; text-decoration: none; transition: background-color 0.2s, transform 0.2s; padding: 0;
         }
         .icon-btn:hover { background-color: var(--input-bg); transform: scale(1.05); }
-        .icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
-        .icon-btn svg[stroke] { fill: none; }
+        
+        /* 修复 SVG 样式 */
+        .icon-btn svg { width: 20px; height: 20px; }
+        .icon-github { fill: currentColor; } /* GitHub 图标是填充 */
+        .icon-theme { fill: none; stroke: currentColor; } /* 模式图标是描边 */
     </style>
 </head>
 <body>
 <canvas id="particle-canvas"></canvas>
 <div class="top-bar">
     <a href="https://github.com/Jacky088/Edgeone-ShortURL" target="_blank" class="icon-btn" title="Jacky088/Edgeone-ShortURL">
-        <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <svg class="icon-github" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
     <button id="theme-toggle" class="icon-btn" title="切换模式">
-        <svg id="icon-sun" style="display: none;" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"></path></svg>
-        <svg id="icon-moon" style="display: none;" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path></svg>
+        <svg id="icon-sun" class="icon-theme" style="display: none;" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"></path></svg>
+        <svg id="icon-moon" class="icon-theme" style="display: block;" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path></svg>
     </button>
 </div>
 <div class="container">
@@ -128,17 +131,41 @@ const loginHtml = `<!DOCTYPE html>
     <div class="error" id="error-msg">口令错误</div>
 </div>
 <script>
-    const themeToggleBtn = document.getElementById('theme-toggle'); const iconSun = document.getElementById('icon-sun'); const iconMoon = document.getElementById('icon-moon'); const htmlEl = document.documentElement;
-    const storedTheme = localStorage.getItem('theme'); if (storedTheme) setTheme(storedTheme); else setTheme('light');
-    function setTheme(theme) { htmlEl.setAttribute('data-theme', theme); localStorage.setItem('theme', theme); if (theme === 'dark') { iconSun.style.display = 'block'; iconMoon.style.display = 'none'; } else { iconSun.style.display = 'none'; iconMoon.style.display = 'block'; } if (window.initParticles) window.initParticles(); }
-    themeToggleBtn.addEventListener('click', () => { const currentTheme = htmlEl.getAttribute('data-theme'); setTheme(currentTheme === 'dark' ? 'light' : 'dark'); });
-    const canvas = document.getElementById('particle-canvas'); const ctx = canvas.getContext('2d'); let particles = [], animationId;
+    // UI & Theme Logic
+    const themeToggleBtn = document.getElementById('theme-toggle'); 
+    const iconSun = document.getElementById('icon-sun'); 
+    const iconMoon = document.getElementById('icon-moon'); 
+    const htmlEl = document.documentElement;
+    
+    function setTheme(theme) { 
+        htmlEl.setAttribute('data-theme', theme); 
+        localStorage.setItem('theme', theme); 
+        if (theme === 'dark') { 
+            iconSun.style.display = 'block'; 
+            iconMoon.style.display = 'none'; 
+        } else { 
+            iconSun.style.display = 'none'; 
+            iconMoon.style.display = 'block'; 
+        } 
+        if (typeof window.initParticles === 'function') window.initParticles(); 
+    }
+    
+    themeToggleBtn.addEventListener('click', () => { 
+        const currentTheme = htmlEl.getAttribute('data-theme'); 
+        setTheme(currentTheme === 'dark' ? 'light' : 'dark'); 
+    });
+
+    // Particle Logic
+    const canvas = document.getElementById('particle-canvas'); 
+    const ctx = canvas.getContext('2d'); 
+    let particles = [], animationId;
     function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    window.addEventListener('resize', () => { resizeCanvas(); window.initParticles(); });
+    window.addEventListener('resize', () => { resizeCanvas(); if(typeof window.initParticles === 'function') window.initParticles(); });
     class Particle { constructor() { this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height; this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5; this.size = Math.random() * 2 + 1; } update() { this.x += this.vx; this.y += this.vy; if (this.x < 0 || this.x > canvas.width) this.vx *= -1; if (this.y < 0 || this.y > canvas.height) this.vy *= -1; } draw(color) { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); } }
     window.initParticles = function() { if (animationId) cancelAnimationFrame(animationId); particles = []; resizeCanvas(); const particleCount = Math.min(100, (canvas.width * canvas.height) / 15000); for (let i = 0; i < particleCount; i++) { particles.push(new Particle()); } animate(); }
     function animate() { const style = getComputedStyle(document.documentElement); const color = style.getPropertyValue('--particle-color').trim(); ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach((p, index) => { p.update(); p.draw(color); for (let j = index + 1; j < particles.length; j++) { const p2 = particles[j]; const dx = p.x - p2.x; const dy = p.y - p2.y; const distance = Math.sqrt(dx*dx + dy*dy); if (distance < 100) { ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 0.5; ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); } } }); animationId = requestAnimationFrame(animate); }
-    window.initParticles();
+
+    // Auth Logic
     const form = document.getElementById('login-form'); const btn = document.getElementById('btn'); const errMsg = document.getElementById('error-msg');
     form.addEventListener('submit', async (e) => {
         e.preventDefault(); btn.disabled = true; btn.innerText = '验证中...'; const password = document.getElementById('password').value;
@@ -147,6 +174,11 @@ const loginHtml = `<!DOCTYPE html>
             if (res.ok) { window.location.reload(); } else { errMsg.style.display = 'block'; errMsg.textContent = '口令错误'; btn.disabled = false; btn.innerText = '验证'; }
         } catch (err) { errMsg.style.display = 'block'; errMsg.textContent = '网络错误'; btn.disabled = false; btn.innerText = '验证'; }
     });
+
+    // Init
+    const storedTheme = localStorage.getItem('theme'); 
+    if (storedTheme) setTheme(storedTheme); else setTheme('light');
+    window.initParticles();
 </script>
 </body>
 </html>`;
@@ -162,12 +194,12 @@ const indexHtml = `<!DOCTYPE html>
     <style>
         :root { --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
         [data-theme="light"] {
-            --accent-color: #ca8a04; /* 日间模式：更深的琥珀色 */
+            --accent-color: #ca8a04;
             --accent-hover: #a16207;
             --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08);
         }
         [data-theme="dark"] {
-            --accent-color: #facc15; /* 夜间模式：保持原有的亮黄色 */
+            --accent-color: #facc15;
             --accent-hover: #eab308;
             --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08);
         }
@@ -196,18 +228,22 @@ const indexHtml = `<!DOCTYPE html>
         .top-bar { position: fixed; top: 1rem; right: 1rem; display: flex; gap: 0.5rem; align-items: center; z-index: 10; }
         .icon-btn { background: var(--container-bg); border: 1px solid var(--border-color); color: var(--text-color); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; transition: background-color 0.2s, transform 0.2s; padding: 0; }
         .icon-btn:hover { background-color: var(--input-bg); transform: scale(1.05); }
-        .icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
+        
+        /* 修复 SVG 样式 */
+        .icon-btn svg { width: 20px; height: 20px; }
+        .icon-github { fill: currentColor; }
+        .icon-theme { fill: none; stroke: currentColor; }
     </style>
 </head>
 <body>
 <canvas id="particle-canvas"></canvas>
 <div class="top-bar">
     <a href="https://github.com/Jacky088/Edgeone-ShortURL" target="_blank" class="icon-btn" title="Jacky088/Edgeone-ShortURL">
-        <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <svg class="icon-github" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
     <button id="theme-toggle" class="icon-btn" title="切换模式">
-        <svg id="icon-sun" style="display: none;" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"></path></svg>
-        <svg id="icon-moon" style="display: none;" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path></svg>
+        <svg id="icon-sun" class="icon-theme" style="display: none;" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"></path></svg>
+        <svg id="icon-moon" class="icon-theme" style="display: block;" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path></svg>
     </button>
 </div>
 <div class="container">
@@ -225,17 +261,41 @@ const indexHtml = `<!DOCTYPE html>
     <div id="success-message"></div>
 </div>
 <script>
-    const themeToggleBtn = document.getElementById('theme-toggle'); const iconSun = document.getElementById('icon-sun'); const iconMoon = document.getElementById('icon-moon'); const htmlEl = document.documentElement;
-    const storedTheme = localStorage.getItem('theme'); if (storedTheme) setTheme(storedTheme); else setTheme('light');
-    function setTheme(theme) { htmlEl.setAttribute('data-theme', theme); localStorage.setItem('theme', theme); if (theme === 'dark') { iconSun.style.display = 'block'; iconMoon.style.display = 'none'; } else { iconSun.style.display = 'none'; iconMoon.style.display = 'block'; } if (window.initParticles) window.initParticles(); }
-    themeToggleBtn.addEventListener('click', () => { const currentTheme = htmlEl.getAttribute('data-theme'); setTheme(currentTheme === 'dark' ? 'light' : 'dark'); });
-    const canvas = document.getElementById('particle-canvas'); const ctx = canvas.getContext('2d'); let particles = [], animationId;
+    // UI & Theme
+    const themeToggleBtn = document.getElementById('theme-toggle'); 
+    const iconSun = document.getElementById('icon-sun'); 
+    const iconMoon = document.getElementById('icon-moon'); 
+    const htmlEl = document.documentElement;
+
+    function setTheme(theme) { 
+        htmlEl.setAttribute('data-theme', theme); 
+        localStorage.setItem('theme', theme); 
+        if (theme === 'dark') { 
+            iconSun.style.display = 'block'; 
+            iconMoon.style.display = 'none'; 
+        } else { 
+            iconSun.style.display = 'none'; 
+            iconMoon.style.display = 'block'; 
+        } 
+        if (typeof window.initParticles === 'function') window.initParticles(); 
+    }
+
+    themeToggleBtn.addEventListener('click', () => { 
+        const currentTheme = htmlEl.getAttribute('data-theme'); 
+        setTheme(currentTheme === 'dark' ? 'light' : 'dark'); 
+    });
+
+    // Particles
+    const canvas = document.getElementById('particle-canvas'); 
+    const ctx = canvas.getContext('2d'); 
+    let particles = [], animationId;
     function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    window.addEventListener('resize', () => { resizeCanvas(); window.initParticles(); });
+    window.addEventListener('resize', () => { resizeCanvas(); if(typeof window.initParticles === 'function') window.initParticles(); });
     class Particle { constructor() { this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height; this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5; this.size = Math.random() * 2 + 1; } update() { this.x += this.vx; this.y += this.vy; if (this.x < 0 || this.x > canvas.width) this.vx *= -1; if (this.y < 0 || this.y > canvas.height) this.vy *= -1; } draw(color) { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); } }
     window.initParticles = function() { if (animationId) cancelAnimationFrame(animationId); particles = []; resizeCanvas(); const particleCount = Math.min(100, (canvas.width * canvas.height) / 15000); for (let i = 0; i < particleCount; i++) { particles.push(new Particle()); } animate(); }
     function animate() { const style = getComputedStyle(document.documentElement); const color = style.getPropertyValue('--particle-color').trim(); ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach((p, index) => { p.update(); p.draw(color); for (let j = index + 1; j < particles.length; j++) { const p2 = particles[j]; const dx = p.x - p2.x; const dy = p.y - p2.y; const distance = Math.sqrt(dx*dx + dy*dy); if (distance < 100) { ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 0.5; ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); } } }); animationId = requestAnimationFrame(animate); }
-    window.initParticles();
+
+    // Link Logic
     const form = document.getElementById('link-form'); const urlInput = document.getElementById('url-input'); const slugInput = document.getElementById('slug-input'); const submitBtn = document.getElementById('submit-btn'); const errorMessage = document.getElementById('error-message'); const successMessage = document.getElementById('success-message');
     async function createLink(e) { e.preventDefault(); const originalUrl = urlInput.value; if (!originalUrl) return; const customSlug = slugInput.value.trim(); setLoading(true); errorMessage.style.display = 'none'; successMessage.style.display = 'none'; try { const payload = { url: originalUrl }; if (customSlug) payload.slug = customSlug; const res = await fetch('/api/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (res.status === 401) { window.location.reload(); return; } if (!res.ok) { const { error } = await res.json(); throw new Error(error || '创建链接失败。'); } const newLink = await res.json(); urlInput.value = ''; slugInput.value = ''; showSuccess(newLink); } catch (err) { showError(err.message); } finally { setLoading(false); } }
     function showSuccess(newLink) { const shortUrl = \`\${window.location.origin}/\${newLink.slug}\`; successMessage.innerHTML = \`<span>成功！链接为: <a href="\${shortUrl}" target="_blank">\${shortUrl.replace(/^https?:\\/\\//, '')}</a></span><button class="copy-btn" data-url="\${shortUrl}">复制</button>\`; successMessage.style.display = 'block'; }
@@ -243,6 +303,11 @@ const indexHtml = `<!DOCTYPE html>
     function showError(message) { errorMessage.textContent =  message; errorMessage.style.display = 'block'; }
     document.addEventListener('click', (e) => { if (e.target.classList.contains('copy-btn')) { navigator.clipboard.writeText(e.target.dataset.url).then(() => { e.target.textContent = '已复制!'; setTimeout(() => { e.target.textContent = '复制'; }, 1500); }); } });
     form.addEventListener('submit', createLink);
+
+    // Init
+    const storedTheme = localStorage.getItem('theme'); 
+    if (storedTheme) setTheme(storedTheme); else setTheme('light');
+    window.initParticles();
 </script>
 </body>
 </html>`;
@@ -257,12 +322,12 @@ const adminHtml = `<!DOCTYPE html>
     <style>
         :root { --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
         [data-theme="light"] {
-            --accent-color: #ca8a04; /* 日间模式：更深的琥珀色 */
+            --accent-color: #ca8a04;
             --accent-hover: #a16207;
             --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08);
         }
         [data-theme="dark"] {
-            --accent-color: #facc15; /* 夜间模式：保持原有的亮黄色 */
+            --accent-color: #facc15;
             --accent-hover: #eab308;
             --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08);
         }
@@ -279,7 +344,12 @@ const adminHtml = `<!DOCTYPE html>
         .top-bar { position: fixed; top: 1rem; right: 1rem; display: flex; gap: 0.5rem; align-items: center; z-index: 10; }
         .icon-btn { background: var(--container-bg); border: 1px solid var(--border-color); color: var(--text-color); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; transition: background-color 0.2s, transform 0.2s; padding: 0; }
         .icon-btn:hover { background-color: var(--input-bg); transform: scale(1.05); }
-        .icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
+        
+        /* 修复 SVG 样式 */
+        .icon-btn svg { width: 20px; height: 20px; }
+        .icon-github { fill: currentColor; }
+        .icon-theme { fill: none; stroke: currentColor; }
+        
         @media (max-width: 600px) { th:nth-child(2), td:nth-child(2) { display: none; } }
     </style>
 </head>
@@ -287,11 +357,11 @@ const adminHtml = `<!DOCTYPE html>
 <canvas id="particle-canvas"></canvas>
 <div class="top-bar">
     <a href="https://github.com/Jacky088/Edgeone-ShortURL" target="_blank" class="icon-btn" title="Jacky088/Edgeone-ShortURL">
-        <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <svg class="icon-github" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
     <button id="theme-toggle" class="icon-btn" title="切换模式">
-        <svg id="icon-sun" style="display: none;" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"></path></svg>
-        <svg id="icon-moon" style="display: none;" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path></svg>
+        <svg id="icon-sun" class="icon-theme" style="display: none;" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"></path></svg>
+        <svg id="icon-moon" class="icon-theme" style="display: block;" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path></svg>
     </button>
 </div>
 <div class="container">
@@ -310,27 +380,55 @@ const adminHtml = `<!DOCTYPE html>
     </table>
 </div>
 <script>
-    const themeToggleBtn = document.getElementById('theme-toggle'); const iconSun = document.getElementById('icon-sun'); const iconMoon = document.getElementById('icon-moon'); const htmlEl = document.documentElement;
-    const storedTheme = localStorage.getItem('theme'); if (storedTheme) setTheme(storedTheme); else setTheme('light');
-    function setTheme(theme) { htmlEl.setAttribute('data-theme', theme); localStorage.setItem('theme', theme); if (theme === 'dark') { iconSun.style.display = 'block'; iconMoon.style.display = 'none'; } else { iconSun.style.display = 'none'; iconMoon.style.display = 'block'; } if (window.initParticles) window.initParticles(); }
-    themeToggleBtn.addEventListener('click', () => { const currentTheme = htmlEl.getAttribute('data-theme'); setTheme(currentTheme === 'dark' ? 'light' : 'dark'); });
-    const canvas = document.getElementById('particle-canvas'); const ctx = canvas.getContext('2d'); let particles = [], animationId;
+    // UI & Theme
+    const themeToggleBtn = document.getElementById('theme-toggle'); 
+    const iconSun = document.getElementById('icon-sun'); 
+    const iconMoon = document.getElementById('icon-moon'); 
+    const htmlEl = document.documentElement;
+    
+    function setTheme(theme) { 
+        htmlEl.setAttribute('data-theme', theme); 
+        localStorage.setItem('theme', theme); 
+        if (theme === 'dark') { 
+            iconSun.style.display = 'block'; 
+            iconMoon.style.display = 'none'; 
+        } else { 
+            iconSun.style.display = 'none'; 
+            iconMoon.style.display = 'block'; 
+        } 
+        if (typeof window.initParticles === 'function') window.initParticles(); 
+    }
+
+    themeToggleBtn.addEventListener('click', () => { 
+        const currentTheme = htmlEl.getAttribute('data-theme'); 
+        setTheme(currentTheme === 'dark' ? 'light' : 'dark'); 
+    });
+
+    // Particles
+    const canvas = document.getElementById('particle-canvas'); 
+    const ctx = canvas.getContext('2d'); 
+    let particles = [], animationId;
     function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    window.addEventListener('resize', () => { resizeCanvas(); window.initParticles(); });
+    window.addEventListener('resize', () => { resizeCanvas(); if(typeof window.initParticles === 'function') window.initParticles(); });
     class Particle { constructor() { this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height; this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5; this.size = Math.random() * 2 + 1; } update() { this.x += this.vx; this.y += this.vy; if (this.x < 0 || this.x > canvas.width) this.vx *= -1; if (this.y < 0 || this.y > canvas.height) this.vy *= -1; } draw(color) { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); } }
     window.initParticles = function() { if (animationId) cancelAnimationFrame(animationId); particles = []; resizeCanvas(); const particleCount = Math.min(100, (canvas.width * canvas.height) / 15000); for (let i = 0; i < particleCount; i++) { particles.push(new Particle()); } animate(); }
     function animate() { const style = getComputedStyle(document.documentElement); const color = style.getPropertyValue('--particle-color').trim(); ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach((p, index) => { p.update(); p.draw(color); for (let j = index + 1; j < particles.length; j++) { const p2 = particles[j]; const dx = p.x - p2.x; const dy = p.y - p2.y; const distance = Math.sqrt(dx*dx + dy*dy); if (distance < 100) { ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 0.5; ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); } } }); animationId = requestAnimationFrame(animate); }
-    window.initParticles();
+    
+    // Admin Logic
     const linksTableBody = document.getElementById('links-table-body'); const linkCount = document.getElementById('link-count'); const adminSlug = window.location.pathname.split('/').pop(); const authHeaders = { 'Content-Type': 'application/json', 'X-Admin-Slug': adminSlug };
     async function getLinks() { try { const res = await fetch('/api/links', { headers: authHeaders }); if (!res.ok) { if (res.status === 401) { document.body.innerHTML = '<h1 style="text-align:center">未授权访问</h1>'; } throw new Error('获取链接列表失败。'); } const links = await res.json(); linkCount.textContent = links.length; renderLinks(links); } catch(err) { console.error(err); } }
     function renderLinks(links) { linksTableBody.innerHTML = ''; links.sort((a, b) => b.visits - a.visits); for (const link of links) { const shortUrl = \`\${window.location.origin}/\${link.slug}\`; const row = document.createElement('tr'); row.dataset.slug = link.slug; row.innerHTML = \`<td><a href="\${shortUrl}" target="_blank">\${shortUrl.replace(/^https?:\\/\\//, '')}</a></td><td><a href="\${link.original}" target="_blank" title="\${link.original}">\${link.original.substring(0, 50) + (link.original.length > 50 ? '...' : '')}</a></td><td>\${link.visits}</td><td><button class="delete-btn" data-slug="\${link.slug}">删除</button></td>\`; linksTableBody.appendChild(row); } }
     async function deleteLink(slug) { if (!confirm(\`您确定要删除短链接 "\${slug}" 吗？\`)) return; try { const res = await fetch('/api/delete', { method: 'POST', headers: authHeaders, body: JSON.stringify({ slug }), }); if (!res.ok) throw new Error('删除失败。'); document.querySelector(\`tr[data-slug="\${slug}"]\`).remove(); linkCount.textContent = parseInt(linkCount.textContent) - 1; } catch (err) { alert(err.message); } }
     linksTableBody.addEventListener('click', (e) => { if (e.target.classList.contains('delete-btn')) { deleteLink(e.target.dataset.slug); } });
+
+    // Init
+    const storedTheme = localStorage.getItem('theme'); 
+    if (storedTheme) setTheme(storedTheme); else setTheme('light');
+    window.initParticles();
     getLinks();
 </script>
 </body>
-</html>
-`;
+</html>`;
 
 // --- 4. 主处理函数 ---
 export async function onRequest({ request, params, env }) {
@@ -378,7 +476,6 @@ export async function onRequest({ request, params, env }) {
         const newVisits = (linkData.visits || 0) + 1;
         linkData.visits = newVisits;
         
-        // 使用 await 确保写入完成
         await DB.put(cleanSlug, JSON.stringify(linkData)); 
         return Response.redirect(linkData.original, 302);
       } else {
