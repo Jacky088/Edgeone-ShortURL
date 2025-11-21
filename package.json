@@ -1,1 +1,18 @@
-
+{
+  "name": "eo-short",
+  "version": "1.0.0",
+  "description": "基于腾讯云 EdgeOne 构建的简单、快速、无文件的短链接服务",
+  "private": true,
+  "scripts": {
+    "deploy": "echo \"此项目通过 EdgeOne 控制台或 CLI 直接部署\""
+  },
+  "keywords": [
+    "edgeone",
+    "短链接",
+    "serverless",
+    "functions",
+    "kv"
+  ],
+  "author": "",
+  "license": "MIT"
+}
