@@ -332,11 +332,25 @@ const adminHtml = `<!DOCTYPE html>
 `;
 
 // --- 4. 主处理函数 ---
-// 关键修正：添加了 waitUntil 参数，并使用 env.my_kv
 export async function onRequest({ request, params, env, waitUntil }) {
   const { slug } = params;
   const adminPath = env.ADMIN_PATH;
   const envPassword = env.PASSWORD;
+
+  // --- 关键修复开始：安全获取 KV 数据库对象 ---
+  // 尝试从 env 获取，如果失败则尝试全局变量，如果都失败则报错
+  let DB;
+  if (env && env.my_kv) {
+    DB = env.my_kv;
+  } else if (typeof my_kv !== 'undefined') {
+    DB = my_kv;
+  }
+
+  // 如果找不到数据库绑定，提前报错，避免后续 "undefined" 崩溃
+  if (!DB && slug && slug !== 'favicon.ico') {
+      return new Response('Error: KV Binding "my_kv" not found. Please check EdgeOne settings.', { status: 500 });
+  }
+  // --- 关键修复结束 ---
 
   // A. 处理 Admin 路由
   if (adminPath && slug === adminPath) {
@@ -349,8 +363,8 @@ export async function onRequest({ request, params, env, waitUntil }) {
       // 去除斜杠和空格
       const cleanSlug = slug.trim().replace(/\/+$/, '');
 
-      // 使用 env.my_kv 而不是全局 my_kv
-      const linkStr = await env.my_kv.get(cleanSlug);
+      // 使用兼容的 DB 对象
+      const linkStr = await DB.get(cleanSlug);
       
       if (linkStr) {
         const linkData = JSON.parse(linkStr);
@@ -359,9 +373,8 @@ export async function onRequest({ request, params, env, waitUntil }) {
         const newVisits = (linkData.visits || 0) + 1;
         linkData.visits = newVisits;
         
-        // 关键修正：使用 waitUntil() 而不是 request.waitUntil()
-        // 且确保使用 env.my_kv
-        waitUntil(env.my_kv.put(cleanSlug, JSON.stringify(linkData))); 
+        // 使用兼容的 DB 对象进行写入
+        waitUntil(DB.put(cleanSlug, JSON.stringify(linkData))); 
         
         // 执行跳转
         return Response.redirect(linkData.original, 302);
@@ -371,7 +384,6 @@ export async function onRequest({ request, params, env, waitUntil }) {
       }
     } catch (err) {
       console.error(`KV Error: ${err.message}`);
-      // 返回 500 前打印错误
       return new Response(`Internal Server Error: ${err.message}`, { status: 500 });
     }
   }
