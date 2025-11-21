@@ -332,7 +332,8 @@ const adminHtml = `<!DOCTYPE html>
 `;
 
 // --- 4. 主处理函数 ---
-export async function onRequest({ request, params, env }) {
+// 关键修正：添加了 waitUntil 参数，并使用 env.my_kv
+export async function onRequest({ request, params, env, waitUntil }) {
   const { slug } = params;
   const adminPath = env.ADMIN_PATH;
   const envPassword = env.PASSWORD;
@@ -342,14 +343,14 @@ export async function onRequest({ request, params, env }) {
     return new Response(adminHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
 
-  // B. 处理短链接跳转 (核心逻辑修复)
+  // B. 处理短链接跳转
   if (slug && slug !== 'favicon.ico') {
     try {
-      // 关键修复：移除 URL 可能存在的尾部斜杠 (如 /bd/ -> bd)
-      // 并去除首尾空格
+      // 去除斜杠和空格
       const cleanSlug = slug.trim().replace(/\/+$/, '');
 
-      const linkStr = await my_kv.get(cleanSlug);
+      // 使用 env.my_kv 而不是全局 my_kv
+      const linkStr = await env.my_kv.get(cleanSlug);
       
       if (linkStr) {
         const linkData = JSON.parse(linkStr);
@@ -357,39 +358,38 @@ export async function onRequest({ request, params, env }) {
         // 异步更新访问计数
         const newVisits = (linkData.visits || 0) + 1;
         linkData.visits = newVisits;
-        request.waitUntil(my_kv.put(cleanSlug, JSON.stringify(linkData))); 
+        
+        // 关键修正：使用 waitUntil() 而不是 request.waitUntil()
+        // 且确保使用 env.my_kv
+        waitUntil(env.my_kv.put(cleanSlug, JSON.stringify(linkData))); 
         
         // 执行跳转
         return Response.redirect(linkData.original, 302);
       } else {
-        // 关键修复：如果提供了 slug 但 KV 里没找到，返回 404，而不是继续向下执行
-        // 这样就不会误显示登录页面了
+        // 404 处理
         return new Response('404 Not Found - 该短链接不存在', { status: 404 });
       }
     } catch (err) {
-      // 如果发生严重错误 (如 KV 挂了)，返回 500
       console.error(`KV Error: ${err.message}`);
-      return new Response('Internal Server Error', { status: 500 });
+      // 返回 500 前打印错误
+      return new Response(`Internal Server Error: ${err.message}`, { status: 500 });
     }
   }
 
   // C. 处理主页 (生成器) 和 权限验证
-  // 只有当 slug 为 undefined (即访问根目录 / ) 时才会执行到这里
-  
   if (envPassword) {
     const sessionHash = getCookie(request, 'auth_session');
     const validHash = await sha256(envPassword);
 
     if (!sessionHash || sessionHash !== validHash) {
-      // 未登录或 Cookie 无效，显示登录页
       return new Response(loginHtml, { 
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
-        status: 200 // 访问主页是正常的，返回 200
+        status: 200 
       });
     }
   }
 
-  // 验证通过，显示生成器页面
+  // 验证通过
   return new Response(indexHtml, {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
     status: 200
