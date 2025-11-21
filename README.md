@@ -30,7 +30,7 @@
 - 变量名为`PASSWORD`: 设置访问口令，防止他人恶意访问
 
 ### 4. 页面预览
-[![preview](https://github.com/Jacky088/Edgeone-ShortURL/blob/main/preview.png)]
+![preview](https://github.com/Jacky088/Edgeone-ShortURL/blob/main/preview.png)
 
 
 ## 🎯 使用方法
