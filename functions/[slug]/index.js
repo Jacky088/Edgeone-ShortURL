@@ -188,7 +188,7 @@ const indexHtml = `<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>短链接生成器</title>
-    <meta name="description" content="短链接生成您提供短网址在线生成，短链接生成，支持连接缩短，免费提供API接口。" />
+    <meta name="description" content="短链接生成您提供短网址在线生成，短链接生成，支持连接缩短。" />
     <style>
         :root { --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
         [data-theme="light"] {
@@ -246,7 +246,7 @@ const indexHtml = `<!DOCTYPE html>
     <h1>短链接生成器</h1>
     <form id="link-form">
         <div class="form-main">
-            <input type="url" id="url-input" placeholder="请输入长链接" required>
+            <input type="url" id="url-input" placeholder="请输入长链接，以http://或https://开头" required>
             <button type="submit" id="submit-btn">生成</button>
         </div>
         <div class="advanced-options">
