@@ -332,48 +332,56 @@ const adminHtml = `<!DOCTYPE html>
 `;
 
 // --- 4. 主处理函数 ---
-// 修正：移除 waitUntil 参数，不再依赖它
 export async function onRequest({ request, params, env }) {
   const { slug } = params;
   const adminPath = env.ADMIN_PATH;
   const envPassword = env.PASSWORD;
 
-  // 安全获取 KV 数据库对象 (兼容模式)
+  // --- 安全获取 KV ---
   let DB;
   if (env && env.my_kv) {
     DB = env.my_kv;
   } else if (typeof my_kv !== 'undefined') {
     DB = my_kv;
   }
-
   if (!DB && slug && slug !== 'favicon.ico') {
       return new Response('Error: KV Binding "my_kv" not found. Please check EdgeOne settings.', { status: 500 });
   }
 
-  // A. 处理 Admin 路由
+  // --- 鉴权状态检查 (核心逻辑) ---
+  // 只有在配置了密码的情况下才需要检查
+  let isAuthorized = true; 
+  if (envPassword) {
+    const sessionHash = getCookie(request, 'auth_session');
+    const validHash = await sha256(envPassword);
+    // 如果没有 cookie 或者 cookie 不匹配，标记为未授权
+    if (!sessionHash || sessionHash !== validHash) {
+        isAuthorized = false;
+    }
+  }
+
+  // A. 处理 Admin 路由 (现在也受口令保护)
   if (adminPath && slug === adminPath) {
+    // 如果未授权，直接显示登录页
+    if (!isAuthorized) {
+        return new Response(loginHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' }, status: 200 });
+    }
+    // 已授权，显示后台
     return new Response(adminHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
 
-  // B. 处理短链接跳转
+  // B. 处理短链接跳转 (不需要鉴权，公开访问)
   if (slug && slug !== 'favicon.ico') {
     try {
-      // 去除斜杠和空格
       const cleanSlug = slug.trim().replace(/\/+$/, '');
-
       const linkStr = await DB.get(cleanSlug);
       
       if (linkStr) {
         const linkData = JSON.parse(linkStr);
-        
-        // 异步更新访问计数
         const newVisits = (linkData.visits || 0) + 1;
         linkData.visits = newVisits;
         
-        // 核心修改：直接 await，不再使用 waitUntil，解决 Not FetchEvent Object 错误
         await DB.put(cleanSlug, JSON.stringify(linkData)); 
-        
-        // 执行跳转
         return Response.redirect(linkData.original, 302);
       } else {
         return new Response('404 Not Found - 该短链接不存在', { status: 404 });
@@ -384,20 +392,11 @@ export async function onRequest({ request, params, env }) {
     }
   }
 
-  // C. 处理主页 (生成器) 和 权限验证
-  if (envPassword) {
-    const sessionHash = getCookie(request, 'auth_session');
-    const validHash = await sha256(envPassword);
-
-    if (!sessionHash || sessionHash !== validHash) {
-      return new Response(loginHtml, { 
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
-        status: 200 
-      });
-    }
+  // C. 处理主页 (生成器) - 需要鉴权
+  if (!isAuthorized) {
+      return new Response(loginHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' }, status: 200 });
   }
 
-  // 验证通过
   return new Response(indexHtml, {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
     status: 200
