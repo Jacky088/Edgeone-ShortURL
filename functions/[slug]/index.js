@@ -123,8 +123,8 @@ const indexHtml = `<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>短链接生成器</title>
-    <meta name="description" content="短链接生成您提供短网址在线生成，短链接生成，支持连接缩短，免费提供API接口。" />
+    <title>短链接生成服务</title>
+    <meta name="description" content="短链接在线生成，支持长链接缩短，免费开源，提供API接口。" />
     <style>
         :root { --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
         [data-theme="light"] { --accent-color: #ca8a04; --accent-hover: #a16207; --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08); }
@@ -172,14 +172,14 @@ const indexHtml = `<!DOCTYPE html>
     </button>
 </div>
 <div class="container">
-    <h1>短链接生成器</h1>
+    <h1>短链接生成服务</h1>
     <form id="link-form">
         <div class="form-main">
-            <input type="url" id="url-input" placeholder="请输入长链接，以http://或https://开头" required>
+            <input type="url" id="url-input" placeholder="请输入长链接，必须是完整链接，以http://或https://开头" required>
             <button type="submit" id="submit-btn">生成</button>
         </div>
         <div class="advanced-options">
-            <label>自定义短链接 (可选): <input type="text" id="slug-input" placeholder="例如: my-link"></label>
+            <label>自定义短链接 (可选): <input type="text" id="slug-input" placeholder="例如: abc"></label>
         </div>
     </form>
     <div id="error-message"></div>
@@ -234,7 +234,7 @@ const adminHtml = `<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理后台 - 短链接</title>
+    <title>短链接生成服务-管理后台</title>
     <style>
         :root { --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
         [data-theme="light"] { --accent-color: #ca8a04; --accent-hover: #a16207; --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08); }
@@ -273,7 +273,7 @@ const adminHtml = `<!DOCTYPE html>
     </button>
 </div>
 <div class="container">
-    <h1>管理后台</h1>
+    <h1>面板数据</h1>
     <p>链接总数: <span id="link-count">...</span></p>
     <table>
         <thead>
@@ -281,7 +281,7 @@ const adminHtml = `<!DOCTYPE html>
                 <th>短链接</th>
                 <th>原始链接</th>
                 <th>访问次数</th>
-                <th>操作</th>
+                <th>管理</th>
             </tr>
         </thead>
         <tbody id="links-table-body"></tbody>
