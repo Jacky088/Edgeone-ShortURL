@@ -332,13 +332,13 @@ const adminHtml = `<!DOCTYPE html>
 `;
 
 // --- 4. 主处理函数 ---
-export async function onRequest({ request, params, env, waitUntil }) {
+// 修正：移除 waitUntil 参数，不再依赖它
+export async function onRequest({ request, params, env }) {
   const { slug } = params;
   const adminPath = env.ADMIN_PATH;
   const envPassword = env.PASSWORD;
 
-  // --- 关键修复开始：安全获取 KV 数据库对象 ---
-  // 尝试从 env 获取，如果失败则尝试全局变量，如果都失败则报错
+  // 安全获取 KV 数据库对象 (兼容模式)
   let DB;
   if (env && env.my_kv) {
     DB = env.my_kv;
@@ -346,11 +346,9 @@ export async function onRequest({ request, params, env, waitUntil }) {
     DB = my_kv;
   }
 
-  // 如果找不到数据库绑定，提前报错，避免后续 "undefined" 崩溃
   if (!DB && slug && slug !== 'favicon.ico') {
       return new Response('Error: KV Binding "my_kv" not found. Please check EdgeOne settings.', { status: 500 });
   }
-  // --- 关键修复结束 ---
 
   // A. 处理 Admin 路由
   if (adminPath && slug === adminPath) {
@@ -363,7 +361,6 @@ export async function onRequest({ request, params, env, waitUntil }) {
       // 去除斜杠和空格
       const cleanSlug = slug.trim().replace(/\/+$/, '');
 
-      // 使用兼容的 DB 对象
       const linkStr = await DB.get(cleanSlug);
       
       if (linkStr) {
@@ -373,13 +370,12 @@ export async function onRequest({ request, params, env, waitUntil }) {
         const newVisits = (linkData.visits || 0) + 1;
         linkData.visits = newVisits;
         
-        // 使用兼容的 DB 对象进行写入
-        waitUntil(DB.put(cleanSlug, JSON.stringify(linkData))); 
+        // 核心修改：直接 await，不再使用 waitUntil，解决 Not FetchEvent Object 错误
+        await DB.put(cleanSlug, JSON.stringify(linkData)); 
         
         // 执行跳转
         return Response.redirect(linkData.original, 302);
       } else {
-        // 404 处理
         return new Response('404 Not Found - 该短链接不存在', { status: 404 });
       }
     } catch (err) {
