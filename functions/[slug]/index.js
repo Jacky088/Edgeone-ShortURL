@@ -20,15 +20,14 @@ function getCookie(request, name) {
 }
 
 // ==========================================
-// 定义图标数据 (Base64/DataURI) - 确保颜色固定，不受 CSS 干扰
+// 定义图标数据 (Base64/DataURI)
 // ==========================================
-// 月亮图标 (深色线条，用于日间模式)
 const ICON_MOON_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%231f2937' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z'/%3E%3C/svg%3E";
-// 太阳图标 (亮黄色线条，用于夜间模式)
 const ICON_SUN_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23facc15' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='5'/%3E%3Cpath d='M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42'/%3E%3C/svg%3E";
 
-
-// --- 1. 登录页面 HTML ---
+// ==========================================
+// 1. 登录页面 HTML
+// ==========================================
 const loginHtml = `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -37,16 +36,8 @@ const loginHtml = `<!DOCTYPE html>
     <title>访问验证</title>
     <style>
         :root { --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
-        [data-theme="light"] {
-            --accent-color: #ca8a04;
-            --accent-hover: #a16207;
-            --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08);
-        }
-        [data-theme="dark"] {
-            --accent-color: #facc15;
-            --accent-hover: #eab308;
-            --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08);
-        }
+        [data-theme="light"] { --accent-color: #ca8a04; --accent-hover: #a16207; --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08); }
+        [data-theme="dark"] { --accent-color: #facc15; --accent-hover: #eab308; --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08); }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; box-sizing: border-box; overflow: hidden; }
         #particle-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
         .container { width: 100%; max-width: 400px; background-color: var(--container-bg); border-radius: .75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); padding: 2rem; position: relative; z-index: 1; text-align: center; }
@@ -54,23 +45,23 @@ const loginHtml = `<!DOCTYPE html>
         input { width: 100%; padding: .75rem 1rem; margin-bottom: 1rem; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: .5rem; color: var(--text-color); font-size: 1rem; box-sizing: border-box; transition: border-color .2s, box-shadow .2s; }
         input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(var(--accent-color), .3); }
         button { width: 100%; padding: .75rem 1.5rem; background-color: var(--accent-color); color: #fff; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color .2s; }
-        [data-theme="light"] button { color: #fff; } 
-        [data-theme="dark"] button { color: #000; }
-        button:hover { background-color: var(--accent-hover); }
-        button:disabled { opacity: 0.7; cursor: not-allowed; }
+        [data-theme="light"] button { color: #fff; } [data-theme="dark"] button { color: #000; }
+        button:hover { background-color: var(--accent-hover); } button:disabled { opacity: 0.7; cursor: not-allowed; }
         .error { color: var(--error-color); margin-top: 1rem; font-size: 0.9rem; display: none; background-color: rgba(248, 113, 113, .1); padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--error-color); }
         .top-bar { position: fixed; top: 1rem; right: 1rem; display: flex; gap: 0.5rem; align-items: center; z-index: 10; }
         .icon-btn { background: var(--container-bg); border: 1px solid var(--border-color); color: var(--text-color); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; transition: background-color 0.2s, transform 0.2s; padding: 0; }
         .icon-btn:hover { background-color: var(--input-bg); transform: scale(1.05); }
-        
-        /* 图标样式 - GitHub 保持 SVG 填充 currentColor，切换图标使用 img 标签 */
         .icon-btn svg.icon-github { width: 20px; height: 20px; fill: currentColor; }
         .icon-btn img.icon-theme { width: 20px; height: 20px; display: block; }
+        /* 文字按钮样式 */
+        .text-btn { padding: 0 1rem; height: 40px; border: 1px solid var(--border-color); border-radius: 2rem; background-color: var(--container-bg); color: var(--text-color); text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; box-sizing: border-box; }
+        .text-btn:hover { background-color: var(--input-bg); border-color: var(--accent-color); }
     </style>
 </head>
 <body>
 <canvas id="particle-canvas"></canvas>
 <div class="top-bar">
+    <a href="javascript:void(0)" id="admin-link" class="text-btn">管理后台</a>
     <a href="https://github.com/Jacky088/Edgeone-ShortURL" target="_blank" class="icon-btn" title="Jacky088/Edgeone-ShortURL">
         <svg class="icon-github" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
@@ -82,84 +73,62 @@ const loginHtml = `<!DOCTYPE html>
 <div class="container">
     <h1>请输入访问口令</h1>
     <form id="login-form">
-        <input type="password" id="password" placeholder="请输入口令..." required>
+        <input type="password" id="password" placeholder="输入口令..." required>
         <button type="submit" id="btn">验证</button>
     </form>
     <div class="error" id="error-msg">口令错误</div>
 </div>
 <script>
-    // UI & Theme Logic
-    const themeToggleBtn = document.getElementById('theme-toggle'); 
-    const iconSun = document.getElementById('icon-sun'); 
-    const iconMoon = document.getElementById('icon-moon'); 
-    const htmlEl = document.documentElement;
-    
-    function setTheme(theme) { 
-        htmlEl.setAttribute('data-theme', theme); 
-        localStorage.setItem('theme', theme); 
-        if (theme === 'dark') { 
-            iconSun.style.display = 'block'; 
-            iconMoon.style.display = 'none'; 
-        } else { 
-            iconSun.style.display = 'none'; 
-            iconMoon.style.display = 'block'; 
-        } 
-        if (typeof window.initParticles === 'function') window.initParticles(); 
-    }
-    
-    themeToggleBtn.addEventListener('click', () => { 
-        const currentTheme = htmlEl.getAttribute('data-theme'); 
-        setTheme(currentTheme === 'dark' ? 'light' : 'dark'); 
-    });
-
-    // Particle Logic
-    const canvas = document.getElementById('particle-canvas'); 
-    const ctx = canvas.getContext('2d'); 
-    let particles = [], animationId;
+    // UI & Theme
+    const themeToggleBtn = document.getElementById('theme-toggle'); const iconSun = document.getElementById('icon-sun'); const iconMoon = document.getElementById('icon-moon'); const htmlEl = document.documentElement;
+    function setTheme(theme) { htmlEl.setAttribute('data-theme', theme); localStorage.setItem('theme', theme); if (theme === 'dark') { iconSun.style.display = 'block'; iconMoon.style.display = 'none'; } else { iconSun.style.display = 'none'; iconMoon.style.display = 'block'; } if (typeof window.initParticles === 'function') window.initParticles(); }
+    themeToggleBtn.addEventListener('click', () => { const currentTheme = htmlEl.getAttribute('data-theme'); setTheme(currentTheme === 'dark' ? 'light' : 'dark'); });
+    // Particles
+    const canvas = document.getElementById('particle-canvas'); const ctx = canvas.getContext('2d'); let particles = [], animationId;
     function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.addEventListener('resize', () => { resizeCanvas(); if(typeof window.initParticles === 'function') window.initParticles(); });
     class Particle { constructor() { this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height; this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5; this.size = Math.random() * 2 + 1; } update() { this.x += this.vx; this.y += this.vy; if (this.x < 0 || this.x > canvas.width) this.vx *= -1; if (this.y < 0 || this.y > canvas.height) this.vy *= -1; } draw(color) { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); } }
     window.initParticles = function() { if (animationId) cancelAnimationFrame(animationId); particles = []; resizeCanvas(); const particleCount = Math.min(100, (canvas.width * canvas.height) / 15000); for (let i = 0; i < particleCount; i++) { particles.push(new Particle()); } animate(); }
     function animate() { const style = getComputedStyle(document.documentElement); const color = style.getPropertyValue('--particle-color').trim(); ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach((p, index) => { p.update(); p.draw(color); for (let j = index + 1; j < particles.length; j++) { const p2 = particles[j]; const dx = p.x - p2.x; const dy = p.y - p2.y; const distance = Math.sqrt(dx*dx + dy*dy); if (distance < 100) { ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 0.5; ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); } } }); animationId = requestAnimationFrame(animate); }
+    
+    // Admin Link Check Logic
+    const adminPathStatus = "__ADMIN_PATH_STATUS__"; // injected
+    const adminLink = document.getElementById('admin-link');
+    if(adminLink) {
+        adminLink.addEventListener('click', (e) => {
+            if (!adminPathStatus) {
+                e.preventDefault();
+                alert('您未设置开启管理后台！');
+            } else {
+                window.location.href = '/' + adminPathStatus;
+            }
+        });
+    }
 
     // Auth Logic
     const form = document.getElementById('login-form'); const btn = document.getElementById('btn'); const errMsg = document.getElementById('error-msg');
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault(); btn.disabled = true; btn.innerText = '验证中...'; const password = document.getElementById('password').value;
-        try {
-            const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
-            if (res.ok) { window.location.reload(); } else { errMsg.style.display = 'block'; errMsg.textContent = '口令错误'; btn.disabled = false; btn.innerText = '验证'; }
-        } catch (err) { errMsg.style.display = 'block'; errMsg.textContent = '网络错误'; btn.disabled = false; btn.innerText = '验证'; }
-    });
-
+    form.addEventListener('submit', async (e) => { e.preventDefault(); btn.disabled = true; btn.innerText = '验证中...'; const password = document.getElementById('password').value; try { const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); if (res.ok) { window.location.reload(); } else { errMsg.style.display = 'block'; errMsg.textContent = '口令错误'; btn.disabled = false; btn.innerText = '验证'; } } catch (err) { errMsg.style.display = 'block'; errMsg.textContent = '网络错误'; btn.disabled = false; btn.innerText = '验证'; } });
+    
     // Init
-    const storedTheme = localStorage.getItem('theme'); 
-    if (storedTheme) setTheme(storedTheme); else setTheme('light');
-    window.initParticles();
+    const storedTheme = localStorage.getItem('theme'); if (storedTheme) setTheme(storedTheme); else setTheme('light'); window.initParticles();
 </script>
 </body>
 </html>`;
 
-// --- 2. 主生成器 HTML ---
+// ==========================================
+// 2. 主生成器 HTML
+// ==========================================
 const indexHtml = `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>短链接生成服务</title>
-    <meta name="description" content="短链接在线生成，无服务器，免费开源，支持API接口。" />
+    <title>短链接生成器</title>
+    <meta name="description" content="短链接生成您提供短网址在线生成，短链接生成，支持连接缩短，免费提供API接口。" />
     <style>
         :root { --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
-        [data-theme="light"] {
-            --accent-color: #ca8a04;
-            --accent-hover: #a16207;
-            --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08);
-        }
-        [data-theme="dark"] {
-            --accent-color: #facc15;
-            --accent-hover: #eab308;
-            --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08);
-        }
+        [data-theme="light"] { --accent-color: #ca8a04; --accent-hover: #a16207; --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08); }
+        [data-theme="dark"] { --accent-color: #facc15; --accent-hover: #eab308; --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08); }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; box-sizing: border-box; overflow: hidden; }
         #particle-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
         .container { width: 100%; max-width: 600px; background-color: var(--container-bg); border-radius: .75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); padding: 2rem; position: relative; z-index: 1; }
@@ -172,10 +141,8 @@ const indexHtml = `<!DOCTYPE html>
         .advanced-options label { display: flex; align-items: center; gap: .5rem; color: var(--subtle-text); }
         #slug-input { padding: .5rem; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: .5rem; color: var(--text-color); }
         button { padding: .75rem 1.5rem; background-color: var(--accent-color); color: #fff; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color .2s; }
-        [data-theme="light"] button { color: #fff; }
-        [data-theme="dark"] button { color: #000; }
-        button:hover { background-color: var(--accent-hover); }
-        button:disabled { background-color: var(--subtle-text); cursor: not-allowed; opacity: 0.7; }
+        [data-theme="light"] button { color: #fff; } [data-theme="dark"] button { color: #000; }
+        button:hover { background-color: var(--accent-hover); } button:disabled { background-color: var(--subtle-text); cursor: not-allowed; opacity: 0.7; }
         #error-message, #success-message { text-align: center; margin-bottom: 1rem; padding: .75rem; border-radius: .5rem; display: none; transition: opacity .3s ease-in-out; }
         #error-message { color: var(--error-color); background-color: rgba(248, 113, 113, .1); border: 1px solid var(--error-color); }
         #success-message { color: var(--success-color); background-color: rgba(74, 222, 128, .1); border: 1px solid var(--success-color); }
@@ -187,11 +154,15 @@ const indexHtml = `<!DOCTYPE html>
         .icon-btn:hover { background-color: var(--input-bg); transform: scale(1.05); }
         .icon-btn svg.icon-github { width: 20px; height: 20px; fill: currentColor; }
         .icon-btn img.icon-theme { width: 20px; height: 20px; display: block; }
+        /* 文字按钮样式 */
+        .text-btn { padding: 0 1rem; height: 40px; border: 1px solid var(--border-color); border-radius: 2rem; background-color: var(--container-bg); color: var(--text-color); text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; box-sizing: border-box; }
+        .text-btn:hover { background-color: var(--input-bg); border-color: var(--accent-color); }
     </style>
 </head>
 <body>
 <canvas id="particle-canvas"></canvas>
 <div class="top-bar">
+    <a href="javascript:void(0)" id="admin-link" class="text-btn">管理后台</a>
     <a href="https://github.com/Jacky088/Edgeone-ShortURL" target="_blank" class="icon-btn" title="Jacky088/Edgeone-ShortURL">
         <svg class="icon-github" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
@@ -201,52 +172,45 @@ const indexHtml = `<!DOCTYPE html>
     </button>
 </div>
 <div class="container">
-    <h1>短链接生成服务</h1>
+    <h1>短链接生成器</h1>
     <form id="link-form">
         <div class="form-main">
-            <input type="url" id="url-input" placeholder="请输入长链接，必须是完整地址，以http://或https://开头" required>
+            <input type="url" id="url-input" placeholder="请输入长链接，以http://或https://开头" required>
             <button type="submit" id="submit-btn">生成</button>
         </div>
         <div class="advanced-options">
-            <label>自定义短链接 (可选): <input type="text" id="slug-input" placeholder="例如: abc"></label>
+            <label>自定义短链接 (可选): <input type="text" id="slug-input" placeholder="例如: my-link"></label>
         </div>
     </form>
     <div id="error-message"></div>
     <div id="success-message"></div>
 </div>
 <script>
-    const themeToggleBtn = document.getElementById('theme-toggle'); 
-    const iconSun = document.getElementById('icon-sun'); 
-    const iconMoon = document.getElementById('icon-moon'); 
-    const htmlEl = document.documentElement;
-
-    function setTheme(theme) { 
-        htmlEl.setAttribute('data-theme', theme); 
-        localStorage.setItem('theme', theme); 
-        if (theme === 'dark') { 
-            iconSun.style.display = 'block'; 
-            iconMoon.style.display = 'none'; 
-        } else { 
-            iconSun.style.display = 'none'; 
-            iconMoon.style.display = 'block'; 
-        } 
-        if (typeof window.initParticles === 'function') window.initParticles(); 
-    }
-
-    themeToggleBtn.addEventListener('click', () => { 
-        const currentTheme = htmlEl.getAttribute('data-theme'); 
-        setTheme(currentTheme === 'dark' ? 'light' : 'dark'); 
-    });
-
+    // UI & Theme
+    const themeToggleBtn = document.getElementById('theme-toggle'); const iconSun = document.getElementById('icon-sun'); const iconMoon = document.getElementById('icon-moon'); const htmlEl = document.documentElement;
+    function setTheme(theme) { htmlEl.setAttribute('data-theme', theme); localStorage.setItem('theme', theme); if (theme === 'dark') { iconSun.style.display = 'block'; iconMoon.style.display = 'none'; } else { iconSun.style.display = 'none'; iconMoon.style.display = 'block'; } if (typeof window.initParticles === 'function') window.initParticles(); }
+    themeToggleBtn.addEventListener('click', () => { const currentTheme = htmlEl.getAttribute('data-theme'); setTheme(currentTheme === 'dark' ? 'light' : 'dark'); });
     // Particles
-    const canvas = document.getElementById('particle-canvas'); 
-    const ctx = canvas.getContext('2d'); 
-    let particles = [], animationId;
+    const canvas = document.getElementById('particle-canvas'); const ctx = canvas.getContext('2d'); let particles = [], animationId;
     function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.addEventListener('resize', () => { resizeCanvas(); if(typeof window.initParticles === 'function') window.initParticles(); });
     class Particle { constructor() { this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height; this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5; this.size = Math.random() * 2 + 1; } update() { this.x += this.vx; this.y += this.vy; if (this.x < 0 || this.x > canvas.width) this.vx *= -1; if (this.y < 0 || this.y > canvas.height) this.vy *= -1; } draw(color) { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); } }
     window.initParticles = function() { if (animationId) cancelAnimationFrame(animationId); particles = []; resizeCanvas(); const particleCount = Math.min(100, (canvas.width * canvas.height) / 15000); for (let i = 0; i < particleCount; i++) { particles.push(new Particle()); } animate(); }
     function animate() { const style = getComputedStyle(document.documentElement); const color = style.getPropertyValue('--particle-color').trim(); ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach((p, index) => { p.update(); p.draw(color); for (let j = index + 1; j < particles.length; j++) { const p2 = particles[j]; const dx = p.x - p2.x; const dy = p.y - p2.y; const distance = Math.sqrt(dx*dx + dy*dy); if (distance < 100) { ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 0.5; ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); } } }); animationId = requestAnimationFrame(animate); }
+    
+    // Admin Link Check Logic
+    const adminPathStatus = "__ADMIN_PATH_STATUS__";
+    const adminLink = document.getElementById('admin-link');
+    if(adminLink) {
+        adminLink.addEventListener('click', (e) => {
+            if (!adminPathStatus) {
+                e.preventDefault();
+                alert('您未设置开启管理后台！');
+            } else {
+                window.location.href = '/' + adminPathStatus;
+            }
+        });
+    }
 
     // Link Logic
     const form = document.getElementById('link-form'); const urlInput = document.getElementById('url-input'); const slugInput = document.getElementById('slug-input'); const submitBtn = document.getElementById('submit-btn'); const errorMessage = document.getElementById('error-message'); const successMessage = document.getElementById('success-message');
@@ -256,34 +220,25 @@ const indexHtml = `<!DOCTYPE html>
     function showError(message) { errorMessage.textContent =  message; errorMessage.style.display = 'block'; }
     document.addEventListener('click', (e) => { if (e.target.classList.contains('copy-btn')) { navigator.clipboard.writeText(e.target.dataset.url).then(() => { e.target.textContent = '已复制!'; setTimeout(() => { e.target.textContent = '复制'; }, 1500); }); } });
     form.addEventListener('submit', createLink);
-
     // Init
-    const storedTheme = localStorage.getItem('theme'); 
-    if (storedTheme) setTheme(storedTheme); else setTheme('light');
-    window.initParticles();
+    const storedTheme = localStorage.getItem('theme'); if (storedTheme) setTheme(storedTheme); else setTheme('light'); window.initParticles();
 </script>
 </body>
 </html>`;
 
-// --- 3. 管理后台 HTML ---
+// ==========================================
+// 3. 管理后台 HTML
+// ==========================================
 const adminHtml = `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>短链接生成服务-管理后台</title>
+    <title>管理后台 - 短链接</title>
     <style>
         :root { --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
-        [data-theme="light"] {
-            --accent-color: #ca8a04;
-            --accent-hover: #a16207;
-            --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08);
-        }
-        [data-theme="dark"] {
-            --accent-color: #facc15;
-            --accent-hover: #eab308;
-            --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08);
-        }
+        [data-theme="light"] { --accent-color: #ca8a04; --accent-hover: #a16207; --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08); }
+        [data-theme="dark"] { --accent-color: #facc15; --accent-hover: #eab308; --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08); }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; box-sizing: border-box; overflow-x: hidden; }
         #particle-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
         .container { width: 100%; max-width: 900px; background-color: var(--container-bg); border-radius: .75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); padding: 2rem; position: relative; z-index: 1; }
@@ -300,11 +255,15 @@ const adminHtml = `<!DOCTYPE html>
         .icon-btn svg.icon-github { width: 20px; height: 20px; fill: currentColor; }
         .icon-btn img.icon-theme { width: 20px; height: 20px; display: block; }
         @media (max-width: 600px) { th:nth-child(2), td:nth-child(2) { display: none; } }
+        /* 文字按钮样式 */
+        .text-btn { padding: 0 1rem; height: 40px; border: 1px solid var(--border-color); border-radius: 2rem; background-color: var(--container-bg); color: var(--text-color); text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; box-sizing: border-box; }
+        .text-btn:hover { background-color: var(--input-bg); border-color: var(--accent-color); }
     </style>
 </head>
 <body>
 <canvas id="particle-canvas"></canvas>
 <div class="top-bar">
+    <a href="/" class="text-btn">返回前台</a>
     <a href="https://github.com/Jacky088/Edgeone-ShortURL" target="_blank" class="icon-btn" title="Jacky088/Edgeone-ShortURL">
         <svg class="icon-github" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
@@ -314,7 +273,7 @@ const adminHtml = `<!DOCTYPE html>
     </button>
 </div>
 <div class="container">
-    <h1>面板数据</h1>
+    <h1>管理后台</h1>
     <p>链接总数: <span id="link-count">...</span></p>
     <table>
         <thead>
@@ -322,7 +281,7 @@ const adminHtml = `<!DOCTYPE html>
                 <th>短链接</th>
                 <th>原始链接</th>
                 <th>访问次数</th>
-                <th>管理</th>
+                <th>操作</th>
             </tr>
         </thead>
         <tbody id="links-table-body"></tbody>
@@ -330,56 +289,31 @@ const adminHtml = `<!DOCTYPE html>
 </div>
 <script>
     // UI & Theme
-    const themeToggleBtn = document.getElementById('theme-toggle'); 
-    const iconSun = document.getElementById('icon-sun'); 
-    const iconMoon = document.getElementById('icon-moon'); 
-    const htmlEl = document.documentElement;
-
-    function setTheme(theme) { 
-        htmlEl.setAttribute('data-theme', theme); 
-        localStorage.setItem('theme', theme); 
-        if (theme === 'dark') { 
-            iconSun.style.display = 'block'; 
-            iconMoon.style.display = 'none'; 
-        } else { 
-            iconSun.style.display = 'none'; 
-            iconMoon.style.display = 'block'; 
-        } 
-        if (typeof window.initParticles === 'function') window.initParticles(); 
-    }
-
-    themeToggleBtn.addEventListener('click', () => { 
-        const currentTheme = htmlEl.getAttribute('data-theme'); 
-        setTheme(currentTheme === 'dark' ? 'light' : 'dark'); 
-    });
-
+    const themeToggleBtn = document.getElementById('theme-toggle'); const iconSun = document.getElementById('icon-sun'); const iconMoon = document.getElementById('icon-moon'); const htmlEl = document.documentElement;
+    function setTheme(theme) { htmlEl.setAttribute('data-theme', theme); localStorage.setItem('theme', theme); if (theme === 'dark') { iconSun.style.display = 'block'; iconMoon.style.display = 'none'; } else { iconSun.style.display = 'none'; iconMoon.style.display = 'block'; } if (typeof window.initParticles === 'function') window.initParticles(); }
+    themeToggleBtn.addEventListener('click', () => { const currentTheme = htmlEl.getAttribute('data-theme'); setTheme(currentTheme === 'dark' ? 'light' : 'dark'); });
     // Particles
-    const canvas = document.getElementById('particle-canvas'); 
-    const ctx = canvas.getContext('2d'); 
-    let particles = [], animationId;
+    const canvas = document.getElementById('particle-canvas'); const ctx = canvas.getContext('2d'); let particles = [], animationId;
     function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.addEventListener('resize', () => { resizeCanvas(); if(typeof window.initParticles === 'function') window.initParticles(); });
     class Particle { constructor() { this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height; this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5; this.size = Math.random() * 2 + 1; } update() { this.x += this.vx; this.y += this.vy; if (this.x < 0 || this.x > canvas.width) this.vx *= -1; if (this.y < 0 || this.y > canvas.height) this.vy *= -1; } draw(color) { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); } }
     window.initParticles = function() { if (animationId) cancelAnimationFrame(animationId); particles = []; resizeCanvas(); const particleCount = Math.min(100, (canvas.width * canvas.height) / 15000); for (let i = 0; i < particleCount; i++) { particles.push(new Particle()); } animate(); }
     function animate() { const style = getComputedStyle(document.documentElement); const color = style.getPropertyValue('--particle-color').trim(); ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach((p, index) => { p.update(); p.draw(color); for (let j = index + 1; j < particles.length; j++) { const p2 = particles[j]; const dx = p.x - p2.x; const dy = p.y - p2.y; const distance = Math.sqrt(dx*dx + dy*dy); if (distance < 100) { ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 0.5; ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); } } }); animationId = requestAnimationFrame(animate); }
-
     // Admin Logic
     const linksTableBody = document.getElementById('links-table-body'); const linkCount = document.getElementById('link-count'); const adminSlug = window.location.pathname.split('/').pop(); const authHeaders = { 'Content-Type': 'application/json', 'X-Admin-Slug': adminSlug };
     async function getLinks() { try { const res = await fetch('/api/links', { headers: authHeaders }); if (!res.ok) { if (res.status === 401) { document.body.innerHTML = '<h1 style="text-align:center">未授权访问</h1>'; } throw new Error('获取链接列表失败。'); } const links = await res.json(); linkCount.textContent = links.length; renderLinks(links); } catch(err) { console.error(err); } }
     function renderLinks(links) { linksTableBody.innerHTML = ''; links.sort((a, b) => b.visits - a.visits); for (const link of links) { const shortUrl = \`\${window.location.origin}/\${link.slug}\`; const row = document.createElement('tr'); row.dataset.slug = link.slug; row.innerHTML = \`<td><a href="\${shortUrl}" target="_blank">\${shortUrl.replace(/^https?:\\/\\//, '')}</a></td><td><a href="\${link.original}" target="_blank" title="\${link.original}">\${link.original.substring(0, 50) + (link.original.length > 50 ? '...' : '')}</a></td><td>\${link.visits}</td><td><button class="delete-btn" data-slug="\${link.slug}">删除</button></td>\`; linksTableBody.appendChild(row); } }
     async function deleteLink(slug) { if (!confirm(\`您确定要删除短链接 "\${slug}" 吗？\`)) return; try { const res = await fetch('/api/delete', { method: 'POST', headers: authHeaders, body: JSON.stringify({ slug }), }); if (!res.ok) throw new Error('删除失败。'); document.querySelector(\`tr[data-slug="\${slug}"]\`).remove(); linkCount.textContent = parseInt(linkCount.textContent) - 1; } catch (err) { alert(err.message); } }
     linksTableBody.addEventListener('click', (e) => { if (e.target.classList.contains('delete-btn')) { deleteLink(e.target.dataset.slug); } });
-    
     // Init
-    const storedTheme = localStorage.getItem('theme'); 
-    if (storedTheme) setTheme(storedTheme); else setTheme('light');
-    window.initParticles();
-    getLinks();
+    const storedTheme = localStorage.getItem('theme'); if (storedTheme) setTheme(storedTheme); else setTheme('light'); window.initParticles(); getLinks();
 </script>
 </body>
 </html>`;
 
-// --- 4. 主处理函数 ---
+// ==========================================
+// 4. 主处理函数 (核心逻辑)
+// ==========================================
 export async function onRequest({ request, params, env }) {
   const { slug } = params;
   const adminPath = env.ADMIN_PATH;
@@ -406,10 +340,16 @@ export async function onRequest({ request, params, env }) {
     }
   }
 
+  // --- 注入变量准备 ---
+  // 核心逻辑：如果没设置 adminPath，status 传空字符串，前端 JS 捕获后会弹窗
+  const adminPathStatus = adminPath || '';
+
   // A. 处理 Admin 路由 (受口令保护)
   if (adminPath && slug === adminPath) {
     if (!isAuthorized) {
-        return new Response(loginHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' }, status: 200 });
+        // 返回登录页，同样需要注入 admin path 状态
+        const finalLoginHtml = loginHtml.replace('__ADMIN_PATH_STATUS__', adminPathStatus);
+        return new Response(finalLoginHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' }, status: 200 });
     }
     return new Response(adminHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
@@ -439,10 +379,14 @@ export async function onRequest({ request, params, env }) {
 
   // C. 处理主页 (生成器) - 需要鉴权
   if (!isAuthorized) {
-      return new Response(loginHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' }, status: 200 });
+      const finalLoginHtml = loginHtml.replace('__ADMIN_PATH_STATUS__', adminPathStatus);
+      return new Response(finalLoginHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' }, status: 200 });
   }
 
-  return new Response(indexHtml, {
+  // 返回主页前，注入 admin path 状态
+  const finalIndexHtml = indexHtml.replace('__ADMIN_PATH_STATUS__', adminPathStatus);
+
+  return new Response(finalIndexHtml, {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
     status: 200
   });
