@@ -22,7 +22,7 @@ export async function onRequest({ request, env }) {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  // --- 鉴权逻辑开始 ---
+  // --- 鉴权逻辑 ---
   const envPassword = env.PASSWORD;
   if (envPassword) {
     const sessionHash = getCookie(request, 'auth_session');
@@ -35,7 +35,12 @@ export async function onRequest({ request, env }) {
       });
     }
   }
-  // --- 鉴权逻辑结束 ---
+
+  // --- 安全获取 KV ---
+  let DB;
+  if (env && env.my_kv) { DB = env.my_kv; } 
+  else if (typeof my_kv !== 'undefined') { DB = my_kv; }
+  if (!DB) { return new Response(JSON.stringify({ error: 'Server Error: KV binding not found' }), { status: 500 }); }
 
   let body;
   try {
@@ -51,33 +56,25 @@ export async function onRequest({ request, env }) {
     return new Response(JSON.stringify({ error: 'URL 是必需的' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
   }
 
-  // 验证 URL 格式 (简单验证)
-  try {
-    new URL(url);
-  } catch (_) {
+  // 验证 URL 格式
+  try { new URL(url); } catch (_) {
     return new Response(JSON.stringify({ error: '无效的 URL 格式' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
   }
 
-  // 检查是否已存在该 URL 的短链 (仅当用户没有自定义 slug 时复用)
+  // 检查是否存在 (Hash check)
   const urlHash = await sha256(url);
   
   if (!customSlug) {
-    const existingSlug = await my_kv.get(`hash:${urlHash}`);
+    const existingSlug = await DB.get(`hash:${urlHash}`);
     if (existingSlug) {
-      const existingLinkData = await my_kv.get(existingSlug);
+      const existingLinkData = await DB.get(existingSlug);
       if (existingLinkData) {
         try {
             const parsedData = JSON.parse(existingLinkData);
             return new Response(JSON.stringify({ slug: existingSlug, ...parsedData }), {
-                headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                },
+                headers: { 'Content-Type': 'application/json' },
             });
-        } catch (e) {
-            // 如果 JSON 解析失败，说明数据损坏，忽略并重新生成
-            console.error('Data corruption for slug:', existingSlug);
-        }
+        } catch (e) {}
       }
     }
   }
@@ -85,53 +82,41 @@ export async function onRequest({ request, env }) {
   let slug = customSlug;
 
   if (slug) {
-    // 检查自定义 slug 是否冲突
     if (adminPath && slug === adminPath) {
-      return new Response(JSON.stringify({ error: '此自定义短链接不可用。' }), { status: 409, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      return new Response(JSON.stringify({ error: '此自定义短链接不可用。' }), { status: 409, headers: { 'Content-Type': 'application/json' } });
     }
-    // 验证 slug 格式
     if (!/^[a-zA-Z0-9-_]+$/.test(slug)) {
-      return new Response(JSON.stringify({ error: '自定义短链接只能包含字母、数字、连字符和下划线。' }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      return new Response(JSON.stringify({ error: '自定义短链接只能包含字母、数字、连字符和下划线。' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
-    
-    const existing = await my_kv.get(slug);
+    const existing = await DB.get(slug);
     if (existing) {
-      return new Response(JSON.stringify({ error: '此自定义短链接已被使用。' }), { status: 409, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      return new Response(JSON.stringify({ error: '此自定义短链接已被使用。' }), { status: 409, headers: { 'Content-Type': 'application/json' } });
     }
   } else {
-    // 生成随机 slug，并确保唯一
-    let newSlug, existing;
+    // 生成随机 Slug
     let attempts = 0;
     do {
-      newSlug = Math.random().toString(36).substring(2, 8);
-      // 避免与 adminPath 冲突
-      if (adminPath && newSlug === adminPath) continue;
-      existing = await my_kv.get(newSlug);
+      slug = Math.random().toString(36).substring(2, 8);
+      if (adminPath && slug === adminPath) continue;
+      const existing = await DB.get(slug);
+      if (!existing) break;
       attempts++;
-    } while (existing && attempts < 5); // 防止死循环
-
-    if (existing) {
-         return new Response(JSON.stringify({ error: '生成短链失败，请重试。' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
-    }
-    slug = newSlug;
+    } while (attempts < 5);
   }
 
   const linkData = {
     original: url,
     visits: 0,
-    createdAt: Date.now() // 增加创建时间字段，便于未来扩展
+    createdAt: Date.now()
   };
 
-  // 并发写入 KV
+  // 并发写入
   await Promise.all([
-    my_kv.put(slug, JSON.stringify(linkData)),
-    my_kv.put(`hash:${urlHash}`, slug)
+    DB.put(slug, JSON.stringify(linkData)),
+    DB.put(`hash:${urlHash}`, slug)
   ]);
 
   return new Response(JSON.stringify({ slug, ...linkData }), {
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    },
+    headers: { 'Content-Type': 'application/json' },
   });
 }
