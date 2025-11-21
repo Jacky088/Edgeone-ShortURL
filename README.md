@@ -29,6 +29,10 @@
 - 变量名为`ADMIN_PATH`: 管理后台路径，例如设置变量值为`abc123`，则管理页面地址为`https://你的自定义域名/abc123`
 - 变量名为`PASSWORD`: 设置访问口令，防止他人恶意访问
 
+### 4. 页面预览
+[![preview](https://github.com/Jacky088/Edgeone-ShortURL/blob/main/preview.png)]
+
+
 ## 🎯 使用方法
 
 1. **访问管理界面**: 打开您的 EdgeOne Pages 临时域名或自定义域名
