@@ -28,13 +28,13 @@ const loginHtml = `<!DOCTYPE html>
     <title>访问验证</title>
     <style>
         :root {
-            --accent-color: #facc15; 
-            --accent-hover: #eab308; 
             --error-color: #f87171; 
             --success-color: #4ade80;
             transition: background-color 0.3s, color 0.3s;
         }
         [data-theme="light"] {
+            --accent-color: #ca8a04; /* 日间模式：更深的琥珀色，提高对比度 */
+            --accent-hover: #a16207;
             --bg-color: #f3f4f6;
             --container-bg: #ffffff;
             --input-bg: #f9fafb;
@@ -44,6 +44,8 @@ const loginHtml = `<!DOCTYPE html>
             --particle-color: rgba(0, 0, 0, 0.08);
         }
         [data-theme="dark"] {
+            --accent-color: #facc15; /* 夜间模式：保持原有的亮黄色 */
+            --accent-hover: #eab308;
             --bg-color: #111827;
             --container-bg: #1f2937;
             --input-bg: #374151;
@@ -80,12 +82,14 @@ const loginHtml = `<!DOCTYPE html>
             border-radius: .5rem; color: var(--text-color); font-size: 1rem; box-sizing: border-box;
             transition: border-color .2s, box-shadow .2s; 
         }
-        input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(250, 204, 21, .3); }
+        input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(var(--accent-color), .3); }
         button { 
             width: 100%; padding: .75rem 1.5rem; background-color: var(--accent-color); 
-            color: #000; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; 
+            color: #fff; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; 
             cursor: pointer; transition: background-color .2s; 
         }
+        [data-theme="light"] button { color: #fff; } /* 日间模式按钮文字白色 */
+        [data-theme="dark"] button { color: #000; } /* 夜间模式按钮文字黑色 */
         button:hover { background-color: var(--accent-hover); }
         button:disabled { opacity: 0.7; cursor: not-allowed; }
         .error { 
@@ -124,49 +128,16 @@ const loginHtml = `<!DOCTYPE html>
     <div class="error" id="error-msg">口令错误</div>
 </div>
 <script>
-    const themeToggleBtn = document.getElementById('theme-toggle');
-    const iconSun = document.getElementById('icon-sun');
-    const iconMoon = document.getElementById('icon-moon');
-    const htmlEl = document.documentElement;
-    const storedTheme = localStorage.getItem('theme');
-    if (storedTheme) setTheme(storedTheme); else setTheme('light');
-    function setTheme(theme) {
-        htmlEl.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
-        if (theme === 'dark') { iconSun.style.display = 'block'; iconMoon.style.display = 'none'; } 
-        else { iconSun.style.display = 'none'; iconMoon.style.display = 'block'; }
-        if (window.initParticles) window.initParticles(); 
-    }
+    const themeToggleBtn = document.getElementById('theme-toggle'); const iconSun = document.getElementById('icon-sun'); const iconMoon = document.getElementById('icon-moon'); const htmlEl = document.documentElement;
+    const storedTheme = localStorage.getItem('theme'); if (storedTheme) setTheme(storedTheme); else setTheme('light');
+    function setTheme(theme) { htmlEl.setAttribute('data-theme', theme); localStorage.setItem('theme', theme); if (theme === 'dark') { iconSun.style.display = 'block'; iconMoon.style.display = 'none'; } else { iconSun.style.display = 'none'; iconMoon.style.display = 'block'; } if (window.initParticles) window.initParticles(); }
     themeToggleBtn.addEventListener('click', () => { const currentTheme = htmlEl.getAttribute('data-theme'); setTheme(currentTheme === 'dark' ? 'light' : 'dark'); });
-    const canvas = document.getElementById('particle-canvas');
-    const ctx = canvas.getContext('2d');
-    let particles = [], animationId;
+    const canvas = document.getElementById('particle-canvas'); const ctx = canvas.getContext('2d'); let particles = [], animationId;
     function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.addEventListener('resize', () => { resizeCanvas(); window.initParticles(); });
-    class Particle {
-        constructor() { this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height; this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5; this.size = Math.random() * 2 + 1; }
-        update() { this.x += this.vx; this.y += this.vy; if (this.x < 0 || this.x > canvas.width) this.vx *= -1; if (this.y < 0 || this.y > canvas.height) this.vy *= -1; }
-        draw(color) { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); }
-    }
-    window.initParticles = function() {
-        if (animationId) cancelAnimationFrame(animationId);
-        particles = []; resizeCanvas();
-        const particleCount = Math.min(100, (canvas.width * canvas.height) / 15000); 
-        for (let i = 0; i < particleCount; i++) particles.push(new Particle());
-        animate();
-    }
-    function animate() {
-        const style = getComputedStyle(document.documentElement); const color = style.getPropertyValue('--particle-color').trim();
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        particles.forEach((p, index) => {
-            p.update(); p.draw(color);
-            for (let j = index + 1; j < particles.length; j++) {
-                const p2 = particles[j]; const dx = p.x - p2.x; const dy = p.y - p2.y; const dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist < 100) { ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 0.5; ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); }
-            }
-        });
-        animationId = requestAnimationFrame(animate);
-    }
+    class Particle { constructor() { this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height; this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5; this.size = Math.random() * 2 + 1; } update() { this.x += this.vx; this.y += this.vy; if (this.x < 0 || this.x > canvas.width) this.vx *= -1; if (this.y < 0 || this.y > canvas.height) this.vy *= -1; } draw(color) { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); } }
+    window.initParticles = function() { if (animationId) cancelAnimationFrame(animationId); particles = []; resizeCanvas(); const particleCount = Math.min(100, (canvas.width * canvas.height) / 15000); for (let i = 0; i < particleCount; i++) { particles.push(new Particle()); } animate(); }
+    function animate() { const style = getComputedStyle(document.documentElement); const color = style.getPropertyValue('--particle-color').trim(); ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach((p, index) => { p.update(); p.draw(color); for (let j = index + 1; j < particles.length; j++) { const p2 = particles[j]; const dx = p.x - p2.x; const dy = p.y - p2.y; const distance = Math.sqrt(dx*dx + dy*dy); if (distance < 100) { ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 0.5; ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); } } }); animationId = requestAnimationFrame(animate); }
     window.initParticles();
     const form = document.getElementById('login-form'); const btn = document.getElementById('btn'); const errMsg = document.getElementById('error-msg');
     form.addEventListener('submit', async (e) => {
@@ -189,9 +160,17 @@ const indexHtml = `<!DOCTYPE html>
     <title>短链接生成器</title>
     <meta name="description" content="短链接生成您提供短网址在线生成，短链接生成，支持连接缩短，免费提供API接口。" />
     <style>
-        :root { --accent-color: #facc15; --accent-hover: #eab308; --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
-        [data-theme="light"] { --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08); }
-        [data-theme="dark"] { --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08); }
+        :root { --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
+        [data-theme="light"] {
+            --accent-color: #ca8a04; /* 日间模式：更深的琥珀色 */
+            --accent-hover: #a16207;
+            --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08);
+        }
+        [data-theme="dark"] {
+            --accent-color: #facc15; /* 夜间模式：保持原有的亮黄色 */
+            --accent-hover: #eab308;
+            --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08);
+        }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; box-sizing: border-box; overflow: hidden; }
         #particle-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
         .container { width: 100%; max-width: 600px; background-color: var(--container-bg); border-radius: .75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); padding: 2rem; position: relative; z-index: 1; }
@@ -199,11 +178,13 @@ const indexHtml = `<!DOCTYPE html>
         form { background-color: var(--input-bg); padding: 1rem; border-radius: .5rem; margin-bottom: 1rem; border: 1px solid var(--border-color); }
         .form-main { display: flex; gap: .5rem; }
         #url-input { flex-grow: 1; padding: .75rem 1rem; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: .5rem; color: var(--text-color); font-size: 1rem; transition: border-color .2s, box-shadow .2s; }
-        #url-input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(250, 204, 21, .3); }
+        #url-input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(var(--accent-color), .3); }
         .advanced-options { margin-top: 1rem; }
         .advanced-options label { display: flex; align-items: center; gap: .5rem; color: var(--subtle-text); }
         #slug-input { padding: .5rem; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: .5rem; color: var(--text-color); }
-        button { padding: .75rem 1.5rem; background-color: var(--accent-color); color: #000; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color .2s; }
+        button { padding: .75rem 1.5rem; background-color: var(--accent-color); color: #fff; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color .2s; }
+        [data-theme="light"] button { color: #fff; }
+        [data-theme="dark"] button { color: #000; }
         button:hover { background-color: var(--accent-hover); }
         button:disabled { background-color: var(--subtle-text); cursor: not-allowed; opacity: 0.7; }
         #error-message, #success-message { text-align: center; margin-bottom: 1rem; padding: .75rem; border-radius: .5rem; display: none; transition: opacity .3s ease-in-out; }
@@ -266,7 +247,7 @@ const indexHtml = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// --- 3. 管理后台 HTML (UI 已重构为统一风格) ---
+// --- 3. 管理后台 HTML ---
 const adminHtml = `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -274,9 +255,17 @@ const adminHtml = `<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理后台 - 短链接</title>
     <style>
-        :root { --accent-color: #facc15; --accent-hover: #eab308; --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
-        [data-theme="light"] { --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08); }
-        [data-theme="dark"] { --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08); }
+        :root { --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
+        [data-theme="light"] {
+            --accent-color: #ca8a04; /* 日间模式：更深的琥珀色 */
+            --accent-hover: #a16207;
+            --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08);
+        }
+        [data-theme="dark"] {
+            --accent-color: #facc15; /* 夜间模式：保持原有的亮黄色 */
+            --accent-hover: #eab308;
+            --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08);
+        }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; box-sizing: border-box; overflow-x: hidden; }
         #particle-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
         .container { width: 100%; max-width: 900px; background-color: var(--container-bg); border-radius: .75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); padding: 2rem; position: relative; z-index: 1; }
