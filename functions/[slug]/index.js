@@ -80,46 +80,173 @@ const loginHtml = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// --- 2. 主生成器 HTML ---
+// --- 2. 主生成器 HTML (UI 重构版) ---
 const indexHtml = `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>短链接生成器</title>
     <meta name="description" content="短链接生成您提供短网址在线生成，短链接生成，支持连接缩短，免费提供API接口。" />
     <style>
-        :root { --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --accent-color: #facc15; --accent-hover: #eab308; --error-color: #f87171; --success-color: #4ade80; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; box-sizing: border-box; }
-        .container { width: 100%; max-width: 600px; background-color: var(--container-bg); border-radius: .75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); padding: 2rem; }
+        /* 配色方案变量 */
+        :root {
+            --accent-color: #facc15; 
+            --accent-hover: #eab308; 
+            --error-color: #f87171; 
+            --success-color: #4ade80;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* 浅色模式 (默认) */
+        [data-theme="light"] {
+            --bg-color: #f3f4f6;
+            --container-bg: #ffffff;
+            --input-bg: #f9fafb;
+            --border-color: #e5e7eb;
+            --text-color: #1f2937;
+            --subtle-text: #6b7280;
+            --particle-color: rgba(0, 0, 0, 0.08);
+        }
+
+        /* 深色模式 */
+        [data-theme="dark"] {
+            --bg-color: #111827;
+            --container-bg: #1f2937;
+            --input-bg: #374151;
+            --border-color: #4b5563;
+            --text-color: #f3f4f6;
+            --subtle-text: #9ca3af;
+            --particle-color: rgba(255, 255, 255, 0.08);
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            padding: 1rem; 
+            box-sizing: border-box; 
+            overflow: hidden; /* 防止滚动条 */
+        }
+
+        /* 粒子背景 Canvas */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .container { 
+            width: 100%; 
+            max-width: 600px; 
+            background-color: var(--container-bg); 
+            border-radius: .75rem; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); 
+            padding: 2rem; 
+            position: relative;
+            z-index: 1;
+        }
+
         h1 { text-align: center; margin-bottom: 2rem; font-size: 2.25rem; }
-        form { background-color: var(--input-bg); padding: 1rem; border-radius: .5rem; margin-bottom: 1rem; }
+        
+        form { background-color: var(--input-bg); padding: 1rem; border-radius: .5rem; margin-bottom: 1rem; border: 1px solid var(--border-color); }
         .form-main { display: flex; gap: .5rem; }
-        #url-input { flex-grow: 1; padding: .75rem 1rem; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: .5rem; color: var(--text-color); font-size: 1rem; transition: border-color .2s, box-shadow .2s; }
+        
+        #url-input { 
+            flex-grow: 1; 
+            padding: .75rem 1rem; 
+            background-color: var(--bg-color); 
+            border: 1px solid var(--border-color); 
+            border-radius: .5rem; 
+            color: var(--text-color); 
+            font-size: 1rem; 
+            transition: border-color .2s, box-shadow .2s; 
+        }
         #url-input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(250, 204, 21, .3); }
+        
         .advanced-options { margin-top: 1rem; }
         .advanced-options label { display: flex; align-items: center; gap: .5rem; color: var(--subtle-text); }
         #slug-input { padding: .5rem; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: .5rem; color: var(--text-color); }
-        button { padding: .75rem 1.5rem; background-color: var(--accent-color); color: var(--bg-color); border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color .2s; }
+        
+        button { padding: .75rem 1.5rem; background-color: var(--accent-color); color: #000; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color .2s; }
         button:hover { background-color: var(--accent-hover); }
-        button:disabled { background-color: #4b5563; cursor: not-allowed; }
+        button:disabled { background-color: var(--subtle-text); cursor: not-allowed; opacity: 0.7; }
+        
         #error-message, #success-message { text-align: center; margin-bottom: 1rem; padding: .75rem; border-radius: .5rem; display: none; transition: opacity .3s ease-in-out; }
-        #error-message { color: var(--error-color); background-color: rgba(248, 113, 113, .1); }
-        #success-message { color: var(--success-color); background-color: rgba(74, 222, 128, .1); }
+        #error-message { color: var(--error-color); background-color: rgba(248, 113, 113, .1); border: 1px solid var(--error-color); }
+        #success-message { color: var(--success-color); background-color: rgba(74, 222, 128, .1); border: 1px solid var(--success-color); }
         #success-message a { font-weight: 600; color: var(--accent-color); text-decoration: none; }
         #success-message .copy-btn { margin-left: 1rem; background-color: var(--input-bg); color: var(--text-color); padding: .25rem .75rem; font-size: .8rem; border-radius: .5rem; border: 1px solid var(--border-color); cursor: pointer; }
         #success-message .copy-btn:hover { background-color: var(--border-color); }
-        .github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}
+
+        /* 右上角工具栏 */
+        .top-bar {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            z-index: 10;
+        }
+        .icon-btn {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s, transform 0.2s;
+            padding: 0; /* Reset */
+        }
+        .icon-btn:hover {
+            background-color: var(--input-bg);
+            transform: scale(1.05);
+        }
+        .icon-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
     </style>
 </head>
 <body>
-<a href="https://github.com/hobk/eo-short" target="_blank" class="github-corner" aria-label="View source on GitHub">
-    <svg width="80" height="80" viewBox="0 0 250 250" style="fill:#facc15; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true">
-        <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
-        <path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path>
-        <path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path>
-    </svg>
-</a>
+
+<canvas id="particle-canvas"></canvas>
+
+<div class="top-bar">
+    <a href="https://github.com/Jacky088/Edgeone-ShortURL" target="_blank" class="icon-btn" title="Jacky088/Edgeone-ShortURL">
+        <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+    </a>
+    <button id="theme-toggle" class="icon-btn" title="切换模式">
+        <svg id="icon-sun" style="display: none;" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"></path>
+        </svg>
+        <svg id="icon-moon" style="display: none;" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+            <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path>
+        </svg>
+    </button>
+</div>
+
 <div class="container">
     <h1>短链接生成器</h1>
     <form id="link-form">
@@ -137,7 +264,128 @@ const indexHtml = `<!DOCTYPE html>
     <div id="error-message"></div>
     <div id="success-message"></div>
 </div>
+
 <script>
+    // --- Theme Logic ---
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const iconSun = document.getElementById('icon-sun');
+    const iconMoon = document.getElementById('icon-moon');
+    const htmlEl = document.documentElement;
+
+    // Initialize Theme
+    const storedTheme = localStorage.getItem('theme');
+    if (storedTheme) {
+        setTheme(storedTheme);
+    } else {
+        // Default to Light
+        setTheme('light');
+    }
+
+    function setTheme(theme) {
+        htmlEl.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        if (theme === 'dark') {
+            iconSun.style.display = 'block';
+            iconMoon.style.display = 'none';
+        } else {
+            iconSun.style.display = 'none';
+            iconMoon.style.display = 'block';
+        }
+        // Trigger particle color update
+        if (window.initParticles) window.initParticles(); 
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+        const currentTheme = htmlEl.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        setTheme(newTheme);
+    });
+
+
+    // --- Particle Effect Logic ---
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let animationId;
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', () => {
+        resizeCanvas();
+        window.initParticles();
+    });
+
+    class Particle {
+        constructor() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.vx = (Math.random() - 0.5) * 0.5;
+            this.vy = (Math.random() - 0.5) * 0.5;
+            this.size = Math.random() * 2 + 1;
+        }
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+            if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+        }
+        draw(color) {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+    }
+
+    window.initParticles = function() {
+        if (animationId) cancelAnimationFrame(animationId);
+        particles = [];
+        resizeCanvas();
+        const particleCount = Math.min(100, (canvas.width * canvas.height) / 15000); 
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+        animate();
+    }
+
+    function animate() {
+        // Get current theme color from CSS variable
+        const style = getComputedStyle(document.documentElement);
+        const color = style.getPropertyValue('--particle-color').trim();
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        particles.forEach((p, index) => {
+            p.update();
+            p.draw(color);
+            
+            // Draw connections
+            for (let j = index + 1; j < particles.length; j++) {
+                const p2 = particles[j];
+                const dx = p.x - p2.x;
+                const dy = p.y - p2.y;
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                
+                if (distance < 100) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 0.5; // Thinner lines
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }
+            }
+        });
+        animationId = requestAnimationFrame(animate);
+    }
+
+    // Start particles
+    window.initParticles();
+
+
+    // --- Core Shortener Logic (Unchanged) ---
     const form = document.getElementById('link-form');
     const urlInput = document.getElementById('url-input');
     const slugInput = document.getElementById('slug-input');
@@ -349,28 +597,24 @@ export async function onRequest({ request, params, env }) {
   }
 
   // --- 鉴权状态检查 (核心逻辑) ---
-  // 只有在配置了密码的情况下才需要检查
   let isAuthorized = true; 
   if (envPassword) {
     const sessionHash = getCookie(request, 'auth_session');
     const validHash = await sha256(envPassword);
-    // 如果没有 cookie 或者 cookie 不匹配，标记为未授权
     if (!sessionHash || sessionHash !== validHash) {
         isAuthorized = false;
     }
   }
 
-  // A. 处理 Admin 路由 (现在也受口令保护)
+  // A. 处理 Admin 路由 (受口令保护)
   if (adminPath && slug === adminPath) {
-    // 如果未授权，直接显示登录页
     if (!isAuthorized) {
         return new Response(loginHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' }, status: 200 });
     }
-    // 已授权，显示后台
     return new Response(adminHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
 
-  // B. 处理短链接跳转 (不需要鉴权，公开访问)
+  // B. 处理短链接跳转 (公开访问)
   if (slug && slug !== 'favicon.ico') {
     try {
       const cleanSlug = slug.trim().replace(/\/+$/, '');
