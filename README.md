@@ -56,4 +56,4 @@
 
 ## 感谢
 
-![hobk的eo-short](https://github.com/hobk/eo-short)
+[hobk的eo-short](https://github.com/hobk/eo-short)
