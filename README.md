@@ -54,6 +54,6 @@
 - `DELETE /api/delete` - 删除指定的短链接
 
 
-## 许可证
+## 感谢
 
-MIT License
+![hobk的eo-short](https://github.com/hobk/eo-short)
