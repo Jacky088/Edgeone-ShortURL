@@ -18,7 +18,8 @@
 
 ## 📸 预览
 
-> 可在此添加项目截图，如管理后台页面预览等。
+
+![preview](preview.png)
 
 ---
 
@@ -27,8 +28,12 @@
 ### 📍 1. Fork 并部署到 EdgeOne Pages
 
 1. Fork 本仓库到你的 GitHub 帐号。
-2. 在 EdgeOne Pages 控制台中绑定该 GitHub 仓库。
+2. 在 EdgeOne Pages 控制台中绑定该 GitHub 仓库，或者点击下方按钮一键部署。
 3. 完成自动构建与部署。
+   
+[![使用国内版EdgeOne Pages 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://console.cloud.tencent.com/edgeone/pages/new?repository-url=https%3A%2F%2Fgithub.com%2Fhobk%2Feo-short%2F)（国内版）
+
+[![使用国际版EdgeOne Pages 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2Fhobk%2Feo-short%2F)（国际版）
 
 ---
 
@@ -74,15 +79,10 @@
 
 ---
 
-## 🤝 贡献指南
-
-欢迎提交 Issue 或 Pull Request。
-
----
 
 ## 🛡️ 致谢
 
-项目灵感来自 **hobk 的 eo-short**，感谢其开源贡献。
+项目灵感来自 [**hobk的eo-short**](https://github.com/hobk/eo-short)，感谢其开源贡献。
 
 ---
 
