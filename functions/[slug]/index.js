@@ -72,6 +72,7 @@ const loginHtml = `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>访问验证</title>
     <style>
@@ -162,6 +163,7 @@ const indexHtml = `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>短链接生成服务</title>
     <meta name="description" content="短链接在线生成，支持长链接缩短，免费开源，提供API接口。" />
@@ -273,6 +275,7 @@ const adminHtml = `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>短链接生成服务 - 管理后台</title>
     <style>
@@ -390,8 +393,13 @@ export async function onRequest({ request, params, env = {} }) {
     return new Response(adminHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
 
-  // B. 处理短链接跳转 (公开访问)
-  if (slug && slug !== 'favicon.ico') {
+  // B. 处理 favicon 请求
+  if (slug === 'favicon.ico') {
+    return Response.redirect('/favicon.svg', 301);
+  }
+
+  // C. 处理短链接跳转 (公开访问)
+  if (slug) {
     try {
       const cleanSlug = slug.trim().replace(/\/+$/, '');
       const linkStr = await DB.get(cleanSlug);
@@ -417,7 +425,7 @@ export async function onRequest({ request, params, env = {} }) {
     }
   }
 
-  // C. 处理主页 (生成器) - 需要鉴权
+  // D. 处理主页 (生成器) - 需要鉴权
   if (!isAuthorized) {
       const finalLoginHtml = loginHtml.replace('__ADMIN_PATH_STATUS__', JSON.stringify(adminPathStatus));
       return new Response(finalLoginHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' }, status: 200 });
