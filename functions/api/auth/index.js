@@ -6,7 +6,7 @@ async function sha256(str) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function onRequest({ request, env }) {
+export async function onRequest({ request, env = {} }) {
   if (request.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
   }
