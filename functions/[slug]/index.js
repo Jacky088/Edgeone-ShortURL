@@ -323,7 +323,7 @@ const adminHtml = `<!DOCTYPE html>
 // ==========================================
 // 4. 涓诲鐞嗗嚱鏁?(鏍稿績閫昏緫)
 // ==========================================
-export async function onRequest({ request, params, env }) {
+export async function onRequest({ request, params, env = {} }) {
   const { slug } = params;
   const adminPath = env.ADMIN_PATH;
   const envPassword = env.PASSWORD;
@@ -332,11 +332,11 @@ export async function onRequest({ request, params, env }) {
   let DB;
   if (env && env.my_kv) {
     DB = env.my_kv;
-  } else if (typeof my_kv !== 'undefined') {
-    DB = my_kv;
+  } else if (env && env.MY_KV) {
+    DB = env.MY_KV;
   }
   if (!DB && slug && slug !== 'favicon.ico') {
-      return new Response('Error: KV Binding "my_kv" not found. Please check EdgeOne settings.', { status: 500 });
+      return new Response('Error: KV Binding "MY_KV" or "my_kv" not found. Please check EdgeOne settings.', { status: 500 });
   }
 
   // --- 閴存潈鐘舵€佹鏌?---
