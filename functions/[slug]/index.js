@@ -28,6 +28,37 @@ function isAllowedUrl(url) {
   }
 }
 
+function isKVBinding(value) {
+  if (!value || typeof value !== 'object') return false;
+  // EdgeOne KV binding may expose get/put as functions or via proxy
+  if (typeof value.get === 'function' && typeof value.put === 'function') return true;
+  // Some runtimes expose KV as a plain object with string keys
+  if ('get' in value && 'put' in value) return true;
+  return false;
+}
+
+function getKV(env) {
+  // Priority 1: Check known binding names
+  if (env && env.my_kv != null && typeof env.my_kv === 'object') return env.my_kv;
+  if (env && env.MY_KV != null && typeof env.MY_KV === 'object') return env.MY_KV;
+
+  // Priority 2: Scan all env values for KV-like objects
+  if (env && typeof env === 'object') {
+    for (const [key, value] of Object.entries(env)) {
+      if (key === 'ADMIN_PATH' || key === 'PASSWORD') continue;
+      if (value && typeof value === 'object' && typeof value.get === 'function') {
+        return value;
+      }
+    }
+  }
+
+  // Priority 3: Check global scope
+  if (typeof globalThis.my_kv !== 'undefined' && globalThis.my_kv !== null && typeof globalThis.my_kv === 'object') return globalThis.my_kv;
+  if (typeof globalThis.MY_KV !== 'undefined' && globalThis.MY_KV !== null && typeof globalThis.MY_KV === 'object') return globalThis.MY_KV;
+
+  return null;
+}
+
 // ==========================================
 // 瀹氫箟鍥炬爣鏁版嵁 (Base64/DataURI)
 // ==========================================
@@ -329,14 +360,11 @@ export async function onRequest({ request, params, env = {} }) {
   const envPassword = env.PASSWORD;
 
   // --- 瀹夊叏鑾峰彇 KV ---
-  let DB;
-  if (env && env.my_kv) {
-    DB = env.my_kv;
-  } else if (env && env.MY_KV) {
-    DB = env.MY_KV;
-  }
+  const DB = getKV(env);
   if (!DB && slug && slug !== 'favicon.ico') {
-      return new Response('Error: KV Binding "MY_KV" or "my_kv" not found. Please check EdgeOne settings.', { status: 500 });
+    const envKeys = env ? Object.keys(env) : [];
+    const debugInfo = JSON.stringify({ envKeys, hasMyKv: !!(env && env.my_kv), hasMY_KV: !!(env && env.MY_KV) });
+    return new Response(`Error: KV binding not found. Debug: ${debugInfo}`, { status: 500, headers: { 'Content-Type': 'text/plain' } });
   }
 
   // --- 閴存潈鐘舵€佹鏌?---
@@ -381,7 +409,7 @@ export async function onRequest({ request, params, env = {} }) {
         await DB.put(cleanSlug, JSON.stringify(linkData)); 
         return Response.redirect(linkData.original, 302);
       } else {
-        return new Response('404 Not Found - 璇ョ煭閾炬帴涓嶅瓨鍦?, { status: 404 });
+        return new Response('404 Not Found', { status: 404 });
       }
     } catch (err) {
       console.error(`KV Error: ${err.message}`);
