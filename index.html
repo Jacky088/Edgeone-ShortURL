@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EdgeOne ShortURL</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #667085;
+      --border: #d9dee8;
+      --accent: #c98913;
+      --accent-hover: #a86d0f;
+      --error: #dc2626;
+      --success: #16a34a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+    main {
+      width: min(640px, 100%);
+      padding: 28px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 18px 48px rgba(23, 32, 51, 0.12);
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+    form {
+      display: grid;
+      gap: 12px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+    }
+    input {
+      width: 100%;
+      min-width: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      background: #fff;
+      font-size: 15px;
+    }
+    input:focus {
+      outline: 2px solid rgba(201, 137, 19, 0.2);
+      border-color: var(--accent);
+    }
+    button {
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 6px;
+      color: #fff;
+      background: var(--accent);
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    button:hover { background: var(--accent-hover); }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+    .secondary {
+      color: var(--text);
+      background: #eef1f6;
+    }
+    .secondary:hover { background: #e2e6ee; }
+    .hint {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .message {
+      display: none;
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      word-break: break-word;
+    }
+    .message.error {
+      display: block;
+      color: var(--error);
+      border-color: rgba(220, 38, 38, 0.35);
+      background: rgba(220, 38, 38, 0.08);
+    }
+    .message.success {
+      display: block;
+      color: var(--success);
+      border-color: rgba(22, 163, 74, 0.35);
+      background: rgba(22, 163, 74, 0.08);
+    }
+    .message a {
+      color: var(--accent-hover);
+      font-weight: 700;
+    }
+    dialog {
+      width: min(420px, calc(100% - 32px));
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+    }
+    dialog::backdrop { background: rgba(23, 32, 51, 0.3); }
+    @media (max-width: 560px) {
+      main { padding: 22px; }
+      header, .row { grid-template-columns: 1fr; display: grid; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>EdgeOne ShortURL</h1>
+      <button class="secondary" type="button" id="admin-btn">Admin</button>
+    </header>
+
+    <form id="link-form">
+      <div class="row">
+        <input id="url-input" type="url" placeholder="https://example.com/long-url" required>
+        <button id="submit-btn" type="submit">Create</button>
+      </div>
+      <input id="slug-input" type="text" maxlength="64" placeholder="Custom slug, optional">
+      <p class="hint">Only http/https URLs are supported. Custom slugs may use letters, numbers, hyphens, and underscores.</p>
+    </form>
+
+    <div id="message" class="message"></div>
+  </main>
+
+  <dialog id="login-dialog">
+    <form id="login-form">
+      <h2>Login</h2>
+      <input id="password-input" type="password" placeholder="Password" required>
+      <div class="row">
+        <button type="submit">Login</button>
+        <button class="secondary" type="button" id="close-login">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    const linkForm = document.getElementById('link-form');
+    const loginForm = document.getElementById('login-form');
+    const loginDialog = document.getElementById('login-dialog');
+    const message = document.getElementById('message');
+    const submitBtn = document.getElementById('submit-btn');
+
+    function setMessage(type, textOrNode) {
+      message.className = 'message ' + type;
+      message.textContent = '';
+      if (typeof textOrNode === 'string') {
+        message.textContent = textOrNode;
+      } else {
+        message.appendChild(textOrNode);
+      }
+    }
+
+    function showLogin() {
+      if (typeof loginDialog.showModal === 'function') {
+        loginDialog.showModal();
+      } else {
+        loginDialog.setAttribute('open', '');
+      }
+    }
+
+    async function createLink(event) {
+      event.preventDefault();
+      submitBtn.disabled = true;
+
+      const payload = {
+        url: document.getElementById('url-input').value.trim()
+      };
+      const slug = document.getElementById('slug-input').value.trim();
+      if (slug) payload.slug = slug;
+
+      try {
+        const res = await fetch('/api/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.status === 401) {
+          showLogin();
+          setMessage('error', 'Please login first, then create the short link again.');
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to create short link.');
+        }
+
+        const shortUrl = window.location.origin + '/' + data.slug;
+        const wrapper = document.createElement('span');
+        wrapper.append('Created: ');
+        const link = document.createElement('a');
+        link.href = shortUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = shortUrl;
+        wrapper.appendChild(link);
+        setMessage('success', wrapper);
+        linkForm.reset();
+      } catch (error) {
+        setMessage('error', error.message);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+
+    async function login(event) {
+      event.preventDefault();
+      const password = document.getElementById('password-input').value;
+
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Login failed.');
+
+        loginDialog.close();
+        setMessage('success', 'Login successful. You can create the short link now.');
+      } catch (error) {
+        setMessage('error', error.message);
+      }
+    }
+
+    document.getElementById('admin-btn').addEventListener('click', () => {
+      const path = prompt('Admin path');
+      if (path) window.location.href = '/' + path.replace(/^\/+/, '');
+    });
+    document.getElementById('close-login').addEventListener('click', () => loginDialog.close());
+    linkForm.addEventListener('submit', createLink);
+    loginForm.addEventListener('submit', login);
+  </script>
+</body>
+</html>
