@@ -9,12 +9,43 @@ async function sha256(str) {
 function getCookie(request, name) {
   const cookieString = request.headers.get('Cookie');
   if (!cookieString) return null;
+
   const cookies = cookieString.split(';');
-  for (let cookie of cookies) {
+  for (const cookie of cookies) {
     const [key, value] = cookie.trim().split('=');
-    if (key === name) return value;
+    if (key === name) return decodeURIComponent(value || '');
   }
   return null;
+}
+
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+function getKV(env) {
+  if (env && env.my_kv) return env.my_kv;
+  if (typeof my_kv !== 'undefined') return my_kv;
+  return null;
+}
+
+function isAllowedUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch (_) {
+    return false;
+  }
+}
+
+function isValidSlug(slug) {
+  return /^[a-zA-Z0-9_-]{1,64}$/.test(slug);
+}
+
+function isReservedSlug(slug, adminPath) {
+  return slug === adminPath || slug === 'api' || slug === 'favicon.ico' || slug.startsWith('hash:');
 }
 
 export async function onRequest({ request, env }) {
@@ -22,86 +53,84 @@ export async function onRequest({ request, env }) {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  // --- 鉴权逻辑 ---
   const envPassword = env.PASSWORD;
   if (envPassword) {
     const sessionHash = getCookie(request, 'auth_session');
     const validHash = await sha256(envPassword);
-    
+
     if (!sessionHash || sessionHash !== validHash) {
-      return new Response(JSON.stringify({ error: '未授权：会话已过期或口令错误' }), { 
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return jsonResponse({ error: 'Unauthorized: session expired or invalid password' }, 401);
     }
   }
 
-  // --- 安全获取 KV ---
-  let DB;
-  if (env && env.my_kv) { DB = env.my_kv; } 
-  else if (typeof my_kv !== 'undefined') { DB = my_kv; }
-  if (!DB) { return new Response(JSON.stringify({ error: 'Server Error: KV binding not found' }), { status: 500 }); }
+  const DB = getKV(env);
+  if (!DB) return jsonResponse({ error: 'Server Error: KV binding not found' }, 500);
 
   let body;
   try {
     body = await request.json();
   } catch (e) {
-    return new Response(JSON.stringify({ error: '无效的 JSON 数据' }), { status: 400 });
+    return jsonResponse({ error: 'Invalid JSON data' }, 400);
   }
 
   const { url, slug: customSlug } = body;
   const adminPath = env.ADMIN_PATH;
 
   if (!url) {
-    return new Response(JSON.stringify({ error: 'URL 是必需的' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    return jsonResponse({ error: 'URL is required' }, 400);
   }
 
-  // 验证 URL 格式
-  try { new URL(url); } catch (_) {
-    return new Response(JSON.stringify({ error: '无效的 URL 格式' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+  if (!isAllowedUrl(url)) {
+    return jsonResponse({ error: 'Invalid URL format' }, 400);
   }
 
-  // 检查是否存在 (Hash check)
   const urlHash = await sha256(url);
-  
+
   if (!customSlug) {
     const existingSlug = await DB.get(`hash:${urlHash}`);
     if (existingSlug) {
       const existingLinkData = await DB.get(existingSlug);
       if (existingLinkData) {
         try {
-            const parsedData = JSON.parse(existingLinkData);
-            return new Response(JSON.stringify({ slug: existingSlug, ...parsedData }), {
-                headers: { 'Content-Type': 'application/json' },
-            });
+          const parsedData = JSON.parse(existingLinkData);
+          return jsonResponse({ slug: existingSlug, ...parsedData });
         } catch (e) {}
       }
     }
   }
 
-  let slug = customSlug;
+  let slug = typeof customSlug === 'string' ? customSlug.trim() : '';
 
   if (slug) {
-    if (adminPath && slug === adminPath) {
-      return new Response(JSON.stringify({ error: '此自定义短链接不可用。' }), { status: 409, headers: { 'Content-Type': 'application/json' } });
+    if (isReservedSlug(slug, adminPath)) {
+      return jsonResponse({ error: 'This custom slug is not available.' }, 409);
     }
-    if (!/^[a-zA-Z0-9-_]+$/.test(slug)) {
-      return new Response(JSON.stringify({ error: '自定义短链接只能包含字母、数字、连字符和下划线。' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    if (!isValidSlug(slug)) {
+      return jsonResponse({ error: 'Custom slug can only contain letters, numbers, hyphens, and underscores, up to 64 characters.' }, 400);
     }
     const existing = await DB.get(slug);
     if (existing) {
-      return new Response(JSON.stringify({ error: '此自定义短链接已被使用。' }), { status: 409, headers: { 'Content-Type': 'application/json' } });
+      return jsonResponse({ error: 'This custom slug is already in use.' }, 409);
     }
   } else {
-    // 生成随机 Slug
     let attempts = 0;
+    let foundAvailableSlug = false;
+
     do {
       slug = Math.random().toString(36).substring(2, 8);
-      if (adminPath && slug === adminPath) continue;
+      if (isReservedSlug(slug, adminPath)) continue;
+
       const existing = await DB.get(slug);
-      if (!existing) break;
+      if (!existing) {
+        foundAvailableSlug = true;
+        break;
+      }
       attempts++;
-    } while (attempts < 5);
+    } while (attempts < 10);
+
+    if (!foundAvailableSlug) {
+      return jsonResponse({ error: 'Failed to generate a short link. Please try again.' }, 503);
+    }
   }
 
   const linkData = {
@@ -110,13 +139,10 @@ export async function onRequest({ request, env }) {
     createdAt: Date.now()
   };
 
-  // 并发写入
   await Promise.all([
     DB.put(slug, JSON.stringify(linkData)),
     DB.put(`hash:${urlHash}`, slug)
   ]);
 
-  return new Response(JSON.stringify({ slug, ...linkData }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return jsonResponse({ slug, ...linkData });
 }
