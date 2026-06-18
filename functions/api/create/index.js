@@ -27,7 +27,7 @@ function jsonResponse(body, status = 200) {
 
 function getKV(env) {
   if (env && env.my_kv) return env.my_kv;
-  if (typeof my_kv !== 'undefined') return my_kv;
+  if (env && env.MY_KV) return env.MY_KV;
   return null;
 }
 
@@ -48,7 +48,7 @@ function isReservedSlug(slug, adminPath) {
   return slug === adminPath || slug === 'api' || slug === 'favicon.ico' || slug.startsWith('hash:');
 }
 
-export async function onRequest({ request, env }) {
+export async function onRequest({ request, env = {} }) {
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -64,7 +64,7 @@ export async function onRequest({ request, env }) {
   }
 
   const DB = getKV(env);
-  if (!DB) return jsonResponse({ error: 'Server Error: KV binding not found' }, 500);
+  if (!DB) return jsonResponse({ error: 'Server Error: KV binding MY_KV/my_kv not found' }, 500);
 
   let body;
   try {
