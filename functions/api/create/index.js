@@ -1,97 +1,51 @@
 // functions/api/create/index.js
 
-async function sha256(str) {
-  const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  const hashArray = Array.from(new Uint8Array(buffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function getCookie(request, name) {
-  const cookieString = request.headers.get('Cookie');
-  if (!cookieString) return null;
-
-  const cookies = cookieString.split(';');
-  for (const cookie of cookies) {
-    const [key, value] = cookie.trim().split('=');
-    if (key === name) return decodeURIComponent(value || '');
-  }
-  return null;
-}
-
-function jsonResponse(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' }
-  });
-}
-
-function isKVBinding(value) {
-  if (!value || typeof value !== 'object') return false;
-  // EdgeOne KV binding may expose get/put as functions or via proxy
-  if (typeof value.get === 'function' && typeof value.put === 'function') return true;
-  // Some runtimes expose KV as a plain object with string keys
-  if ('get' in value && 'put' in value) return true;
-  return false;
-}
-
-function getKV(env) {
-  // Priority 1: Check known binding names
-  if (env && env.my_kv != null && typeof env.my_kv === 'object') return env.my_kv;
-  if (env && env.MY_KV != null && typeof env.MY_KV === 'object') return env.MY_KV;
-
-  // Priority 2: Scan all env values for KV-like objects
-  if (env && typeof env === 'object') {
-    for (const [key, value] of Object.entries(env)) {
-      if (key === 'ADMIN_PATH' || key === 'PASSWORD') continue;
-      if (value && typeof value === 'object' && typeof value.get === 'function') {
-        return value;
-      }
-    }
-  }
-
-  // Priority 3: Check global scope
-  if (typeof globalThis.my_kv !== 'undefined' && globalThis.my_kv !== null && typeof globalThis.my_kv === 'object') return globalThis.my_kv;
-  if (typeof globalThis.MY_KV !== 'undefined' && globalThis.MY_KV !== null && typeof globalThis.MY_KV === 'object') return globalThis.MY_KV;
-
-  return null;
-}
-
-function isAllowedUrl(url) {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch (_) {
-    return false;
-  }
-}
-
-function isValidSlug(slug) {
-  return /^[a-zA-Z0-9_-]{1,64}$/.test(slug);
-}
-
-function isReservedSlug(slug, adminPath) {
-  return slug === adminPath || slug === 'api' || slug === 'favicon.ico' || slug.startsWith('hash:');
-}
+import {
+  sha256,
+  getKV,
+  validateSession,
+  validateCsrfToken,
+  checkRateLimit,
+  isAllowedUrl,
+  isValidSlug,
+  isReservedSlug,
+  jsonResponse,
+  logAudit
+} from '../lib/security.js';
 
 export async function onRequest({ request, env = {} }) {
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  const envPassword = env.PASSWORD;
-  if (envPassword) {
-    const sessionHash = getCookie(request, 'auth_session');
-    const validHash = await sha256(envPassword);
-
-    if (!sessionHash || sessionHash !== validHash) {
-      return jsonResponse({ error: 'Unauthorized: session expired or invalid password' }, 401);
-    }
-  }
-
   const DB = getKV(env);
   if (!DB) {
-    const envKeys = env ? Object.keys(env) : [];
-    return jsonResponse({ error: `KV binding not found. Debug: envKeys=${JSON.stringify(envKeys)}, hasMyKv=${!!(env && env.my_kv)}` }, 500);
+    return jsonResponse({ error: 'Service unavailable' }, 503);
+  }
+
+  // 速率限制：每分钟最多20次创建请求
+  const rateLimit = await checkRateLimit(request, DB, 'create', 20, 60);
+  if (!rateLimit.allowed) {
+    return jsonResponse({ error: '请求过于频繁，请稍后再试' }, 429);
+  }
+
+  // 验证会话
+  const envPassword = env.PASSWORD;
+  if (envPassword) {
+    const isValid = await validateSession(request, DB);
+    if (!isValid) {
+      return jsonResponse({ error: 'Unauthorized: session expired or invalid' }, 401);
+    }
+
+    // 验证CSRF令牌
+    const csrfValid = await validateCsrfToken(request, DB);
+    if (!csrfValid) {
+      await logAudit(DB, 'csrf_validation_failed', {
+        ip: request.headers.get('CF-Connecting-IP') || 'unknown',
+        endpoint: '/api/create'
+      });
+      return jsonResponse({ error: 'CSRF validation failed' }, 403);
+    }
   }
 
   let body;
@@ -108,8 +62,18 @@ export async function onRequest({ request, env = {} }) {
     return jsonResponse({ error: 'URL is required' }, 400);
   }
 
+  // 增强的URL验证（包含黑名单）
   if (!isAllowedUrl(url)) {
-    return jsonResponse({ error: 'Invalid URL format' }, 400);
+    await logAudit(DB, 'blocked_url_attempt', {
+      url,
+      ip: request.headers.get('CF-Connecting-IP') || 'unknown'
+    });
+    return jsonResponse({ error: 'Invalid or blocked URL' }, 400);
+  }
+
+  // URL长度限制
+  if (url.length > 2048) {
+    return jsonResponse({ error: 'URL too long (max 2048 characters)' }, 400);
   }
 
   const urlHash = await sha256(url);
@@ -134,7 +98,7 @@ export async function onRequest({ request, env = {} }) {
       return jsonResponse({ error: 'This custom slug is not available.' }, 409);
     }
     if (!isValidSlug(slug)) {
-      return jsonResponse({ error: 'Custom slug can only contain letters, numbers, hyphens, and underscores, up to 64 characters.' }, 400);
+      return jsonResponse({ error: 'Custom slug can only contain letters, numbers, hyphens, and underscores, up to 32 characters.' }, 400);
     }
     const existing = await DB.get(slug);
     if (existing) {
@@ -171,6 +135,13 @@ export async function onRequest({ request, env = {} }) {
     DB.put(slug, JSON.stringify(linkData)),
     DB.put(`hash:${urlHash}`, slug)
   ]);
+
+  // 记录创建操作
+  await logAudit(DB, 'link_created', {
+    slug,
+    ip: request.headers.get('CF-Connecting-IP') || 'unknown',
+    timestamp: Date.now()
+  });
 
   return jsonResponse({ slug, ...linkData });
 }
