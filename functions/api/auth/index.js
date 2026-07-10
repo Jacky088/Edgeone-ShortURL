@@ -33,12 +33,24 @@ export async function onRequest({ request, env = {} }) {
     const { password } = await request.json();
     const envPassword = env.PASSWORD;
 
+    // 调试信息：检查环境变量是否正确读取（部署后请删除此行）
+    console.log('Environment check:', {
+      hasPassword: !!envPassword,
+      passwordLength: envPassword ? envPassword.length : 0,
+      inputLength: password ? password.length : 0,
+      envKeys: Object.keys(env || {})
+    });
+
     // 如果环境变量没设置密码，直接返回成功
     if (!envPassword) {
       return jsonResponse({ success: true, csrf: null }, 200);
     }
 
-    if (password === envPassword) {
+    // 去除可能的空格和换行符
+    const cleanEnvPassword = String(envPassword).trim();
+    const cleanInputPassword = String(password).trim();
+
+    if (cleanInputPassword === cleanEnvPassword) {
       // 创建安全的会话令牌
       const sessionToken = await createSession(DB, 24 * 60 * 60 * 1000); // 24小时
 
@@ -62,15 +74,21 @@ export async function onRequest({ request, env = {} }) {
         }
       });
     } else {
-      // 记录失败的登录尝试
+      // 记录失败的登录尝试（包含调试信息）
       await logAudit(DB, 'auth_failed', {
         ip: request.headers.get('CF-Connecting-IP') || 'unknown',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        debug: {
+          envPasswordExists: !!envPassword,
+          inputPasswordExists: !!password,
+          match: cleanInputPassword === cleanEnvPassword
+        }
       });
 
       return jsonResponse({ error: '口令错误' }, 401);
     }
   } catch (err) {
-    return jsonResponse({ error: '验证失败' }, 500);
+    console.error('Auth error:', err);
+    return jsonResponse({ error: '验证失败: ' + err.message }, 500);
   }
 }
