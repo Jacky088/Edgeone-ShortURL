@@ -84,6 +84,7 @@
 
             try {
                 output.textContent = '正在测试登录...\n';
+                output.textContent += `请求 URL: ${window.location.origin}/api/auth\n\n`;
 
                 const response = await fetch('/api/auth', {
                     method: 'POST',
@@ -93,27 +94,39 @@
                     body: JSON.stringify({ password })
                 });
 
-                const data = await response.json();
+                // 先获取响应文本
+                const responseText = await response.text();
 
-                output.textContent = `状态码: ${response.status}\n\n`;
-                output.textContent += `响应数据:\n${JSON.stringify(data, null, 2)}\n\n`;
+                output.textContent += `状态码: ${response.status}\n\n`;
+                output.textContent += `响应头:\n`;
+                response.headers.forEach((value, key) => {
+                    output.textContent += `  ${key}: ${value}\n`;
+                });
+                output.textContent += `\n原始响应:\n${responseText.substring(0, 500)}...\n\n`;
 
-                if (response.ok) {
-                    output.textContent += '✅ 登录成功！\n';
-                } else {
-                    output.textContent += '❌ 登录失败\n';
-                    output.textContent += '\n请检查EdgeOne控制台的实时日志查看详细的console.log输出\n';
+                // 尝试解析为 JSON
+                try {
+                    const data = JSON.parse(responseText);
+                    output.textContent += `解析的 JSON:\n${JSON.stringify(data, null, 2)}\n\n`;
+
+                    if (response.ok) {
+                        output.textContent += '✅ 登录成功！\n';
+                    } else {
+                        output.textContent += '❌ 登录失败\n';
+                    }
+                } catch (jsonError) {
+                    output.textContent += `❌ JSON 解析失败: ${jsonError.message}\n`;
+                    output.textContent += `响应不是有效的 JSON，而是 HTML 或其他格式\n`;
+                    output.textContent += `\n这说明 /api/auth 路由被错误地处理了！\n`;
+                    output.textContent += `\n可能原因：\n`;
+                    output.textContent += `1. functions/api/auth/index.js 未正确部署\n`;
+                    output.textContent += `2. 路由被其他处理器拦截\n`;
+                    output.textContent += `3. EdgeOne 配置问题\n`;
                 }
 
-                // 显示响应头
-                output.textContent += '\n响应头:\n';
-                response.headers.forEach((value, key) => {
-                    output.textContent += `${key}: ${value}\n`;
-                });
-
             } catch (err) {
-                output.textContent = `错误: ${err.message}\n`;
-                output.textContent += `\n堆栈: ${err.stack}`;
+                output.textContent += `\n网络错误: ${err.message}\n`;
+                output.textContent += `堆栈: ${err.stack}`;
             }
         }
 
