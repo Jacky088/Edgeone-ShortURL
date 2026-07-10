@@ -309,6 +309,9 @@ const adminHtml = `<!DOCTYPE html>
 // ==========================================
 export async function onRequest({ request, params, env = {} }) {
   const { slug } = params;
+  console.log(`🔄 [slug] handler called with slug: "${slug}"`);
+  console.log('Request URL:', request.url);
+
   const adminPath = env.ADMIN_PATH;
   const envPassword = env.PASSWORD;
 
@@ -343,7 +346,8 @@ export async function onRequest({ request, params, env = {} }) {
   }
 
   // C. 处理短链接跳转 (公开访问，但有速率限制)
-  if (slug) {
+  // 注意：'home' 保留作为根路径的别名，不作为短链接处理
+  if (slug && slug !== 'home') {
     // 速率限制：每分钟最多60次重定向（防止滥用）
     const rateLimit = await checkRateLimit(request, DB, `redirect:${slug}`, 60, 60);
     if (!rateLimit.allowed) {
