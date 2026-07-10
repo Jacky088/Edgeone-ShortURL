@@ -37,6 +37,9 @@ next-env.d.ts
 
 # Tencent Cloud Edge Functions
 .env
+.env.local
+.env.production
+.dev.vars
 .edgeone
 edgeone.json
 
@@ -45,4 +48,23 @@ edgeone.json
 .edgeone/*
 !.edgeone/project.json
 .tef_dist/*
-  
+
+# Wrangler (Cloudflare Workers)
+.wrangler/
+wrangler.toml
+
+# 安全和敏感文件
+*.key
+*.pem
+*.crt
+*.p12
+*.backup
+*.sql
+*.bak
+
+# 测试和临时文件
+test-*.js
+tmp/
+temp/
+*.tmp
+
