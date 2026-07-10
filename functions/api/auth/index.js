@@ -23,10 +23,15 @@ export async function onRequest({ request, env = {} }) {
     if (password === envPassword) {
       // 计算密码的哈希值存入 Cookie，避免明文存储
       const hash = await sha256(envPassword);
-      
+
+      // 检测请求协议，只在 HTTPS 时添加 Secure 属性
+      const url = new URL(request.url);
+      const isSecure = url.protocol === 'https:';
+      const secureFlag = isSecure ? '; Secure' : '';
+
       // 关键：不设置 Max-Age 或 Expires，使其成为会话 Cookie (浏览器关闭即失效)
-      const cookie = `auth_session=${hash}; HttpOnly; Path=/; SameSite=Strict; Secure`;
-      
+      const cookie = `auth_session=${hash}; HttpOnly; Path=/; SameSite=Lax${secureFlag}`;
+
       return new Response(JSON.stringify({ success: true }), {
         headers: {
           'Content-Type': 'application/json',
