@@ -402,19 +402,32 @@ export async function onRequest({ request, params, env = {} }) {
   if (slug) {
     try {
       const cleanSlug = slug.trim().replace(/\/+$/, '');
+
+      // 验证 slug 格式，防止路径遍历和注入攻击
+      if (!/^[a-zA-Z0-9_-]{1,64}$/.test(cleanSlug)) {
+        return new Response('Invalid slug format', { status: 400 });
+      }
+
       const linkStr = await DB.get(cleanSlug);
-      
+
       if (linkStr) {
-        const linkData = JSON.parse(linkStr);
+        let linkData;
+        try {
+          linkData = JSON.parse(linkStr);
+        } catch (parseErr) {
+          // JSON 解析失败，可能是恶意数据
+          return new Response('Invalid link data', { status: 500 });
+        }
+
         if (!linkData.original || !isAllowedUrl(linkData.original)) {
           return new Response('Invalid link target', { status: 410 });
         }
 
         const newVisits = (linkData.visits || 0) + 1;
         linkData.visits = newVisits;
-        
+
         // 使用 await 确保写入完成
-        await DB.put(cleanSlug, JSON.stringify(linkData)); 
+        await DB.put(cleanSlug, JSON.stringify(linkData));
         return Response.redirect(linkData.original, 302);
       } else {
         return new Response('404 Not Found', { status: 404 });
