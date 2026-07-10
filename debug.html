@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>环境变量调试</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .info {
+            background: #e8f4f8;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #0066cc;
+        }
+        .error {
+            background: #ffe8e8;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #cc0000;
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0052a3;
+        }
+        pre {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 EdgeOne 环境变量调试工具</h1>
+
+        <div class="info">
+            <strong>使用说明：</strong>
+            <ol>
+                <li>在EdgeOne控制台设置环境变量 <code>PASSWORD</code></li>
+                <li>点击下方按钮检查环境变量是否正确加载</li>
+                <li>查看返回的调试信息</li>
+            </ol>
+        </div>
+
+        <div>
+            <label>测试密码：</label>
+            <input type="text" id="testPassword" placeholder="输入您设置的密码">
+            <button onclick="testAuth()">测试登录</button>
+            <button onclick="checkEnv()">检查环境变量</button>
+        </div>
+
+        <h2>调试结果：</h2>
+        <pre id="output">等待测试...</pre>
+    </div>
+
+    <script>
+        async function testAuth() {
+            const password = document.getElementById('testPassword').value;
+            const output = document.getElementById('output');
+
+            try {
+                output.textContent = '正在测试登录...\n';
+
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password })
+                });
+
+                const data = await response.json();
+
+                output.textContent = `状态码: ${response.status}\n\n`;
+                output.textContent += `响应数据:\n${JSON.stringify(data, null, 2)}\n\n`;
+
+                if (response.ok) {
+                    output.textContent += '✅ 登录成功！\n';
+                } else {
+                    output.textContent += '❌ 登录失败\n';
+                    output.textContent += '\n请检查EdgeOne控制台的实时日志查看详细的console.log输出\n';
+                }
+
+                // 显示响应头
+                output.textContent += '\n响应头:\n';
+                response.headers.forEach((value, key) => {
+                    output.textContent += `${key}: ${value}\n`;
+                });
+
+            } catch (err) {
+                output.textContent = `错误: ${err.message}\n`;
+                output.textContent += `\n堆栈: ${err.stack}`;
+            }
+        }
+
+        async function checkEnv() {
+            const output = document.getElementById('output');
+            output.textContent = '正在检查环境变量...\n\n';
+            output.textContent += '⚠️ 注意事项：\n';
+            output.textContent += '1. 确保在EdgeOne控制台设置了 PASSWORD 环境变量\n';
+            output.textContent += '2. 环境变量设置后需要重新部署才能生效\n';
+            output.textContent += '3. 检查环境变量名称是否正确（区分大小写）\n';
+            output.textContent += '4. 密码中是否包含特殊字符（引号、空格等）\n\n';
+            output.textContent += '请尝试用空密码登录测试（如果PASSWORD未设置，应该能成功）\n';
+        }
+    </script>
+</body>
+</html>
