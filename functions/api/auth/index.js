@@ -10,6 +10,10 @@ import {
 } from '../lib/security.js';
 
 export async function onRequest({ request, env = {} }) {
+  console.log('✅✅✅ /api/auth HANDLER CALLED! ✅✅✅');
+  console.log('Request URL:', request.url);
+  console.log('Request method:', request.method);
+
   if (request.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
   }
