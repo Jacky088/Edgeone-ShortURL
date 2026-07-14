@@ -95,8 +95,8 @@ const loginHtml = `<!DOCTYPE html>
         .icon-btn svg.icon-github { width: 20px; height: 20px; fill: currentColor; }
         .icon-btn img.icon-theme { width: 20px; height: 20px; display: block; }
         /* 文字按钮样式 */
-        .text-btn { padding: 0 1rem; height: 40px; border: 1px solid var(--border-color); border-radius: 2rem; background-color: var(--container-bg); color: var(--text-color); text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; box-sizing: border-box; }
-        .text-btn:hover { background-color: var(--input-bg); border-color: var(--accent-color); }
+        .top-bar .text-btn { padding: 0 1rem; height: 40px; border: 1px solid var(--border-color); border-radius: 2rem; background-color: var(--container-bg); color: var(--text-color); text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; box-sizing: border-box; }
+        .top-bar .text-btn:hover { background-color: var(--input-bg); border-color: var(--accent-color); }
     </style>
 </head>
 <body>
@@ -197,8 +197,8 @@ const indexHtml = `<!DOCTYPE html>
         .icon-btn svg.icon-github { width: 20px; height: 20px; fill: currentColor; }
         .icon-btn img.icon-theme { width: 20px; height: 20px; display: block; }
         /* 文字按钮样式 */
-        .text-btn { padding: 0 1rem; height: 40px; border: 1px solid var(--border-color); border-radius: 2rem; background-color: var(--container-bg); color: var(--text-color); text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; box-sizing: border-box; }
-        .text-btn:hover { background-color: var(--input-bg); border-color: var(--accent-color); }
+        .top-bar .text-btn { padding: 0 1rem; height: 40px; border: 1px solid var(--border-color); border-radius: 2rem; background-color: var(--container-bg); color: var(--text-color); text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; box-sizing: border-box; }
+        .top-bar .text-btn:hover { background-color: var(--input-bg); border-color: var(--accent-color); }
     </style>
 </head>
 <body>
@@ -316,8 +316,8 @@ const adminHtml = `<!DOCTYPE html>
         .icon-btn img.icon-theme { width: 20px; height: 20px; display: block; }
         @media (max-width: 600px) { th:nth-child(2), td:nth-child(2) { display: none; } }
         /* 文字按钮样式 */
-        .text-btn { padding: 0 1rem; height: 40px; border: 1px solid var(--border-color); border-radius: 2rem; background-color: var(--container-bg); color: var(--text-color); text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; box-sizing: border-box; }
-        .text-btn:hover { background-color: var(--input-bg); border-color: var(--accent-color); }
+        .top-bar .text-btn { padding: 0 1rem; height: 40px; border: 1px solid var(--border-color); border-radius: 2rem; background-color: var(--container-bg); color: var(--text-color); text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; box-sizing: border-box; }
+        .top-bar .text-btn:hover { background-color: var(--input-bg); border-color: var(--accent-color); }
     </style>
 </head>
 <body>
