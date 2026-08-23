@@ -12,9 +12,9 @@ const ICON_SUN_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/sv
 // ==========================================
 // 共享 CSS 片段
 // ==========================================
-const themeVarsCss = `        :root { --error-color: #f87171; --success-color: #4ade80; transition: background-color 0.3s, color 0.3s; }
-        [data-theme="light"] { --accent-color: #ca8a04; --accent-hover: #a16207; --bg-color: #f3f4f6; --container-bg: #ffffff; --input-bg: #f9fafb; --border-color: #e5e7eb; --text-color: #1f2937; --subtle-text: #6b7280; --particle-color: rgba(0, 0, 0, 0.08); }
-        [data-theme="dark"] { --accent-color: #facc15; --accent-hover: #eab308; --bg-color: #111827; --container-bg: #1f2937; --input-bg: #374151; --border-color: #4b5563; --text-color: #f3f4f6; --subtle-text: #9ca3af; --particle-color: rgba(255, 255, 255, 0.08); }
+const themeVarsCss = `        :root { --error-color: #f87171; --success-color: #4ade80; --accent-ring: rgba(37, 99, 235, .25); transition: background-color 0.3s, color 0.3s; }
+        [data-theme="light"] { --accent-color: #2563eb; --accent-hover: #1d4ed8; --bg-color: #f0f4fa; --container-bg: #ffffff; --input-bg: #f8fafd; --border-color: #dbe4f0; --text-color: #1e293b; --subtle-text: #64748b; --particle-color: rgba(37, 99, 235, 0.08); }
+        [data-theme="dark"] { --accent-color: #3b82f6; --accent-hover: #2563eb; --bg-color: #0f172a; --container-bg: #1e293b; --input-bg: #334155; --border-color: #475569; --text-color: #f1f5f9; --subtle-text: #94a3b8; --particle-color: rgba(96, 165, 250, 0.08); }
 `;
 
 function baseCss(overflow) {
@@ -129,13 +129,13 @@ ${script}</script>
 // ==========================================
 export const loginHtml = buildPage({
   title: '访问验证',
-  css: themeVarsCss + baseCss('hidden') + `        .container { width: 100%; max-width: 400px; background-color: var(--container-bg); border-radius: .75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); padding: 2rem; position: relative; z-index: 1; text-align: center; }
+  css: themeVarsCss + baseCss('hidden') + `        .container { width: 100%; max-width: 400px; background-color: var(--container-bg); border-radius: .75rem; box-shadow: 0 25px 50px -12px rgba(30, 58, 138, .28); padding: 2rem; position: relative; z-index: 1; text-align: center; }
         h1 { margin-bottom: 1.5rem; font-size: 1.8rem; }
         input { width: 100%; padding: .75rem 1rem; margin-bottom: 1rem; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: .5rem; color: var(--text-color); font-size: 1rem; box-sizing: border-box; transition: border-color .2s, box-shadow .2s; }
-        input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(var(--accent-color), .3); }
-        button { width: 100%; padding: .75rem 1.5rem; background-color: var(--accent-color); color: #fff; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color .2s; }
-        [data-theme="light"] button { color: #fff; } [data-theme="dark"] button { color: #000; }
-        button:hover { background-color: var(--accent-hover); } button:disabled { opacity: 0.7; cursor: not-allowed; }
+        input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px var(--accent-ring); }
+        button { width: 100%; padding: .75rem 1.5rem; background-color: var(--accent-color); background-image: linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(0, 0, 0, .10)); box-shadow: 0 1px 3px rgba(30, 58, 138, .25), inset 0 1px 0 rgba(255, 255, 255, .15); color: #fff; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color .2s, box-shadow .2s, transform .1s; }
+        [data-theme="light"] button { color: #fff; } [data-theme="dark"] button { color: #fff; }
+        button:hover { background-color: var(--accent-hover); box-shadow: 0 2px 6px rgba(30, 58, 138, .35), inset 0 1px 0 rgba(255, 255, 255, .15); } button:active { transform: translateY(1px); } button:disabled { opacity: 0.7; cursor: not-allowed; background-image: none; box-shadow: none; }
         .error { color: var(--error-color); margin-top: 1rem; font-size: 0.9rem; display: none; background-color: rgba(248, 113, 113, .1); padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--error-color); }
 ` + topBarCss(),
   body: topBarHtml({ adminLink: true }) + `
@@ -163,18 +163,18 @@ export const loginHtml = buildPage({
 export const indexHtml = buildPage({
   title: '短链接生成服务',
   extraHead: `    <meta name="description" content="短链接在线生成，支持长链接缩短，免费开源，提供API接口。" />\n`,
-  css: themeVarsCss + baseCss('hidden') + `        .container { width: 100%; max-width: 600px; background-color: var(--container-bg); border-radius: .75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); padding: 2rem; position: relative; z-index: 1; }
+  css: themeVarsCss + baseCss('hidden') + `        .container { width: 100%; max-width: 600px; background-color: var(--container-bg); border-radius: .75rem; box-shadow: 0 25px 50px -12px rgba(30, 58, 138, .28); padding: 2rem; position: relative; z-index: 1; }
         h1 { text-align: center; margin-bottom: 2rem; font-size: 2.25rem; }
         form { background-color: var(--input-bg); padding: 1rem; border-radius: .5rem; margin-bottom: 1rem; border: 1px solid var(--border-color); }
         .form-main { display: flex; gap: .5rem; }
         #url-input { flex-grow: 1; padding: .75rem 1rem; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: .5rem; color: var(--text-color); font-size: 1rem; transition: border-color .2s, box-shadow .2s; }
-        #url-input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(var(--accent-color), .3); }
+        #url-input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px var(--accent-ring); }
         .advanced-options { margin-top: 1rem; }
         .advanced-options label { display: flex; align-items: center; gap: .5rem; color: var(--subtle-text); }
         #slug-input { padding: .5rem; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: .5rem; color: var(--text-color); }
-        button { padding: .75rem 1.5rem; background-color: var(--accent-color); color: #fff; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color .2s; }
-        [data-theme="light"] button { color: #fff; } [data-theme="dark"] button { color: #000; }
-        button:hover { background-color: var(--accent-hover); } button:disabled { background-color: var(--subtle-text); cursor: not-allowed; opacity: 0.7; }
+        button { padding: .75rem 1.5rem; background-color: var(--accent-color); background-image: linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(0, 0, 0, .10)); box-shadow: 0 1px 3px rgba(30, 58, 138, .25), inset 0 1px 0 rgba(255, 255, 255, .15); color: #fff; border: none; border-radius: .5rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color .2s, box-shadow .2s, transform .1s; }
+        [data-theme="light"] button { color: #fff; } [data-theme="dark"] button { color: #fff; }
+        button:hover { background-color: var(--accent-hover); box-shadow: 0 2px 6px rgba(30, 58, 138, .35), inset 0 1px 0 rgba(255, 255, 255, .15); } button:active { transform: translateY(1px); } button:disabled { background-color: var(--subtle-text); background-image: none; box-shadow: none; cursor: not-allowed; opacity: 0.7; }
         #error-message, #success-message { text-align: center; margin-bottom: 1rem; padding: .75rem; border-radius: .5rem; display: none; transition: opacity .3s ease-in-out; }
         #error-message { color: var(--error-color); background-color: rgba(248, 113, 113, .1); border: 1px solid var(--error-color); }
         #success-message { color: var(--success-color); background-color: rgba(74, 222, 128, .1); border: 1px solid var(--success-color); }
@@ -216,7 +216,7 @@ export const indexHtml = buildPage({
 // ==========================================
 export const adminHtml = buildPage({
   title: '短链接生成服务 - 管理后台',
-  css: themeVarsCss + baseCss('x-hidden') + `        .container { width: 100%; max-width: 900px; background-color: var(--container-bg); border-radius: .75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); padding: 2rem; position: relative; z-index: 1; }
+  css: themeVarsCss + baseCss('x-hidden') + `        .container { width: 100%; max-width: 900px; background-color: var(--container-bg); border-radius: .75rem; box-shadow: 0 25px 50px -12px rgba(30, 58, 138, .28); padding: 2rem; position: relative; z-index: 1; }
         h1 { text-align: center; margin-bottom: 1.5rem; }
         table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
         th, td { padding: .75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); color: var(--text-color); }
