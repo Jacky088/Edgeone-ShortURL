@@ -303,11 +303,12 @@ function buildPage({ title, extraHead = '', css, body, script }) {
 <head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#eef4fe">
     <title>${title}</title>
-    <script>(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark')t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
+    <script>(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';localStorage.setItem('theme',t);}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
 ${extraHead}    <style>
 ${css}    </style>
 </head>
@@ -340,9 +341,10 @@ function brandHtml() {
 }
 
 // 返回带「管理后台」按钮的动作区（登录页，固定右上角）
+// 登录页尚未鉴权：点击「管理后台」仅提示登录，不做跳转（主题切换只由模式按钮负责）
 function adminActionsHtml() {
   return `<div class="auth-top">
-      <button type="button" class="text-btn goto-admin">${ICON_SHIELD}<span>管理后台</span></button>
+      <button type="button" class="text-btn goto-admin" data-note="请登录后操作！">${ICON_SHIELD}<span>管理后台</span></button>
       ${githubHtml()}
       ${themeToggleHtml()}
     </div>`;
@@ -397,7 +399,11 @@ const toastJs = `
 const adminLinkJs = `
       const adminPathStatus = __ADMIN_PATH_STATUS__;
       function gotoAdmin() { if (!adminPathStatus) { showToast('您未设置开启管理后台'); return; } window.location.href = '/' + String(adminPathStatus).replace(/^\\/+/, ''); }
-      document.querySelectorAll('.goto-admin').forEach(btn => btn.addEventListener('click', function (e) { e.preventDefault(); gotoAdmin(); }));
+      document.querySelectorAll('.goto-admin').forEach(btn => btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (btn.dataset.note) { showToast(btn.dataset.note); return; }
+        gotoAdmin();
+      }));
 `;
 
 const logoutJs = `

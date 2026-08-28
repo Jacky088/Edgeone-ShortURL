@@ -1,18 +1,40 @@
 // functions/[slug]/index.js
-// 路由处理：管理后台、favicon、短链接跳转、主页。
+// 路由处理：favicon、管理后台、短链接跳转、主页。
 // 页面 HTML 模板见 functions/pages.js，工具函数见 functions/utils.js
 
 import { loginHtml, indexHtml, adminHtml } from '../pages.js';
 import { getKV, isAllowedUrl, verifySession } from '../utils.js';
+
+// 浏览器标签页图标（与 public/favicon.svg 一致）。
+// 固定返回内联 SVG：本函数会拦截 /favicon.svg 等路径（部署时静态资源优先级不保证），
+// 若不内联返回，浏览器请求图标将落到短链接查询而 404。
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2c6bff"/><stop offset="1" stop-color="#1246b8"/></linearGradient></defs>
+  <rect width="32" height="32" rx="8" fill="url(#g)"/>
+  <g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" transform="translate(4.6 4.6) scale(0.95)">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+  </g>
+</svg>`;
 
 export async function onRequest(context) {
   const { request, params, env = {} } = context;
   const { slug } = params;
   const adminPath = env.ADMIN_PATH;
 
+  // A. 浏览器图标：无需 KV，直接返回（favicon.ico 302 到 favicon.svg）
+  if (slug === 'favicon.svg') {
+    return new Response(FAVICON_SVG, {
+      headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' }
+    });
+  }
+  if (slug === 'favicon.ico') {
+    return new Response(null, { status: 301, headers: { Location: '/favicon.svg' } });
+  }
+
   // --- 安全获取 KV ---
   const DB = getKV(env);
-  if (!DB && slug && slug !== 'favicon.ico') {
+  if (!DB && slug) {
     console.error(`KV binding not found in functions/[slug]. env keys: ${env ? Object.keys(env).join(',') : 'none'}`);
     return new Response('Internal Server Error', { status: 500, headers: { 'Content-Type': 'text/plain' } });
   }
@@ -24,19 +46,13 @@ export async function onRequest(context) {
   // 核心逻辑：如果没设置 adminPath，status 传空字符串，前端 JS 捕获后会弹窗
   const adminPathStatus = adminPath || '';
 
-  // A. 处理 Admin 路由 (受口令保护)
+  // B. 处理 Admin 路由 (受口令保护)
   if (adminPath && slug === adminPath) {
     if (!isAuthorized) {
       const finalLoginHtml = loginHtml.replace('__ADMIN_PATH_STATUS__', JSON.stringify(adminPathStatus));
       return new Response(finalLoginHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' }, status: 200 });
     }
     return new Response(adminHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
-  }
-
-  // B. 处理 favicon 请求
-  if (slug === 'favicon.ico') {
-    // 部分运行时 Response.redirect 要求绝对 URL，这里用 Location 头兼容相对地址
-    return new Response(null, { status: 301, headers: { Location: '/favicon.svg' } });
   }
 
   // C. 处理短链接跳转 (公开访问)
