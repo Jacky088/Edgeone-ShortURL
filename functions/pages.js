@@ -223,8 +223,11 @@ function appShellCss() {
       table td a { color: var(--primary); text-decoration: none; font-weight: 600; }
       table td a:hover { text-decoration: underline; }
       .slug-link { font-family: var(--mono); }
+      /* 短链列：单行布局，长链省略号截断（悬停见完整 URL），复制按钮不换行 */
+      .slug-cell { white-space: nowrap; }
+      .slug-cell .slug-link { display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
       .td-nowrap { white-space: nowrap; }
-      .td-orig a { display: block; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .td-orig a { display: block; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .delete-btn { height: 32px; padding: 0 12px; border: 0; border-radius: 9px; background: var(--error); color: #fff; font-size: .78rem; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; transition: filter .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
       .delete-btn:hover { filter: brightness(1.08); }
       .delete-btn:active { transform: scale(.96); }
@@ -275,6 +278,11 @@ function appShellCss() {
       .app-footer a { color: var(--muted); text-decoration: none; }
       .toast { position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 12px) scale(.98); opacity: 0; pointer-events: none; z-index: 50; background: var(--text); color: var(--surface); padding: 11px 18px; border-radius: 999px; font-size: .85rem; font-weight: 600; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .35); transition: opacity .2s, transform .2s; max-width: calc(100vw - 40px); text-align: center; }
       .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      /* 可关闭提醒（登录成功等）：3 秒自动消失，点 × 或气泡立即关闭 */
+      .toast-closable { display: inline-flex; align-items: center; gap: 10px; }
+      .toast-text { min-width: 0; }
+      .toast-close { flex: none; width: 20px; height: 20px; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 15px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; opacity: .6; font-family: inherit; }
+      .toast-close:hover { opacity: 1; }
 
       /* ---------- 列表工具栏（搜索 / 刷新） ---------- */
       .table-toolbar { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
@@ -426,13 +434,14 @@ function adminActionsHtml() {
 }
 
 // 生成已登录状态的动作区（主页 / 管理后台）
+// 「管理后台」「返回前台」为镜像导航动作，统一固定在动作区第一位
 // 「管理后台」用 <a> 承载（由 adminLinkJs 补真实 href），支持中键 / 新标签页打开
 function authedActionsHtml({ admin = false, backHome = false } = {}) {
   return `<div class="top-actions">
+      ${backHome ? `<a class="text-btn" href="/">${ICON_ARROW}<span>返回前台</span></a>` : ''}
       ${admin ? `<a class="text-btn goto-admin" href="#">${ICON_SHIELD}<span>管理后台</span></a>` : ''}
       ${githubHtml()}
       ${themeToggleHtml()}
-      ${backHome ? `<a class="text-btn" href="/">${ICON_ARROW}<span>返回前台</span></a>` : ''}
       <button type="button" class="text-btn" id="logout-btn">${ICON_POWER}<span>注销</span></button>
     </div>`;
 }
@@ -473,6 +482,31 @@ const toastJs = `
         clearTimeout(t._timer);
         t._timer = setTimeout(() => t.classList.remove('show'), 2400);
       }
+      // 可关闭提醒（登录成功等）：默认 3 秒自动消失，点击关闭按钮或提醒本身立即关闭
+      function showToastClosable(text, duration) {
+        let t = document.getElementById('toast-closable');
+        if (!t) {
+          t = document.createElement('div');
+          t.id = 'toast-closable';
+          t.className = 'toast toast-closable';
+          t.setAttribute('role', 'status');
+          const label = document.createElement('span');
+          label.className = 'toast-text';
+          const close = document.createElement('button');
+          close.type = 'button';
+          close.className = 'toast-close';
+          close.setAttribute('aria-label', '关闭提醒');
+          close.textContent = '×';
+          t.append(label, close);
+          t.addEventListener('click', dismiss);
+          document.body.appendChild(t);
+        }
+        function dismiss() { clearTimeout(t._timer); t.classList.remove('show'); }
+        t.querySelector('.toast-text').textContent = text;
+        t.classList.add('show');
+        clearTimeout(t._timer);
+        t._timer = setTimeout(dismiss, duration || 3000);
+      }
 `;
 
 // 管理后台入口逻辑（ADMIN_PATH 由服务端通过 __ADMIN_PATH_STATUS__ 注入）
@@ -508,6 +542,18 @@ const logoutJs = `
             showToast('注销失败，请稍后重试');
           }
         });
+      })();
+`;
+
+// 登录成功欢迎提醒：登录页在 reload 前写入 sessionStorage 标记，
+// 落地页（主页 / 管理后台）读取后展示可关闭提醒，3 秒自动消失
+const loginToastJs = (text) => `
+      (function () {
+        try {
+          if (sessionStorage.getItem('login_success') !== '1') return;
+          sessionStorage.removeItem('login_success');
+          showToastClosable('${text}', 3000);
+        } catch (e) {}
       })();
 `;
 
@@ -579,7 +625,7 @@ export const loginHtml = buildPage({
                 const password = document.getElementById('password').value;
                 try {
                     const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: password }) });
-                    if (res.ok) { window.location.reload(); return; }
+                    if (res.ok) { try { sessionStorage.setItem('login_success', '1'); } catch (err) {} window.location.reload(); return; }
                     let message = '口令错误';
                     try { const data = await res.json(); if (data.error) message = data.error; } catch (err) {}
                     errMsg.textContent = message;
@@ -664,7 +710,7 @@ export const indexHtml = buildPage({
     </div>
 </div>
 `,
-  script: QR_LIB_SRC + '\n' + themeJs + toastJs + adminLinkJs + logoutJs + fmtUtilJs + `
+  script: QR_LIB_SRC + '\n' + themeJs + toastJs + loginToastJs('登录成功，现在可以创建短链接了。') + adminLinkJs + logoutJs + fmtUtilJs + `
         // 创建短链逻辑（与原实现一致：POST /api/create）
         (function () {
             const form = document.getElementById('link-form');
@@ -895,7 +941,7 @@ export const adminHtml = buildPage({
     </div>
 </dialog>
 `,
-  script: themeJs + toastJs + logoutJs + fmtUtilJs + `
+  script: themeJs + toastJs + loginToastJs('登录成功。') + logoutJs + fmtUtilJs + `
         // 管理后台逻辑（与原实现一致：GET /api/links + POST /api/delete）
         (function () {
             const viewList = document.getElementById('view-list');
@@ -990,9 +1036,11 @@ export const adminHtml = buildPage({
                     row.dataset.slug = link.slug;
 
                     const shortCell = document.createElement('td');
+                    shortCell.className = 'slug-cell';
                     const shortAnchor = document.createElement('a');
                     shortAnchor.className = 'slug-link';
                     shortAnchor.href = shortUrl; shortAnchor.target = '_blank'; shortAnchor.rel = 'noopener noreferrer';
+                    shortAnchor.title = shortUrl;
                     shortAnchor.textContent = shortUrl.replace(/^https?:\\/\\//, '');
                     shortCell.appendChild(shortAnchor);
 
