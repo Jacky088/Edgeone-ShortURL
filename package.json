@@ -1,6 +1,6 @@
 {
   "name": "eo-short-serverless",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "EdgeOne Pages Functions 短链接服务",
   "private": true,
   "scripts": {

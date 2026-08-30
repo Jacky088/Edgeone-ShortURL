@@ -1,6 +1,14 @@
 // functions/pages.js
 // 三个页面（登录页 / 主页 / 管理后台）的 HTML 模板。
 import { QR_LIB_SRC } from './qr-src.js';
+
+// 项目版本号：唯一来源，与 package.json 的 version 保持同步；
+// 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
+const APP_VERSION = '2.1.0';
+
+// GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
+const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
+const ISSUES_URL = REPO_URL + '/issues';
 // 统一设计系统（深科技蓝 + 青绿、日间/夜间模式、桌面/移动端响应式）在此维护一份，
 // 由 buildPage() 组装；页面私有内容通过参数注入。
 //
@@ -28,6 +36,9 @@ const ICON_EYE_OFF = icon('<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11
 const ICON_SEARCH = icon('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>');
 const ICON_REFRESH = icon('<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>');
 const ICON_TRASH = icon('<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>');
+const ICON_INFO = icon('<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11.5V16"/>');
+const ICON_X = icon('<path d="M18 6L6 18M6 6l12 12"/>');
+const ICON_FEEDBACK = icon('<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>');
 
 const ICON_SUN   = '<svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1.5v2M12 20.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1.5 12h2M20.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>';
 const ICON_MOON  = '<svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
@@ -154,6 +165,7 @@ function appShellCss() {
       .nav-item:hover { background: var(--surface-2); color: var(--text); }
       .nav-item.active { background: var(--nav-active-bg); color: var(--nav-active-text); }
       .nav-item.active::before { content: ""; position: absolute; left: 0; top: 20%; bottom: 20%; width: 3px; border-radius: 3px; background: var(--primary); }
+      .nav-sep { height: 1px; margin: 6px 10px; background: var(--border); flex: none; }
 
       .content { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
       .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: clamp(18px, 3vw, 26px); box-shadow: var(--shadow); }
@@ -169,8 +181,10 @@ function appShellCss() {
       .btn-primary:hover { filter: brightness(1.06); box-shadow: 0 12px 26px -10px rgba(26, 93, 224, .7), inset 0 1px 0 rgba(255, 255, 255, .18); }
       .btn-primary:active { transform: translateY(1px) scale(.99); }
       .btn-primary:disabled { opacity: .65; cursor: not-allowed; filter: saturate(.7); transform: none; }
-      .btn-ghost { height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; font-size: .9rem; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background-color .16s, border-color .16s; -webkit-tap-highlight-color: transparent; }
+      .btn-ghost { height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; font-size: .9rem; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background-color .16s, border-color .16s; -webkit-tap-highlight-color: transparent; text-decoration: none; }
       .btn-ghost:hover { background: var(--surface-2); border-color: var(--border-strong); }
+      .btn-ghost svg { width: 16px; height: 16px; flex: none; }
+      .btn-ghost .icon-github { fill: currentColor; }
 
       /* ---------- 表单 ---------- */
       .url-row { display: flex; gap: 10px; }
@@ -325,6 +339,27 @@ function appShellCss() {
       .btn-danger { height: 44px; border: 0; border-radius: 12px; background: var(--error); color: #fff; font-weight: 700; font-size: .9rem; font-family: inherit; cursor: pointer; transition: filter .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
       .btn-danger:hover { filter: brightness(1.08); }
       .btn-danger:active { transform: scale(.98); }
+
+      /* ---------- 「关于项目」弹窗 ---------- */
+      .about-close { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: background-color .16s, color .16s; }
+      .about-close:hover { background: var(--surface-2); color: var(--text); }
+      .about-close svg { width: 16px; height: 16px; }
+      .about-card { text-align: center; }
+      .about-card h2 { margin: 0; justify-content: center; font-size: 1.2rem; }
+      .about-logo { width: 54px; height: 54px; border-radius: 13px; margin: 0 auto 12px; box-shadow: 0 12px 26px -10px rgba(26, 93, 224, .6); }
+      .about-sub { margin: 6px 0 0; font-size: .85rem; color: var(--muted); }
+      .version-badge { display: inline-flex; align-items: center; height: 24px; padding: 0 12px; margin-top: 10px; border-radius: 999px; background: var(--primary-soft); color: var(--nav-active-text); font-size: .78rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .about-desc { margin: 14px 0; font-size: .84rem; color: var(--muted); line-height: 1.7; }
+      .about-info { display: flex; flex-direction: column; gap: 9px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; margin-bottom: 16px; text-align: left; }
+      .about-info-row { display: flex; justify-content: space-between; gap: 12px; font-size: .82rem; line-height: 1.5; }
+      .about-info-row .k { color: var(--muted); flex: none; }
+      .about-info-row .v { color: var(--text); font-weight: 600; text-align: right; word-break: break-all; }
+
+      /* 登录页「关于项目」入口 */
+      .auth-about { display: inline-flex; align-items: center; gap: 5px; margin-top: 18px; border: 0; background: none; padding: 6px 10px; border-radius: 9px; color: var(--faint); font-size: .78rem; font-weight: 600; font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+      .auth-about:hover { color: var(--primary); background: var(--primary-soft); }
+      .auth-about svg { width: 14px; height: 14px; flex: none; }
+      .auth-about span { white-space: nowrap; }
 
       /* ---------- 登录页口令可见性切换 ---------- */
       .pw-wrap { position: relative; }
@@ -565,6 +600,45 @@ const fmtUtilJs = `
       function dayKey(d) { return '' + d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
 `;
 
+// 「关于项目」弹窗：主页 / 管理后台 / 登录页三处共用，版本号取自 APP_VERSION
+function aboutDialogHtml() {
+  return `<dialog id="about-dialog">
+    <button type="button" class="about-close" data-close-about aria-label="关闭">${ICON_X}</button>
+    <div class="about-card">
+        ${logoHtml('about-logo')}
+        <h2>Edgeone-ShortURL</h2>
+        <p class="about-sub">基于 EO 的无服务器短链接转换服务</p>
+        <span class="version-badge">v${APP_VERSION}</span>
+        <p class="about-desc">基于腾讯云 EdgeOne Pages 无服务器函数与 KV 存储打造的短链接生成与跳转服务。免费开源、无需维护服务器，支持自定义短链、访问统计、日间 / 夜间主题与移动端自适应。</p>
+        <div class="about-info">
+            <div class="about-info-row"><span class="k">运行平台</span><span class="v">EdgeOne Pages</span></div>
+            <div class="about-info-row"><span class="k">技术架构</span><span class="v">Pages Functions + KV</span></div>
+            <div class="about-info-row"><span class="k">开源协议</span><span class="v">MIT License</span></div>
+            <div class="about-info-row"><span class="k">当前版本</span><span class="v">v${APP_VERSION}</span></div>
+        </div>
+        <div class="row-btns">
+            <a class="btn-ghost" href="${REPO_URL}" target="_blank" rel="noopener noreferrer">${ICON_GITHUB}<span>GitHub 仓库</span></a>
+            <a class="btn-ghost" href="${ISSUES_URL}" target="_blank" rel="noopener noreferrer">${ICON_FEEDBACK}<span>问题反馈</span></a>
+        </div>
+    </div>
+</dialog>`;
+}
+
+// 「关于项目」打开逻辑：所有 .open-about 入口（侧边栏栏目 / 登录页入口）共用
+const aboutJs = `
+      (function () {
+        const dlg = document.getElementById('about-dialog');
+        if (!dlg) return;
+        function openAbout() { if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', ''); }
+        document.querySelectorAll('.open-about').forEach(function (el) {
+          el.addEventListener('click', function (e) { e.preventDefault(); openAbout(); });
+        });
+        dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+        const closeBtn = dlg.querySelector('.about-close');
+        if (closeBtn) closeBtn.addEventListener('click', function () { dlg.close(); });
+      })();
+`;
+
 // ==========================================
 // 1. 登录页面
 // ==========================================
@@ -594,10 +668,11 @@ export const loginHtml = buildPage({
             <div class="feature"><span class="fi fi-violet">${ICON_CHART}</span>数据统计</div>
             <div class="feature"><span class="fi fi-sky">${ICON_SHIELD}</span>安全稳定</div>
         </div>
+        <button type="button" class="auth-about open-about">${ICON_INFO}<span>关于项目 · v${APP_VERSION}</span></button>
     </div>
 </div>
-`,
-  script: themeJs + toastJs + adminLinkJs + `
+` + aboutDialogHtml(),
+  script: themeJs + toastJs + adminLinkJs + aboutJs + `
         // 口令可见性切换（显示/隐藏）
         (function () {
             const toggle = document.getElementById('pw-toggle');
@@ -661,6 +736,8 @@ export const indexHtml = buildPage({
             <button type="button" class="nav-item active" aria-current="page" id="nav-create">${ICON_CHAIN}<span>创建短链</span></button>
             <a class="nav-item goto-admin" href="#">${ICON_LIST}<span>短链列表</span></a>
             <a class="nav-item goto-admin" href="#">${ICON_CHART}<span>访问统计</span></a>
+            <div class="nav-sep" aria-hidden="true"></div>
+            <button type="button" class="nav-item open-about">${ICON_INFO}<span>关于项目</span></button>
         </nav>
         <main class="content">
             <section class="card">
@@ -705,12 +782,12 @@ export const indexHtml = buildPage({
                 <div class="stat-note" id="stats-note"></div>
             </section>
 
-            <footer class="app-footer">运行在 EdgeOne Pages · <a href="https://github.com/Jacky088/Edgeone-ShortURL" target="_blank" rel="noopener noreferrer">开源项目</a></footer>
+            <footer class="app-footer">运行在 EdgeOne Pages · v${APP_VERSION} · <a href="${REPO_URL}" target="_blank" rel="noopener noreferrer">开源项目</a></footer>
         </main>
     </div>
 </div>
-`,
-  script: QR_LIB_SRC + '\n' + themeJs + toastJs + loginToastJs('登录成功，现在可以创建短链接了。') + adminLinkJs + logoutJs + fmtUtilJs + `
+` + aboutDialogHtml(),
+  script: QR_LIB_SRC + '\n' + themeJs + toastJs + loginToastJs('登录成功，现在可以创建短链接了。') + adminLinkJs + logoutJs + fmtUtilJs + aboutJs + `
         // 创建短链逻辑（与原实现一致：POST /api/create）
         (function () {
             const form = document.getElementById('link-form');
@@ -892,6 +969,8 @@ export const adminHtml = buildPage({
         <nav class="sidebar" aria-label="主导航">
             <button type="button" class="nav-item active" aria-current="page" data-view="list">${ICON_LIST}<span>短链列表</span></button>
             <button type="button" class="nav-item" data-view="stats">${ICON_CHART}<span>访问统计</span></button>
+            <div class="nav-sep" aria-hidden="true"></div>
+            <button type="button" class="nav-item open-about">${ICON_INFO}<span>关于项目</span></button>
         </nav>
         <main class="content">
             <section class="view" id="view-list">
@@ -929,6 +1008,7 @@ export const adminHtml = buildPage({
                     <div class="chart-card"><h3>访问量 TOP 短链</h3><div class="top-links" id="top-links"></div></div>
                 </div>
             </section>
+            <footer class="app-footer">Edgeone-ShortURL · v${APP_VERSION} · <a href="${REPO_URL}" target="_blank" rel="noopener noreferrer">开源项目</a></footer>
         </main>
     </div>
 </div>
@@ -940,8 +1020,8 @@ export const adminHtml = buildPage({
         <button type="button" class="btn-ghost" id="cancel-del">取消</button>
     </div>
 </dialog>
-`,
-  script: themeJs + toastJs + loginToastJs('登录成功。') + logoutJs + fmtUtilJs + `
+` + aboutDialogHtml(),
+  script: themeJs + toastJs + loginToastJs('登录成功。') + logoutJs + fmtUtilJs + aboutJs + `
         // 管理后台逻辑（与原实现一致：GET /api/links + POST /api/delete）
         (function () {
             const viewList = document.getElementById('view-list');
