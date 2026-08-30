@@ -1,5 +1,6 @@
 // functions/pages.js
 // 三个页面（登录页 / 主页 / 管理后台）的 HTML 模板。
+import { QR_LIB_SRC } from './qr-src.js';
 // 统一设计系统（深科技蓝 + 青绿、日间/夜间模式、桌面/移动端响应式）在此维护一份，
 // 由 buildPage() 组装；页面私有内容通过参数注入。
 //
@@ -23,6 +24,10 @@ const ICON_ARROW = icon('<path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/>');
 const ICON_PENCIL = icon('<path d="M4 20l1.2-4.2L16 5l3 3-10.8 10.8L4 20z"/><path d="M13.5 7l3 3"/>');
 const ICON_SHIELD = icon('<path d="M12 3l7 2.8v5c0 4.6-3.1 7.6-7 9.2-3.9-1.6-7-4.6-7-9.2v-5z"/><path d="M9 12l2 2 4-4.5"/>');
 const ICON_BOLT = icon('<path d="M13 2L4 14h6l-1 8 9-12h-6z"/>');
+const ICON_EYE_OFF = icon('<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>');
+const ICON_SEARCH = icon('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>');
+const ICON_REFRESH = icon('<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>');
+const ICON_TRASH = icon('<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>');
 
 const ICON_SUN   = '<svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1.5v2M12 20.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1.5 12h2M20.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>';
 const ICON_MOON  = '<svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
@@ -51,7 +56,7 @@ const themeVarsCss = `
         --bg-1: #eef4fe; --bg-2: #e2ecfb; --bg-blob-1: rgba(26, 93, 224, .16); --bg-blob-2: rgba(38, 196, 160, .16); --bg-blob-3: rgba(124, 92, 246, .12);
         --surface: #ffffff; --surface-2: #f5f9ff; --surface-3: #eaf1fc;
         --border: #dfe7f4; --border-strong: #c7d5ec;
-        --text: #16233f; --muted: #5d6d92; --faint: #94a3c4;
+        --text: #16233f; --muted: #5d6d92; --faint: #61708f;
         --input-bg: #f6f9ff;
         --nav-bg: #fbfdff;
         --nav-active-bg: #e8f2fc; --nav-active-text: #1a5de0;
@@ -69,7 +74,7 @@ const themeVarsCss = `
         --bg-1: #0a1026; --bg-2: #0e1733; --bg-blob-1: rgba(53, 103, 255, .26); --bg-blob-2: rgba(52, 217, 180, .15); --bg-blob-3: rgba(124, 120, 255, .18);
         --surface: #121b38; --surface-2: #0d1530; --surface-3: #1a2547;
         --border: #253154; --border-strong: #35436e;
-        --text: #e7edfb; --muted: #96a6cc; --faint: #6b7ba3;
+        --text: #e7edfb; --muted: #96a6cc; --faint: #7c8cb8;
         --input-bg: #0d1530;
         --nav-bg: #101830;
         --nav-active-bg: rgba(79, 139, 255, .18); --nav-active-text: #8db4ff;
@@ -144,7 +149,7 @@ function appShellCss() {
       /* ---------- 布局：侧边栏 + 内容 ---------- */
       .app-body { display: grid; grid-template-columns: 216px 1fr; gap: 20px; align-items: start; }
       .sidebar { position: sticky; top: calc(20px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 10px; box-shadow: var(--shadow-sm); }
-      .nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: 0; border-radius: 11px; background: transparent; color: var(--muted); font-size: .92rem; font-weight: 600; font-family: inherit; cursor: pointer; text-align: left; position: relative; transition: background-color .16s, color .16s; -webkit-tap-highlight-color: transparent; }
+      .nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: 0; border-radius: 11px; background: transparent; color: var(--muted); font-size: .92rem; font-weight: 600; font-family: inherit; cursor: pointer; text-align: left; position: relative; transition: background-color .16s, color .16s; -webkit-tap-highlight-color: transparent; text-decoration: none; }
       .nav-item svg { width: 19px; height: 19px; flex: none; }
       .nav-item:hover { background: var(--surface-2); color: var(--text); }
       .nav-item.active { background: var(--nav-active-bg); color: var(--nav-active-text); }
@@ -218,8 +223,9 @@ function appShellCss() {
       table td a { color: var(--primary); text-decoration: none; font-weight: 600; }
       table td a:hover { text-decoration: underline; }
       .slug-link { font-family: var(--mono); }
+      .td-nowrap { white-space: nowrap; }
       .td-orig a { display: block; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .delete-btn { height: 32px; padding: 0 12px; border: 0; border-radius: 9px; background: var(--error); color: #fff; font-size: .78rem; font-weight: 700; font-family: inherit; cursor: pointer; transition: filter .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
+      .delete-btn { height: 32px; padding: 0 12px; border: 0; border-radius: 9px; background: var(--error); color: #fff; font-size: .78rem; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; transition: filter .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
       .delete-btn:hover { filter: brightness(1.08); }
       .delete-btn:active { transform: scale(.96); }
       .badge { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; background: var(--primary-soft); color: var(--nav-active-text); font-size: .76rem; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -231,7 +237,7 @@ function appShellCss() {
       .chart-card h3 { margin: 0 0 14px; font-size: .85rem; color: var(--muted); font-weight: 700; }
       .bar-chart { display: flex; align-items: flex-end; gap: 8px; }
       .bar-col { flex: 1; min-width: 0; height: 150px; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; padding-top: 20px; }
-      .bar-track { position: relative; width: 70%; max-width: 34px; margin: 0 auto; height: 100%; background: var(--primary-soft); border-radius: 7px 7px 3px 3px; overflow: hidden; }
+      .bar-track { position: relative; width: 70%; max-width: 34px; margin: 0 auto; height: 100%; background: var(--primary-soft); border-radius: 7px 7px 3px 3px; }
       .bar-val { position: absolute; top: -20px; left: 0; right: 0; text-align: center; font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
       .bar-fill { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(180deg, var(--primary-2), var(--primary)); border-radius: 7px 7px 3px 3px; }
       .bar-fill.today { background: var(--teal); }
@@ -239,6 +245,8 @@ function appShellCss() {
       .top-links { display: flex; flex-direction: column; gap: 12px; padding-top: 2px; }
       .top-link-head { display: flex; justify-content: space-between; gap: 10px; font-size: .82rem; margin-bottom: 6px; }
       .top-link-slug { font-family: var(--mono); color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      a.top-link-slug { text-decoration: none; }
+      a.top-link-slug:hover { color: var(--primary); }
       .top-link-count { color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 600; }
       .progress { height: 8px; border-radius: 999px; background: var(--primary-soft); overflow: hidden; }
       .progress i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--primary), var(--teal)); }
@@ -268,6 +276,69 @@ function appShellCss() {
       .toast { position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 12px) scale(.98); opacity: 0; pointer-events: none; z-index: 50; background: var(--text); color: var(--surface); padding: 11px 18px; border-radius: 999px; font-size: .85rem; font-weight: 600; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .35); transition: opacity .2s, transform .2s; max-width: calc(100vw - 40px); text-align: center; }
       .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
 
+      /* ---------- 列表工具栏（搜索 / 刷新） ---------- */
+      .table-toolbar { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+      .search-wrap { position: relative; flex: 1; min-width: 200px; }
+      .search-wrap > svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--faint); pointer-events: none; }
+      .search-wrap input { width: 100%; height: 42px; padding: 0 14px 0 37px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .9rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
+      .search-wrap input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
+      .search-wrap input::placeholder { color: var(--faint); }
+      .tb-btn { height: 42px; padding: 0 14px; font-size: .85rem; }
+      .tb-btn svg { width: 15px; height: 15px; }
+      .tb-btn.spinning svg { animation: spin .8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .tb-btn.spinning svg { animation: none; } }
+
+      /* 可排序表头（访问次数 / 创建时间） */
+      th.th-sort { cursor: pointer; user-select: none; -webkit-user-select: none; }
+      th.th-sort:hover { color: var(--text); }
+      th.th-sort .arrow { display: inline-block; margin-left: 3px; color: var(--primary); }
+
+      /* 行内复制按钮（表格短链列） */
+      .row-copy { width: 30px; height: 30px; margin-left: 8px; padding: 0; vertical-align: middle; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--muted); cursor: pointer; transition: color .16s, border-color .16s, background-color .16s; -webkit-tap-highlight-color: transparent; }
+      .row-copy:hover { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
+      .row-copy.copied { color: var(--success); border-color: var(--success); }
+      .row-copy svg { width: 14px; height: 14px; }
+
+      /* ---------- 骨架屏 ---------- */
+      .skel { height: 14px; border-radius: 7px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 45%, var(--surface-2) 65%); background-size: 200% 100%; animation: skel 1.2s ease infinite; }
+      td .skel { width: 82%; }
+      @keyframes skel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+      @media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+
+      /* ---------- 确认弹窗（删除等破坏性操作） ---------- */
+      dialog { width: min(380px, calc(100% - 32px)); border: 1px solid var(--border); border-radius: 16px; padding: 24px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+      dialog h2 { margin: 0 0 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+      dialog h2 svg { width: 18px; height: 18px; color: var(--error); }
+      dialog::backdrop { background: var(--scrim); }
+      .dialog-text { margin: 0 0 18px; font-size: .9rem; color: var(--muted); line-height: 1.6; word-break: break-all; }
+      .dialog-text b { color: var(--text); font-family: var(--mono); }
+      .row-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .btn-danger { height: 44px; border: 0; border-radius: 12px; background: var(--error); color: #fff; font-weight: 700; font-size: .9rem; font-family: inherit; cursor: pointer; transition: filter .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
+      .btn-danger:hover { filter: brightness(1.08); }
+      .btn-danger:active { transform: scale(.98); }
+
+      /* ---------- 登录页口令可见性切换 ---------- */
+      .pw-wrap { position: relative; }
+      .pw-wrap input { width: 100%; padding-right: 48px; }
+      .eye-btn { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; -webkit-tap-highlight-color: transparent; }
+      .eye-btn:hover { background: var(--surface-3); color: var(--text); }
+      .eye-btn svg { width: 18px; height: 18px; }
+
+      /* ---------- 生成结果 + 二维码 ---------- */
+      .result-flex { display: flex; gap: 14px; align-items: stretch; }
+      .result-flex .result-box { flex: 1; min-width: 0; }
+      .result-qr { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+      .result-qr canvas { display: block; width: 108px; height: 108px; border-radius: 6px; image-rendering: pixelated; }
+      .qr-cap { font-size: .72rem; color: var(--muted); font-weight: 600; white-space: nowrap; }
+
+      /* 自定义短链实时反馈 */
+      #slug-input.invalid { border-color: var(--error); box-shadow: 0 0 0 4px var(--error-bg); }
+      .slug-count { margin-left: 8px; font-size: .76rem; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+      /* 主题切换过渡：仅在切换瞬间由 JS 挂上 theme-anim 类，避免首屏闪烁与日常动画冲突 */
+      html.theme-anim * { transition: background-color .3s ease, color .3s ease, border-color .3s ease, box-shadow .3s ease; }
+
       /* ---------- 响应式 ---------- */
       @media (max-width: 860px) {
         .app-body { grid-template-columns: 1fr; }
@@ -282,8 +353,12 @@ function appShellCss() {
         .url-row { flex-direction: column; }
         .url-row .btn-primary { width: 100%; }
         .result-box { flex-direction: column; align-items: stretch; }
+        .result-flex { flex-direction: column; }
+        .result-qr { flex-direction: row; align-self: center; }
         .copy-btn { justify-content: center; height: 42px; }
         .table-wrap table { min-width: 480px; }
+        .table-toolbar { flex-direction: column; align-items: stretch; }
+        .tb-btn { justify-content: center; }
         /* 移动端隐藏「原始链接」「创建时间」列 */
         table th:nth-child(2), table td:nth-child(2) { display: none; }
         table th:nth-child(4), table td:nth-child(4) { display: none; }
@@ -308,7 +383,7 @@ function buildPage({ title, extraHead = '', css, body, script }) {
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#eef4fe">
     <title>${title}</title>
-    <script>(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';localStorage.setItem('theme',t);}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
+    <script>(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';localStorage.setItem('theme',t);}document.documentElement.setAttribute('data-theme',t);var mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.content=t==='dark'?'#0a1026':'#eef4fe';}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
 ${extraHead}    <style>
 ${css}    </style>
 </head>
@@ -351,9 +426,10 @@ function adminActionsHtml() {
 }
 
 // 生成已登录状态的动作区（主页 / 管理后台）
+// 「管理后台」用 <a> 承载（由 adminLinkJs 补真实 href），支持中键 / 新标签页打开
 function authedActionsHtml({ admin = false, backHome = false } = {}) {
   return `<div class="top-actions">
-      ${admin ? `<button type="button" class="text-btn goto-admin">${ICON_SHIELD}<span>管理后台</span></button>` : ''}
+      ${admin ? `<a class="text-btn goto-admin" href="#">${ICON_SHIELD}<span>管理后台</span></a>` : ''}
       ${githubHtml()}
       ${themeToggleHtml()}
       ${backHome ? `<a class="text-btn" href="/">${ICON_ARROW}<span>返回前台</span></a>` : ''}
@@ -377,6 +453,10 @@ const themeJs = `
           syncIcons(mode);
           const mc = document.querySelector('meta[name="theme-color"]');
           if (mc) mc.content = mode === 'dark' ? '#0a1026' : '#eef4fe';
+          // 切换瞬间开启全局过渡，让卡片/输入框随主题平滑变化（400ms 后移除，避免影响交互动画）
+          htmlEl.classList.add('theme-anim');
+          clearTimeout(setTheme._t);
+          setTheme._t = setTimeout(function () { htmlEl.classList.remove('theme-anim'); }, 400);
         }
         const toggle = document.getElementById('theme-toggle');
         if (toggle) toggle.addEventListener('click', () => setTheme(htmlEl.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
@@ -396,13 +476,17 @@ const toastJs = `
 `;
 
 // 管理后台入口逻辑（ADMIN_PATH 由服务端通过 __ADMIN_PATH_STATUS__ 注入）
+// 已登录页面的入口渲染为 <a class="goto-admin">：JS 负责补上真实路径（路径不写死在 HTML 里），
+// 浏览器默认导航因此支持中键 / 新标签页打开；登录页入口保持 <button>，仅提示并聚焦口令框。
 const adminLinkJs = `
       const adminPathStatus = __ADMIN_PATH_STATUS__;
-      function gotoAdmin() { if (!adminPathStatus) { showToast('您未设置开启管理后台'); return; } window.location.href = '/' + String(adminPathStatus).replace(/^\\/+/, ''); }
+      function adminUrl() { return '/' + String(adminPathStatus).replace(/^\\/+/, ''); }
+      function gotoAdmin() { if (!adminPathStatus) { showToast('您未设置开启管理后台'); return; } window.location.href = adminUrl(); }
+      document.querySelectorAll('a.goto-admin').forEach(function (a) { a.href = adminPathStatus ? adminUrl() : '#'; });
       document.querySelectorAll('.goto-admin').forEach(btn => btn.addEventListener('click', function (e) {
-        e.preventDefault();
-        if (btn.dataset.note) { showToast(btn.dataset.note); return; }
-        gotoAdmin();
+        if (!adminPathStatus) { e.preventDefault(); showToast(btn.dataset.note || '您未设置开启管理后台'); return; }
+        if (btn.dataset.note) { e.preventDefault(); showToast(btn.dataset.note); const pw = document.getElementById('password'); if (pw) pw.focus(); return; }
+        if (btn.tagName !== 'A') { e.preventDefault(); gotoAdmin(); }
       }));
 `;
 
@@ -451,7 +535,10 @@ export const loginHtml = buildPage({
         <div class="auth-divider"></div>
         <p class="auth-label">请输入访问口令</p>
         <form class="auth-form" id="login-form">
-            <input type="password" id="password" placeholder="输入口令…" autocomplete="current-password" required>
+            <div class="pw-wrap">
+                <input type="password" id="password" placeholder="输入口令…" autocomplete="current-password" required>
+                <button type="button" class="eye-btn" id="pw-toggle" aria-label="显示口令" aria-pressed="false" title="显示/隐藏口令">${ICON_EYE}</button>
+            </div>
             <button type="submit" class="btn-primary" id="btn">${ICON_SHIELD}<span>验证</span></button>
         </form>
         <div class="auth-error" id="error-msg">口令错误</div>
@@ -465,6 +552,20 @@ export const loginHtml = buildPage({
 </div>
 `,
   script: themeJs + toastJs + adminLinkJs + `
+        // 口令可见性切换（显示/隐藏）
+        (function () {
+            const toggle = document.getElementById('pw-toggle');
+            const input = document.getElementById('password');
+            if (!toggle || !input) return;
+            toggle.addEventListener('click', function () {
+                const show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                toggle.innerHTML = show ? '${ICON_EYE_OFF}' : '${ICON_EYE}';
+                toggle.setAttribute('aria-pressed', show ? 'true' : 'false');
+                toggle.setAttribute('aria-label', show ? '隐藏口令' : '显示口令');
+                input.focus();
+            });
+        })();
         // 登录逻辑（与原实现一致：POST /api/auth，成功后刷新页面）
         (function () {
             const form = document.getElementById('login-form');
@@ -512,19 +613,20 @@ export const indexHtml = buildPage({
     <div class="app-body">
         <nav class="sidebar" aria-label="主导航">
             <button type="button" class="nav-item active" aria-current="page" id="nav-create">${ICON_CHAIN}<span>创建短链</span></button>
-            <button type="button" class="nav-item goto-admin">${ICON_LIST}<span>短链列表</span></button>
-            <button type="button" class="nav-item goto-admin">${ICON_CHART}<span>访问统计</span></button>
+            <a class="nav-item goto-admin" href="#">${ICON_LIST}<span>短链列表</span></a>
+            <a class="nav-item goto-admin" href="#">${ICON_CHART}<span>访问统计</span></a>
         </nav>
         <main class="content">
             <section class="card">
                 <h2 class="card-title">${ICON_CHAIN}<span>输入长链接</span></h2>
-                <form id="link-form">
+                <form id="link-form" novalidate>
                     <div class="url-row">
                         <input type="url" id="url-input" placeholder="https://www.example.com/very-long-url" autocomplete="url" enterkeyhint="go" required>
                         <button type="submit" class="btn-primary" id="submit-btn">${ICON_CHAIN}<span>生成短链</span></button>
                     </div>
                     <div class="slug-row">
                         <button type="button" class="slug-toggle" id="slug-toggle" aria-expanded="false">${ICON_PENCIL}<span>自定义短链（可选）</span></button>
+                        <span class="slug-count" id="slug-count"></span>
                         <input type="text" id="slug-input" maxlength="64" placeholder="例如: my-link" autocomplete="off" spellcheck="false" aria-hidden="true">
                     </div>
                     <p class="hint-line">仅支持 http/https 开头的完整链接；自定义短链可使用字母、数字、短横线、下划线，最长 64 位。</p>
@@ -534,11 +636,17 @@ export const indexHtml = buildPage({
 
             <section class="card" id="result-card" hidden>
                 <h2 class="card-title">${ICON_CHECK}<span>生成结果</span></h2>
-                <div class="result-box">
-                    <a href="#" target="_blank" rel="noopener noreferrer" class="result-url" id="result-link"></a>
-                    <button type="button" class="copy-btn" id="copy-btn">${ICON_COPY}<span>复制</span></button>
+                <div class="result-flex">
+                    <div class="result-box">
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="result-url" id="result-link"></a>
+                        <button type="button" class="copy-btn" id="copy-btn">${ICON_COPY}<span>复制</span></button>
+                    </div>
+                    <div class="result-qr" id="result-qr" hidden>
+                        <canvas id="qr-canvas" aria-label="短链二维码"></canvas>
+                        <span class="qr-cap">扫码访问</span>
+                    </div>
                 </div>
-                <p class="hint-line">短链已创建成功，点击链接可跳转原文并累计访问次数。</p>
+                <p class="hint-line">短链已创建成功，点击链接可跳转原文并累计访问次数；也可扫码在手机上打开。</p>
             </section>
 
             <section class="card">
@@ -556,18 +664,20 @@ export const indexHtml = buildPage({
     </div>
 </div>
 `,
-  script: themeJs + toastJs + adminLinkJs + logoutJs + fmtUtilJs + `
+  script: QR_LIB_SRC + '\n' + themeJs + toastJs + adminLinkJs + logoutJs + fmtUtilJs + `
         // 创建短链逻辑（与原实现一致：POST /api/create）
         (function () {
             const form = document.getElementById('link-form');
             const urlInput = document.getElementById('url-input');
             const slugInput = document.getElementById('slug-input');
             const slugToggle = document.getElementById('slug-toggle');
+            const slugCount = document.getElementById('slug-count');
             const submitBtn = document.getElementById('submit-btn');
             const errorMessage = document.getElementById('error-message');
             const resultCard = document.getElementById('result-card');
             const resultLink = document.getElementById('result-link');
             const copyBtn = document.getElementById('copy-btn');
+            const qrBox = document.getElementById('result-qr');
             const submitLabel = submitBtn.querySelector('span');
 
             slugToggle.addEventListener('click', () => {
@@ -576,6 +686,25 @@ export const indexHtml = buildPage({
                 slugToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
                 slugInput.setAttribute('aria-hidden', opening ? 'false' : 'true');
                 if (opening) slugInput.focus();
+            });
+
+            // 自定义校验（novalidate 替代浏览器原生气泡，规则与后端 utils.js 保持一致）
+            function validateUrl(v) {
+                if (!v) return '请输入长链接';
+                let parsed;
+                try { parsed = new URL(v); } catch (err) { return '链接格式不正确，请以 http:// 或 https:// 开头'; }
+                if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '仅支持 http/https 开头的完整链接';
+                return '';
+            }
+            function validateSlug(v) {
+                if (!v) return '';
+                return /^[a-zA-Z0-9_-]{1,64}$/.test(v) ? '' : '自定义短链仅可使用字母、数字、短横线、下划线，最长 64 位';
+            }
+
+            urlInput.addEventListener('input', () => urlInput.classList.remove('invalid'));
+            slugInput.addEventListener('input', function () {
+                slugInput.classList.remove('invalid');
+                slugCount.textContent = this.value.length ? this.value.length + '/64' : '';
             });
 
             function setLoading(isLoading) {
@@ -588,20 +717,52 @@ export const indexHtml = buildPage({
                 errorMessage.style.display = 'block';
             }
 
+            // 将短链绘制为二维码（白底黑码保证任何主题下都可扫描）
+            function drawQr(text) {
+                try {
+                    if (typeof qrcode !== 'function') { qrBox.hidden = true; return; }
+                    if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+                    const qr = qrcode(0, 'M');
+                    qr.addData(text);
+                    qr.make();
+                    const count = qr.getModuleCount();
+                    const quiet = 4, scale = 4;
+                    const size = (count + quiet * 2) * scale;
+                    const canvas = document.getElementById('qr-canvas');
+                    canvas.width = size; canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, size, size);
+                    ctx.fillStyle = '#16181d';
+                    for (let r = 0; r < count; r++) {
+                        for (let c = 0; c < count; c++) {
+                            if (qr.isDark(r, c)) ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+                        }
+                    }
+                    qrBox.hidden = false;
+                } catch (err) { qrBox.hidden = true; }
+            }
+
             function showSuccess(newLink) {
                 const shortUrl = window.location.origin + '/' + newLink.slug;
                 resultLink.href = shortUrl;
                 resultLink.textContent = shortUrl.replace(/^https?:\\/\\//, '');
                 copyBtn.dataset.url = shortUrl;
                 resultCard.hidden = false;
+                drawQr(shortUrl);
                 resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
 
             async function createLink(e) {
                 e.preventDefault();
-                const originalUrl = urlInput.value;
-                if (!originalUrl) return;
+                const originalUrl = urlInput.value.trim();
                 const customSlug = slugInput.value.trim();
+                const urlError = validateUrl(originalUrl);
+                const slugError = validateSlug(customSlug);
+                urlInput.classList.toggle('invalid', !!urlError);
+                slugInput.classList.toggle('invalid', !!slugError);
+                if (urlError) { showError(urlError); urlInput.focus(); return; }
+                if (slugError) { showError(slugError); slugInput.focus(); return; }
                 setLoading(true);
                 errorMessage.style.display = 'none';
                 try {
@@ -616,6 +777,7 @@ export const indexHtml = buildPage({
                     const newLink = await res.json();
                     urlInput.value = '';
                     slugInput.value = '';
+                    slugCount.textContent = '';
                     slugInput.classList.remove('show');
                     slugToggle.setAttribute('aria-expanded', 'false');
                     showSuccess(newLink);
@@ -692,10 +854,14 @@ export const adminHtml = buildPage({
                         <h2 class="card-title">${ICON_LIST}<span>短链列表</span></h2>
                         <span class="badge" id="link-count">…</span>
                     </div>
+                    <div class="table-toolbar">
+                        <div class="search-wrap">${ICON_SEARCH}<input type="search" id="link-search" placeholder="搜索短链或原始链接…" autocomplete="off" aria-label="搜索短链或原始链接"></div>
+                        <button type="button" class="btn-ghost tb-btn" id="refresh-btn">${ICON_REFRESH}<span>刷新</span></button>
+                    </div>
                     <div class="table-wrap">
                         <table>
                             <thead><tr>
-                                <th>短链接</th><th>原始链接</th><th>访问次数</th><th>创建时间</th><th>操作</th>
+                                <th>短链接</th><th>原始链接</th><th class="th-sort" data-key="visits" title="点击排序">访问次数<span class="arrow" data-arrow="visits"></span></th><th class="th-sort" data-key="createdAt" title="点击排序">创建时间<span class="arrow" data-arrow="createdAt"></span></th><th>操作</th>
                             </tr></thead>
                             <tbody id="links-table-body"></tbody>
                         </table>
@@ -720,6 +886,14 @@ export const adminHtml = buildPage({
         </main>
     </div>
 </div>
+<dialog id="confirm-dialog">
+    <h2>${ICON_TRASH}<span>删除短链</span></h2>
+    <p class="dialog-text" id="confirm-text"></p>
+    <div class="row-btns">
+        <button type="button" class="btn-danger" id="confirm-del">删除</button>
+        <button type="button" class="btn-ghost" id="cancel-del">取消</button>
+    </div>
+</dialog>
 `,
   script: themeJs + toastJs + logoutJs + fmtUtilJs + `
         // 管理后台逻辑（与原实现一致：GET /api/links + POST /api/delete）
@@ -729,17 +903,83 @@ export const adminHtml = buildPage({
             const tbody = document.getElementById('links-table-body');
             const linkCount = document.getElementById('link-count');
             const adminNote = document.getElementById('admin-note');
+            const searchInput = document.getElementById('link-search');
+            const refreshBtn = document.getElementById('refresh-btn');
+            const dialog = document.getElementById('confirm-dialog');
+            const confirmText = document.getElementById('confirm-text');
+            const confirmDel = document.getElementById('confirm-del');
+            const cancelDel = document.getElementById('cancel-del');
             const adminSlug = window.location.pathname.split('/').pop();
             const authHeaders = { 'Content-Type': 'application/json', 'X-Admin-Slug': adminSlug };
+            const ICON_COPY_SVG = '${ICON_COPY}';
+            const ICON_CHECK_SVG = '${ICON_CHECK}';
 
-            function renderList(links) {
+            // 列表状态：全量数据 + 搜索过滤 + 排序（默认与原版一致：按访问次数降序）
+            let allLinks = [];
+            let filterText = '';
+            let sortKey = 'visits';
+            let sortDir = 'desc';
+            let pendingSlug = null;
+
+            function visibleLinks() {
+                let list = allLinks;
+                if (filterText) {
+                    list = list.filter(function (l) {
+                        return ('/' + String(l.slug || '')).toLowerCase().indexOf(filterText) > -1 ||
+                               String(l.original || '').toLowerCase().indexOf(filterText) > -1;
+                    });
+                }
+                return list.slice().sort(function (a, b) {
+                    const va = a[sortKey] || 0, vb = b[sortKey] || 0;
+                    return sortDir === 'asc' ? va - vb : vb - va;
+                });
+            }
+
+            function updateSortArrows() {
+                document.querySelectorAll('.arrow[data-arrow]').forEach(function (s) {
+                    s.textContent = s.dataset.arrow === sortKey ? (sortDir === 'asc' ? '↑' : '↓') : '';
+                });
+            }
+
+            function updateNote() {
+                if (!allLinks.length) { adminNote.textContent = ''; return; }
+                const shown = visibleLinks().length;
+                const sortLabel = (sortKey === 'visits' ? '访问次数' : '创建时间') + (sortDir === 'asc' ? '升序' : '降序');
+                adminNote.textContent = '共 ' + allLinks.length + ' 条记录' + (filterText ? '，筛选出 ' + shown + ' 条' : '') + '，按' + sortLabel + '排列。';
+            }
+
+            function renderSkeleton() {
                 tbody.textContent = '';
-                links.sort(function (a, b) { return b.visits - a.visits; });
-                if (!links.length) {
+                for (let i = 0; i < 5; i++) {
+                    const tr = document.createElement('tr');
+                    for (let c = 0; c < 5; c++) {
+                        const td = document.createElement('td');
+                        const bar = document.createElement('div');
+                        bar.className = 'skel';
+                        td.appendChild(bar);
+                        tr.appendChild(td);
+                    }
+                    tbody.appendChild(tr);
+                }
+            }
+
+            function renderList() {
+                tbody.textContent = '';
+                const links = visibleLinks();
+                if (!allLinks.length) {
                     const tr = document.createElement('tr');
                     const td = document.createElement('td');
                     td.colSpan = 5; td.className = 'empty';
                     td.textContent = '暂无短链接，回到前台「创建短链」生成一个吧。';
+                    tr.appendChild(td); tbody.appendChild(tr);
+                    linkCount.textContent = '0';
+                    return;
+                }
+                if (!links.length) {
+                    const tr = document.createElement('tr');
+                    const td = document.createElement('td');
+                    td.colSpan = 5; td.className = 'empty';
+                    td.textContent = '没有匹配「' + filterText + '」的短链接。';
                     tr.appendChild(td); tbody.appendChild(tr);
                     linkCount.textContent = '0';
                     return;
@@ -756,6 +996,16 @@ export const adminHtml = buildPage({
                     shortAnchor.textContent = shortUrl.replace(/^https?:\\/\\//, '');
                     shortCell.appendChild(shortAnchor);
 
+                    // 行内复制：不打开短链即可取用，避免跳转计数污染访问统计
+                    const rowCopy = document.createElement('button');
+                    rowCopy.type = 'button';
+                    rowCopy.className = 'row-copy';
+                    rowCopy.dataset.url = shortUrl;
+                    rowCopy.title = '复制短链';
+                    rowCopy.setAttribute('aria-label', '复制 ' + link.slug);
+                    rowCopy.innerHTML = ICON_COPY_SVG;
+                    shortCell.appendChild(rowCopy);
+
                     const originalCell = document.createElement('td');
                     originalCell.className = 'td-orig';
                     const originalAnchor = document.createElement('a');
@@ -768,6 +1018,7 @@ export const adminHtml = buildPage({
                     visitsCell.textContent = numberFormat(link.visits);
 
                     const createdCell = document.createElement('td');
+                    createdCell.className = 'td-nowrap';
                     createdCell.textContent = link.createdAt ? fmtDateShort(link.createdAt) : '—';
 
                     const actionCell = document.createElement('td');
@@ -831,7 +1082,11 @@ export const adminHtml = buildPage({
                 top.forEach(function (l) {
                     const row = document.createElement('div'); row.className = 'top-link';
                     const head = document.createElement('div'); head.className = 'top-link-head';
-                    const slug = document.createElement('span'); slug.className = 'top-link-slug'; slug.textContent = '/' + l.slug;
+                    const slug = document.createElement('a');
+                    slug.className = 'top-link-slug';
+                    slug.href = window.location.origin + '/' + l.slug;
+                    slug.target = '_blank'; slug.rel = 'noopener noreferrer';
+                    slug.textContent = '/' + l.slug;
                     const cnt = document.createElement('span'); cnt.className = 'top-link-count'; cnt.textContent = numberFormat(l.visits);
                     head.append(slug, cnt);
                     const prog = document.createElement('div'); prog.className = 'progress';
@@ -842,12 +1097,14 @@ export const adminHtml = buildPage({
             }
 
             async function getLinks() {
+                renderSkeleton();
                 adminNote.textContent = '加载中…';
                 try {
                     const res = await fetch('/api/links', { headers: authHeaders });
                     if (res.status === 401) {
                         adminNote.textContent = '';
                         const card = document.querySelector('#view-list .card');
+                        const toolbar = card.querySelector('.table-toolbar'); if (toolbar) toolbar.style.display = 'none';
                         const wrap = card.querySelector('.table-wrap'); if (wrap) wrap.style.display = 'none';
                         const msg = document.createElement('div');
                         msg.className = 'message error';
@@ -857,29 +1114,91 @@ export const adminHtml = buildPage({
                         throw new Error('auth');
                     }
                     if (!res.ok) throw new Error('获取链接列表失败。');
-                    const links = await res.json();
-                    adminNote.textContent = links.length ? '共 ' + links.length + ' 条记录，按访问次数降序排列。' : '';
-                    renderList(links);
-                    renderStats(links);
+                    allLinks = await res.json();
+                    renderList();
+                    renderStats(allLinks);
+                    updateNote();
+                    updateSortArrows();
                 } catch (err) { if (err.message !== 'auth') { adminNote.textContent = err.message; console.error(err); } }
             }
 
-            async function deleteLink(slug) {
-                if (!confirm('您确定要删除短链接 "' + slug + '" 吗？')) return;
+            // 删除确认：自定义弹窗替代原生 confirm()，风格与整体一致
+            function requestDelete(slug) {
+                pendingSlug = slug;
+                confirmText.textContent = '确定要删除短链接 ';
+                const b = document.createElement('b');
+                b.textContent = '/' + slug;
+                confirmText.appendChild(b);
+                confirmText.appendChild(document.createTextNode(' 吗？删除后该短链立即失效。'));
+                if (typeof dialog.showModal !== 'function') {
+                    if (window.confirm('您确定要删除短链接 "' + slug + '" 吗？')) doDelete(slug);
+                    return;
+                }
+                dialog.showModal();
+            }
+
+            async function doDelete(slug) {
                 try {
                     const res = await fetch('/api/delete', { method: 'POST', headers: authHeaders, body: JSON.stringify({ slug: slug }) });
                     if (!res.ok) throw new Error('删除失败。');
-                    const row = document.querySelector('tr[data-slug="' + slug + '"]');
-                    if (row) row.remove();
-                    const count = parseInt(linkCount.textContent, 10) || 0;
-                    linkCount.textContent = String(Math.max(0, count - 1));
+                    // 从内存数据移除后整表重渲染，列表 / 徽标 / 统计视图保持同步
+                    allLinks = allLinks.filter(function (l) { return l.slug !== slug; });
+                    renderList();
+                    renderStats(allLinks);
+                    updateNote();
                     showToast('已删除 ' + slug);
                 } catch (err) { showToast(err.message); }
             }
 
             tbody.addEventListener('click', function (e) {
+                const copyBtnEl = e.target.closest('.row-copy');
+                if (copyBtnEl) {
+                    const url = copyBtnEl.dataset.url;
+                    navigator.clipboard.writeText(url).then(function () {
+                        copyBtnEl.classList.add('copied');
+                        copyBtnEl.innerHTML = ICON_CHECK_SVG;
+                        setTimeout(function () { copyBtnEl.classList.remove('copied'); copyBtnEl.innerHTML = ICON_COPY_SVG; }, 1500);
+                    }).catch(function () { showToast('复制失败，请手动复制'); });
+                    return;
+                }
                 const btn = e.target.closest('.delete-btn');
-                if (btn) deleteLink(btn.dataset.slug);
+                if (btn) requestDelete(btn.dataset.slug);
+            });
+
+            confirmDel.addEventListener('click', function () { const s = pendingSlug; pendingSlug = null; dialog.close(); if (s) doDelete(s); });
+            cancelDel.addEventListener('click', function () { pendingSlug = null; dialog.close(); });
+            dialog.addEventListener('click', function (e) { if (e.target === dialog) { pendingSlug = null; dialog.close(); } });
+            dialog.addEventListener('close', function () { pendingSlug = null; });
+
+            // 搜索：按短链 / 原始链接实时过滤（纯客户端）
+            searchInput.addEventListener('input', function () {
+                filterText = this.value.trim().toLowerCase();
+                renderList();
+                updateNote();
+            });
+
+            // 排序：点击「访问次数 / 创建时间」表头切换升/降序
+            document.querySelectorAll('th.th-sort').forEach(function (th) {
+                th.addEventListener('click', function () {
+                    const key = th.dataset.key;
+                    if (sortKey === key) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+                    else { sortKey = key; sortDir = 'desc'; }
+                    updateSortArrows();
+                    renderList();
+                    updateNote();
+                });
+            });
+
+            // 刷新：重新拉取列表（加载期间按钮转圈）
+            refreshBtn.addEventListener('click', async function () {
+                refreshBtn.disabled = true;
+                refreshBtn.classList.add('spinning');
+                const label = refreshBtn.querySelector('span');
+                if (label) label.textContent = '刷新中…';
+                await getLinks();
+                refreshBtn.disabled = false;
+                refreshBtn.classList.remove('spinning');
+                if (label) label.textContent = '刷新';
             });
 
             // 侧边栏切换「短链列表 / 访问统计」
