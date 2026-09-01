@@ -3,7 +3,7 @@
 // 页面 HTML 模板见 functions/pages.js，工具函数见 functions/utils.js
 
 import { loginHtml, indexHtml, adminHtml } from '../pages.js';
-import { getKV, isAllowedUrl, verifySession } from '../utils.js';
+import { getKV, isAllowedUrl, verifySessionWithRenewal } from '../utils.js';
 
 // 浏览器标签页图标（与 public/favicon.svg 一致）。
 // 固定返回内联 SVG：本函数会拦截 /favicon.svg 等路径（部署时静态资源优先级不保证），
@@ -39,8 +39,8 @@ export async function onRequest(context) {
     return new Response('Internal Server Error', { status: 500, headers: { 'Content-Type': 'text/plain' } });
   }
 
-  // --- 鉴权状态检查（服务端会话）---
-  const isAuthorized = await verifySession(request, env, DB);
+  // --- 鉴权状态检查（服务端会话，含滑动续期）---
+  const isAuthorized = await verifySessionWithRenewal(request, env, DB);
 
   // --- 注入变量准备 ---
   // 核心逻辑：如果没设置 adminPath，status 传空字符串，前端 JS 捕获后会弹窗

@@ -1,6 +1,6 @@
 // functions/api/logout/index.js
 
-import { getCookie, getKV } from '../../utils.js';
+import { getCookie, getKV, buildAuthCookie } from '../../utils.js';
 
 export async function onRequest({ request, env = {} }) {
   if (request.method !== 'POST') {
@@ -19,9 +19,8 @@ export async function onRequest({ request, env = {} }) {
     }
   }
 
-  const url = new URL(request.url);
-  const secureFlag = url.protocol === 'https:' ? '; Secure' : '';
-  const cookie = `auth_session=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secureFlag}`;
+  // Max-Age=0 立即过期；Secure 写死与登录 Cookie 保持一致
+  const cookie = buildAuthCookie('', 0);
 
   return new Response(JSON.stringify({ success: true }), {
     headers: {

@@ -1,4 +1,4 @@
-import { getKV } from '../../utils.js';
+import { getKV, SESSION_TTL_MS, buildAuthCookie } from '../../utils.js';
 
 // 会话安全设计：
 // - Cookie 只存随机 token，服务端在 KV 中维护 sess:<token>（含过期时间）
@@ -6,7 +6,6 @@ import { getKV } from '../../utils.js';
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 10 * 60 * 1000;
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function randomToken() {
   const bytes = new Uint8Array(32);
@@ -81,10 +80,7 @@ export async function onRequest({ request, env = {} }) {
     const session = { createdAt: Date.now(), exp: Date.now() + SESSION_TTL_MS };
     await DB.put(`sess:${token}`, JSON.stringify(session));
 
-    const url = new URL(request.url);
-    const isSecure = url.protocol === 'https:';
-    const secureFlag = isSecure ? '; Secure' : '';
-    const cookie = `auth_session=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}${secureFlag}`;
+    const cookie = buildAuthCookie(token);
 
     return new Response(JSON.stringify({ success: true }), {
       headers: {

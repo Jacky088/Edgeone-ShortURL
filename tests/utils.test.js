@@ -10,7 +10,10 @@ import {
   isAllowedUrl,
   isValidSlug,
   isReservedSlug,
-  verifySession
+  verifySession,
+  verifySessionWithRenewal,
+  buildAuthCookie,
+  SESSION_TTL_MS
 } from '../functions/utils.js';
 
 test('sha256 输出已知向量', async () => {
@@ -93,4 +96,32 @@ test('verifySession：过期、不存在、格式非法、缺 Cookie 均拒绝',
   assert.equal(await verifySession(mockRequest('auth_session=short'), env, kv), false); // 格式非法
   assert.equal(await verifySession(mockRequest(null), env, kv), false); // 无 Cookie
   assert.equal(await verifySession(mockRequest(`auth_session=${token}`), env, null), false); // 无 KV
+});
+
+test('buildAuthCookie：默认会话级（无 Max-Age），登出清除带 Max-Age=0', () => {
+  const session = buildAuthCookie('tok123');
+  assert.equal(session, 'auth_session=tok123; HttpOnly; Path=/; SameSite=Lax; Secure');
+  assert.ok(!session.includes('Max-Age'), '会话级 Cookie 不应包含 Max-Age/Expires');
+
+  const clear = buildAuthCookie('', 0);
+  assert.match(clear, /auth_session=; HttpOnly; Path=\/; SameSite=Lax; Max-Age=0; Secure/);
+});
+
+test('verifySessionWithRenewal：有效会话通过并滑动续期，过期会话拒绝并清理', async () => {
+  const env = { PASSWORD: 'secret' };
+
+  // 剩余不足一半时续期到完整 SESSION_TTL_MS
+  const token = 'd'.repeat(64);
+  const store = { [`sess:${token}`]: JSON.stringify({ exp: Date.now() + SESSION_TTL_MS / 4 }) };
+  const kv = mockKV(store);
+  assert.equal(await verifySessionWithRenewal(mockRequest(`auth_session=${token}`), env, kv), true);
+  const renewed = JSON.parse(store[`sess:${token}`]);
+  assert.ok(renewed.exp > Date.now() + SESSION_TTL_MS / 2, '会话应续期到接近完整有效期');
+
+  // 过期会话拒绝且惰性删除
+  const token2 = 'e'.repeat(64);
+  const store2 = { [`sess:${token2}`]: JSON.stringify({ exp: Date.now() - 1000 }) };
+  const kv2 = mockKV(store2);
+  assert.equal(await verifySessionWithRenewal(mockRequest(`auth_session=${token2}`), env, kv2), false);
+  assert.equal(store2[`sess:${token2}`], undefined, '过期会话应被删除');
 });

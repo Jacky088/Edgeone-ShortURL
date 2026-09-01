@@ -98,7 +98,7 @@ curl https://your.domain/api/links -H "X-Admin-Slug: admin123"
 ## 🔒 安全说明
 
 - 口令使用**常量时间比较**；登录失败按 IP 限流（5 次失败锁定 10 分钟）。
-- 会话采用随机 token，`HttpOnly` Cookie，服务端存储且 7 天自动过期。
+- 会话采用随机 token，`HttpOnly` + `Secure` 会话级 Cookie（**关闭浏览器标签后自动失效**），服务端存储并按活跃度滑动续期兜底。
 - `api`、`favicon.ico`、`hash:` / `sess:` / `rl:` 前缀及管理员路径均为保留字，不可注册为短链。
 - 短链跳转仅允许 `http/https` 协议，防御 `javascript:` 等协议注入。
 - 自定义短链仅允许字母、数字、短横线、下划线，防御路径遍历。
