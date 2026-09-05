@@ -4,7 +4,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
-const APP_VERSION = '3.2.0';
+const APP_VERSION = '3.3.0';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -42,6 +42,7 @@ const ICON_FEEDBACK = icon('<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0
 const ICON_DOWNLOAD = icon('<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/>');
 const ICON_SLIDERS = icon('<path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M1 14h6"/><path d="M9 8h6"/><path d="M17 16h6"/>');
 const ICON_QR = icon('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z"/><path d="M21 14v4"/><path d="M14 21h3"/><path d="M21 21h.01"/>');
+const ICON_PLUS = icon('<path d="M12 5v14"/><path d="M5 12h14"/>');
 
 // 品牌二维码中心 Logo（data URL，供 canvas 绘制，UTF-8 编码安全注入页面脚本）
 const QR_LOGO_DATA_URL = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2c6bff"/><stop offset="1" stop-color="#1246b8"/></linearGradient></defs><rect width="32" height="32" rx="7" fill="url(#g)"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" transform="translate(4.6 4.6) scale(0.95)"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></g></svg>');
@@ -143,7 +144,7 @@ function baseCss() {
 function appShellCss() {
   return `
       /* ---------- 顶栏 ---------- */
-      .app { position: relative; z-index: 1; width: min(1160px, 100%); margin: 0 auto; padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(28px + env(safe-area-inset-bottom, 0px)); }
+      .app { position: relative; z-index: 1; width: min(1160px, 100%); margin: 0 auto; padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(28px + env(safe-area-inset-bottom, 0px)); min-height: 100vh; display: flex; flex-direction: column; }
       /* 大屏宽版：桌面大显示器下显示更多内容（列表 / 统计 / 设置同步加宽） */
       @media (min-width: 1440px) {
         .app { width: min(1560px, 100% - 48px); }
@@ -183,8 +184,6 @@ function appShellCss() {
       .nav-sep { height: 1px; margin: 6px 10px; background: var(--border); flex: none; }
 
       .content { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
-      /* 前台专注创建：内容窄栏居中，不随大屏铺满 */
-      .front-content { width: 100%; max-width: 820px; margin: 0 auto; }
       /* 视图容器：内部卡片与图表区保持统一间距，避免贴边重叠 */
       .view { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
       .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: clamp(18px, 3vw, 26px); box-shadow: var(--shadow); }
@@ -212,11 +211,11 @@ function appShellCss() {
       #url-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
       /* 锁定浏览器自动填充底色，避免输入框被渲染成黄/粉色 */
       input:-webkit-autofill, #url-input:-webkit-autofill, #slug-input:-webkit-autofill, .auth-form input:-webkit-autofill { box-shadow: 0 0 0 1000px var(--input-bg) inset; -webkit-text-fill-color: var(--text); caret-color: var(--text); }
-      .slug-row { margin-top: 6px; }
+      .slug-row { margin-top: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .slug-label { font-size: .85rem; font-weight: 600; color: var(--muted); flex: none; }
       .slug-toggle { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 8px 2px; color: var(--primary); font-weight: 700; font-size: .88rem; font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
       .slug-toggle svg { width: 15px; height: 15px; }
-      #slug-input { display: none; margin-top: 10px; width: 100%; height: 44px; padding: 0 14px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .92rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
-      #slug-input.show { display: block; animation: fade-slide .22s ease; }
+      #slug-input { flex: 1; min-width: 180px; height: 44px; padding: 0 14px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .92rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
       #slug-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
       @keyframes fade-slide { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
       .hint-line { margin: 12px 0 0; font-size: .8rem; color: var(--muted); display: flex; gap: 6px; align-items: flex-start; line-height: 1.55; }
@@ -317,7 +316,7 @@ function appShellCss() {
       .fi-blue { background: var(--primary); } .fi-teal { background: var(--teal); } .fi-violet { background: #7c5cf6; } .fi-sky { background: #38bdf8; }
 
       /* ---------- 页脚 / Toast ---------- */
-      .app-footer { margin-top: 6px; text-align: center; font-size: .78rem; color: var(--faint); }
+      .app-footer { margin-top: auto; padding-top: 12px; text-align: center; font-size: .78rem; color: var(--faint); }
       .app-footer a { color: var(--muted); text-decoration: none; }
       .toast { position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 12px) scale(.98); opacity: 0; pointer-events: none; z-index: 50; background: var(--text); color: var(--surface); padding: 11px 18px; border-radius: 999px; font-size: .85rem; font-weight: 600; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .35); transition: opacity .2s, transform .2s; max-width: calc(100vw - 40px); text-align: center; }
       .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
@@ -421,17 +420,33 @@ function appShellCss() {
 
       /* 自定义短链实时反馈 */
       #slug-input.invalid { border-color: var(--error); box-shadow: 0 0 0 4px var(--error-bg); }
-      .slug-count { margin-left: 8px; font-size: .76rem; color: var(--faint); font-variant-numeric: tabular-nums; }
+      .slug-count { font-size: .76rem; color: var(--faint); font-variant-numeric: tabular-nums; }
 
       /* ---------- 创建表单扩展（更多选项 / 批量创建） ---------- */
-      .form-toggles { display: flex; gap: 4px 16px; flex-wrap: wrap; align-items: center; }
+      .form-toggles { display: flex; gap: 4px 16px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
       .opts-panel { margin-top: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; animation: fade-slide .22s ease; }
       .opts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 16px; }
       .opts-grid label { display: flex; flex-direction: column; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--muted); }
       .opts-grid input, .opts-grid select { height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .9rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
       .opts-grid input:focus, .opts-grid select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
-      #batch-input { width: 100%; resize: vertical; min-height: 88px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .88rem; font-family: var(--mono); line-height: 1.6; transition: border-color .18s, box-shadow .18s; }
-      #batch-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
+      #batch-import { width: 100%; resize: vertical; min-height: 72px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .88rem; font-family: var(--mono); line-height: 1.6; transition: border-color .18s, box-shadow .18s; }
+      #batch-import:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
+      .batch-import-wrap { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+      /* 批量逐行编辑器 */
+      .batch-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+      .batch-row-edit { border: 1px solid var(--border); border-radius: 10px; background: var(--input-bg); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+      .batch-row-edit.invalid { border-color: var(--error); box-shadow: 0 0 0 3px var(--error-bg); }
+      .bre-head { display: flex; align-items: center; justify-content: space-between; }
+      .bre-idx { font-size: .74rem; font-weight: 700; color: var(--faint); font-variant-numeric: tabular-nums; }
+      .bre-del { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: color .16s, border-color .16s; }
+      .bre-del:hover { color: var(--error); border-color: var(--error); }
+      .bre-del svg { width: 12px; height: 12px; }
+      .batch-row-edit input { width: 100%; min-width: 0; height: 38px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: .88rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; }
+      .batch-row-edit input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
+      .bre-line2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      @media (max-width: 620px) { .bre-line2 { grid-template-columns: 1fr; } }
+      .batch-ops { display: flex; gap: 8px; flex-wrap: wrap; }
+      .batch-op { height: 36px; padding: 0 12px; font-size: .8rem; }
       .batch-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
       .batch-row:last-child { border-bottom: 0; }
       .batch-row .copy-btn { height: 34px; padding: 0 12px; }
@@ -888,7 +903,7 @@ export const indexHtml = buildPage({
             <button type="button" class="text-btn" id="logout-btn">${ICON_POWER}<span>注销</span></button>
         </div>
     </header>
-    <main class="content front-content">
+    <main class="content">
             <section class="card">
                 <h2 class="card-title">${ICON_CHAIN}<span>输入长链接</span></h2>
                 <form id="link-form" novalidate>
@@ -896,14 +911,14 @@ export const indexHtml = buildPage({
                         <input type="url" id="url-input" placeholder="https://www.example.com/very-long-url" autocomplete="url" enterkeyhint="go" required>
                         <button type="submit" class="btn-primary" id="submit-btn">${ICON_CHAIN}<span>生成短链</span></button>
                     </div>
+                    <div class="form-toggles">
+                        <button type="button" class="slug-toggle" id="opts-toggle" aria-expanded="false" aria-controls="opts-panel">${ICON_SLIDERS}<span>更多选项</span></button>
+                        <button type="button" class="slug-toggle" id="batch-toggle" aria-expanded="false" aria-controls="batch-panel">${ICON_LIST}<span>批量创建</span></button>
+                    </div>
                     <div class="slug-row">
-                        <div class="form-toggles">
-                            <button type="button" class="slug-toggle" id="slug-toggle" aria-expanded="false">${ICON_PENCIL}<span>自定义短链</span></button>
-                            <button type="button" class="slug-toggle" id="opts-toggle" aria-expanded="false" aria-controls="opts-panel">${ICON_SLIDERS}<span>更多选项</span></button>
-                            <button type="button" class="slug-toggle" id="batch-toggle" aria-expanded="false" aria-controls="batch-panel">${ICON_LIST}<span>批量创建</span></button>
-                        </div>
+                        <label class="slug-label" for="slug-input">自定义短链</label>
+                        <input type="text" id="slug-input" maxlength="64" placeholder="留空则随机生成" autocomplete="off" spellcheck="false">
                         <span class="slug-count" id="slug-count"></span>
-                        <input type="text" id="slug-input" maxlength="64" placeholder="例如: my-link" autocomplete="off" spellcheck="false" aria-hidden="true">
                     </div>
                     <div class="opts-panel" id="opts-panel" hidden>
                         <div class="opts-grid">
@@ -928,8 +943,17 @@ export const indexHtml = buildPage({
                         </div>
                     </div>
                     <div class="opts-panel" id="batch-panel" hidden>
-                        <textarea id="batch-input" rows="4" placeholder="每行粘贴一个完整链接（http/https 开头），最多 20 条"></textarea>
-                        <p class="hint-line">批量模式：每行一个链接，上方「更多选项」将应用到全部；不支持自定义短链。</p>
+                        <div class="batch-rows" id="batch-rows"></div>
+                        <div class="batch-ops">
+                            <button type="button" class="btn-ghost batch-op" id="batch-add">${ICON_PLUS}<span>添加一行</span></button>
+                            <button type="button" class="btn-ghost batch-op" id="batch-import-toggle" aria-expanded="false" aria-controls="batch-import">${ICON_PENCIL}<span>从文本导入</span></button>
+                            <button type="button" class="btn-ghost batch-op" id="batch-clear">${ICON_TRASH}<span>清空</span></button>
+                        </div>
+                        <div class="batch-import-wrap" id="batch-import-wrap" hidden>
+                            <textarea id="batch-import" rows="3" placeholder="每行一条，格式：链接 [自定义短链]&#10;例如：https://example.com/a my-link"></textarea>
+                            <button type="button" class="btn-ghost batch-op" id="batch-import-go">确认导入</button>
+                        </div>
+                        <p class="hint-line">每行生成一条短链，「自定义短链 / 备注」可逐行填写（留空则随机生成）；上方「更多选项」将应用到全部，一次最多 20 条。</p>
                     </div>
                     <p class="hint-line">仅支持 http/https 开头的完整链接；自定义短链可使用字母、数字、短横线、下划线，最长 64 位。</p>
                     <div class="message error" id="error-message"></div>
@@ -953,8 +977,8 @@ export const indexHtml = buildPage({
                 <p class="hint-line">短链已创建成功，点击链接可跳转原文并累计访问次数；也可扫码在手机上打开。</p>
             </section>
 
-            ${appFooterHtml()}
         </main>
+        ${appFooterHtml()}
 </div>
 `,
   script: QR_LIB_SRC + '\n' + themeJs + toastJs + loginToastJs('登录成功，现在可以创建短链接了。') + adminLinkJs + logoutJs + `
@@ -963,7 +987,6 @@ export const indexHtml = buildPage({
             const form = document.getElementById('link-form');
             const urlInput = document.getElementById('url-input');
             const slugInput = document.getElementById('slug-input');
-            const slugToggle = document.getElementById('slug-toggle');
             const slugCount = document.getElementById('slug-count');
             const submitBtn = document.getElementById('submit-btn');
             const errorMessage = document.getElementById('error-message');
@@ -977,14 +1000,17 @@ export const indexHtml = buildPage({
             const optsPanel = document.getElementById('opts-panel');
             const batchToggle = document.getElementById('batch-toggle');
             const batchPanel = document.getElementById('batch-panel');
-            const batchInput = document.getElementById('batch-input');
+            const batchRowsEl = document.getElementById('batch-rows');
+            const batchImportWrap = document.getElementById('batch-import-wrap');
+            const batchImportEl = document.getElementById('batch-import');
+            const ICON_COPY_SVG = '${ICON_COPY}';
+            const ICON_X_SVG = '${ICON_X}';
             const optTtl = document.getElementById('opt-ttl');
             const optMax = document.getElementById('opt-max');
             const optPwd = document.getElementById('opt-pwd');
             const optNote = document.getElementById('opt-note');
             const resultList = document.getElementById('result-list');
             const resultSingle = document.getElementById('result-single');
-            const ICON_COPY_SVG = '${ICON_COPY}';
             // 二维码样式来自运行时设置（服务端注入）；占位符由 functions/[slug]/index.js 替换
             const QR_CFG = __QR_SETTINGS__;
             const QR_LOGO_SRC = '${QR_LOGO_DATA_URL}';
@@ -1000,32 +1026,24 @@ export const indexHtml = buildPage({
                 if (!savedUrl) return;
                 try { sessionStorage.removeItem('pending_create_url'); sessionStorage.removeItem('pending_create_slug'); } catch (err) {}
                 if (savedUrl.includes('\\n')) {
-                    // 批量草稿：展开批量面板并回填
+                    // 批量草稿：展开批量面板，按行回填（每行「链接 [短链]」）
                     batchPanel.hidden = false;
                     batchToggle.setAttribute('aria-expanded', 'true');
                     urlRow.hidden = true;
-                    batchInput.value = savedUrl;
+                    savedUrl.split('\\n').forEach(function (line) {
+                        const tokens = line.trim().split(/\\s+/).filter(Boolean);
+                        if (tokens.length) batchAddRow(tokens[0], tokens[1] || '');
+                    });
                 } else {
                     urlInput.value = savedUrl;
                     if (savedSlug) {
                         slugInput.value = savedSlug;
                         slugCount.textContent = savedSlug.length + '/64';
-                        slugInput.classList.add('show');
-                        slugToggle.setAttribute('aria-expanded', 'true');
-                        slugInput.setAttribute('aria-hidden', 'false');
                     }
                 }
                 showToastClosable('已恢复上次填写的内容，点击「生成短链」继续。', 3600);
                 urlInput.focus();
             })();
-
-            slugToggle.addEventListener('click', () => {
-                const opening = !slugInput.classList.contains('show');
-                slugInput.classList.toggle('show', opening);
-                slugToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
-                slugInput.setAttribute('aria-hidden', opening ? 'false' : 'true');
-                if (opening) slugInput.focus();
-            });
 
             // 「更多选项 / 批量创建」折叠面板切换；批量模式隐藏单链接输入行
             optsToggle.addEventListener('click', () => {
@@ -1039,12 +1057,98 @@ export const indexHtml = buildPage({
                 batchToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
                 urlRow.hidden = opening;
                 if (opening) {
-                    slugInput.classList.remove('show');
-                    slugCount.textContent = '';
-                    batchInput.focus();
+                    if (!batchRowsEl.children.length) { batchAddRow(); batchAddRow(); batchAddRow(); }
+                    const first = batchRowsEl.querySelector('.br-url');
+                    if (first) first.focus();
                 } else {
                     urlInput.focus();
                 }
+            });
+
+            // ---------- 批量逐行编辑器 ----------
+            function batchAddRow(url = '', slug = '', note = '') {
+                const row = document.createElement('div');
+                row.className = 'batch-row-edit';
+                const head = document.createElement('div');
+                head.className = 'bre-head';
+                const idx = document.createElement('span');
+                idx.className = 'bre-idx';
+                const del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'bre-del';
+                del.innerHTML = ICON_X_SVG;
+                del.title = '删除此行';
+                del.setAttribute('aria-label', '删除此行');
+                del.addEventListener('click', function () { row.remove(); renumberBatchRows(); });
+                head.append(idx, del);
+                const urlIn = document.createElement('input');
+                urlIn.type = 'url';
+                urlIn.className = 'br-url';
+                urlIn.placeholder = 'https:// 目标链接（必填）';
+                urlIn.value = url;
+                urlIn.autocomplete = 'off';
+                urlIn.spellcheck = false;
+                const line2 = document.createElement('div');
+                line2.className = 'bre-line2';
+                const slugIn = document.createElement('input');
+                slugIn.type = 'text';
+                slugIn.className = 'br-slug';
+                slugIn.maxLength = 64;
+                slugIn.placeholder = '自定义短链（可选，留空随机）';
+                slugIn.value = slug;
+                slugIn.autocomplete = 'off';
+                slugIn.spellcheck = false;
+                const noteIn = document.createElement('input');
+                noteIn.type = 'text';
+                noteIn.className = 'br-note';
+                noteIn.maxLength = 100;
+                noteIn.placeholder = '备注（可选）';
+                noteIn.value = note;
+                noteIn.autocomplete = 'off';
+                line2.append(slugIn, noteIn);
+                row.append(head, urlIn, line2);
+                batchRowsEl.appendChild(row);
+                renumberBatchRows();
+                return row;
+            }
+            function renumberBatchRows() {
+                [...batchRowsEl.querySelectorAll('.batch-row-edit')].forEach(function (row, i) {
+                    row.querySelector('.bre-idx').textContent = String(i + 1);
+                });
+            }
+            function clearBatchRows() {
+                batchRowsEl.textContent = '';
+                batchAddRow(); batchAddRow(); batchAddRow();
+            }
+            document.getElementById('batch-add').addEventListener('click', function () {
+                batchAddRow();
+                const rows = batchRowsEl.querySelectorAll('.batch-row-edit');
+                rows[rows.length - 1].querySelector('.br-url').focus();
+            });
+            document.getElementById('batch-clear').addEventListener('click', function () {
+                clearBatchRows();
+                showToast('已清空，可重新填写');
+            });
+            document.getElementById('batch-import-toggle').addEventListener('click', function () {
+                const opening = batchImportWrap.hidden;
+                batchImportWrap.hidden = !opening;
+                this.setAttribute('aria-expanded', opening ? 'true' : 'false');
+                if (opening) batchImportEl.focus();
+            });
+            // 从文本导入：每行「链接 [自定义短链] [备注…]」，空格分隔
+            document.getElementById('batch-import-go').addEventListener('click', function () {
+                const lines = batchImportEl.value.split('\\n').map(s => s.trim()).filter(Boolean);
+                let imported = 0;
+                lines.forEach(function (line) {
+                    const tokens = line.split(/\\s+/).filter(Boolean);
+                    if (!tokens.length) return;
+                    batchAddRow(tokens[0], tokens[1] || '', tokens.slice(2).join(' '));
+                    imported++;
+                });
+                batchImportEl.value = '';
+                batchImportWrap.hidden = true;
+                document.getElementById('batch-import-toggle').setAttribute('aria-expanded', 'false');
+                showToast(imported ? '已导入 ' + imported + ' 行' : '没有可导入的内容');
             });
 
             // 收集「更多选项」：有效期 / 次数上限 / 访问密码 / 备注
@@ -1143,7 +1247,7 @@ export const indexHtml = buildPage({
                 resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
 
-            // 批量创建结果：每行一条短链 + 复制按钮；失败行展示原因
+            // 批量创建结果：成功行（短链 + 复制）与失败行（原因）分区展示，支持一键全部复制
             function showBatchSuccess(results, errors) {
                 resultSingle.hidden = true;
                 resultList.hidden = false;
@@ -1157,6 +1261,7 @@ export const indexHtml = buildPage({
                     a.href = shortUrl;
                     a.target = '_blank'; a.rel = 'noopener noreferrer';
                     a.textContent = shortUrl.replace(/^https?:\\/\\//, '');
+                    a.title = r.original || '';
                     const btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'copy-btn';
@@ -1175,6 +1280,24 @@ export const indexHtml = buildPage({
                     row.appendChild(msg);
                     resultList.appendChild(row);
                 });
+                if (results.length > 1) {
+                    const allRow = document.createElement('div');
+                    allRow.className = 'batch-row';
+                    const allBtn = document.createElement('button');
+                    allBtn.type = 'button';
+                    allBtn.className = 'copy-btn';
+                    allBtn.innerHTML = ICON_COPY_SVG + '<span>全部复制</span>';
+                    allBtn.addEventListener('click', async function () {
+                        try {
+                            await navigator.clipboard.writeText(results.map(function (r) { return window.location.origin + '/' + r.slug; }).join('\\n'));
+                            allBtn.classList.add('copied');
+                            allBtn.querySelector('span').textContent = '已全部复制';
+                            setTimeout(function () { allBtn.classList.remove('copied'); allBtn.querySelector('span').textContent = '全部复制'; }, 1800);
+                        } catch (e) { showToast('复制失败，请手动复制'); }
+                    });
+                    allRow.appendChild(allBtn);
+                    resultList.appendChild(allRow);
+                }
                 resultCard.hidden = false;
                 resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
@@ -1193,26 +1316,51 @@ export const indexHtml = buildPage({
                 const opts = collectOptions();
                 if (opts.error) { showError(opts.error); return; }
 
-                // 批量模式：逐行校验后一次性提交（最多 20 条）
+                // 批量模式：逐行收集 → 校验 → 一次性提交（最多 20 条）
                 if (!batchPanel.hidden) {
-                    const urls = batchInput.value.split('\\n').map(s => s.trim()).filter(Boolean);
-                    if (!urls.length) { showError('请输入至少一个长链接'); batchInput.focus(); return; }
-                    if (urls.length > 20) { showError('批量创建一次最多 20 条'); return; }
-                    for (let i = 0; i < urls.length; i++) {
-                        const err = validateUrl(urls[i]);
-                        if (err) { showError('第 ' + (i + 1) + ' 行：' + err); return; }
+                    const rowEls = [...batchRowsEl.querySelectorAll('.batch-row-edit')];
+                    rowEls.forEach(function (r) { r.classList.remove('invalid'); });
+                    const items = [];
+                    for (let i = 0; i < rowEls.length; i++) {
+                        const row = rowEls[i];
+                        const url = row.querySelector('.br-url').value.trim();
+                        const slug = row.querySelector('.br-slug').value.trim();
+                        const note = row.querySelector('.br-note').value.trim();
+                        if (!url && !slug && !note) continue; // 全空行跳过
+                        if (!url) { showError('第 ' + (i + 1) + ' 行缺少目标链接'); row.classList.add('invalid'); row.querySelector('.br-url').focus(); return; }
+                        const slugErr = validateSlug(slug);
+                        if (slugErr) { showError('第 ' + (i + 1) + ' 行：' + slugErr); row.classList.add('invalid'); row.querySelector('.br-slug').focus(); return; }
+                        const item = { url: url };
+                        if (slug) item.slug = slug;
+                        if (note) item.note = note;
+                        items.push(item);
                     }
+                    if (!items.length) { showError('请先填写至少一个目标链接'); return; }
+                    if (items.length > 20) { showError('批量创建一次最多 20 条'); return; }
                     setLoading(true);
                     errorMessage.style.display = 'none';
                     try {
-                        const res = await fetch('/api/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ urls: urls }, opts.payload)) });
-                        if (res.status === 401) { savePendingDraft(urls.join('\\n'), ''); window.location.reload(); return; }
+                        const res = await fetch('/api/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ items: items }, opts.payload)) });
+                        if (res.status === 401) {
+                            // 会话过期：整表保存为多行草稿（每行「链接 [短链]」），登录后自动恢复
+                            savePendingDraft(rowEls.map(function (row) {
+                                const u = row.querySelector('.br-url').value.trim();
+                                const s = row.querySelector('.br-slug').value.trim();
+                                return s ? u + ' ' + s : u;
+                            }).filter(Boolean).join('\\n'), '');
+                            window.location.reload();
+                            return;
+                        }
                         if (!res.ok) {
                             const data = await res.json().catch(() => ({}));
                             throw new Error(data.error || '创建链接失败。');
                         }
                         const data = await res.json();
-                        batchInput.value = '';
+                        // 失败行就地标红，结果卡内给出原因
+                        (data.errors || []).forEach(function (err) {
+                            const row = rowEls[err.index];
+                            if (row) row.classList.add('invalid');
+                        });
                         showBatchSuccess(data.results || [], data.errors || []);
                     } catch (err) { showError(err.message); } finally { setLoading(false); }
                     return;
@@ -1247,8 +1395,6 @@ export const indexHtml = buildPage({
                     urlInput.value = '';
                     slugInput.value = '';
                     slugCount.textContent = '';
-                    slugInput.classList.remove('show');
-                    slugToggle.setAttribute('aria-expanded', 'false');
                     showSuccess(newLink);
                 } catch (err) { showError(err.message); } finally { setLoading(false); }
             }
@@ -1449,8 +1595,8 @@ export const adminHtml = buildPage({
                     </div>
                 </div>
             </section>
-            ${appFooterHtml()}
         </main>
+        ${appFooterHtml()}
     </div>
 </div>
 <dialog id="confirm-dialog">

@@ -49,17 +49,29 @@ export async function onRequest({ request, env = {} }) {
   const settings = await getSettings(DB);
   const adminPath = env.ADMIN_PATH;
 
-  // 统一待创建列表：单条 url 或批量 urls（共享同一组选项）
-  const isBatch = Array.isArray(body.urls);
-  const urlList = isBatch
-    ? body.urls.map(u => String(u || '').trim()).filter(Boolean)
-    : [String(body.url || '').trim()];
-  if (isBatch && urlList.length > MAX_BATCH) {
-    return jsonResponse({ error: `批量创建一次最多 ${MAX_BATCH} 条` }, 400);
+  // 统一待创建列表：三种形态（按优先级）
+  //   items: [{ url, slug?, note? }]  批量逐条（支持逐条自定义短链与备注）
+  //   urls:  [url, ...]               批量（共享选项，不支持自定义短链）
+  //   url:   单条（支持自定义短链与备注）
+  const isBatch = Array.isArray(body.items) || Array.isArray(body.urls);
+  let entries = [];
+  if (Array.isArray(body.items)) {
+    if (body.items.length > MAX_BATCH) return jsonResponse({ error: `批量创建一次最多 ${MAX_BATCH} 条` }, 400);
+    entries = body.items.map(it => ({
+      url: String((it && it.url) || '').trim(),
+      slug: it && typeof it.slug === 'string' ? it.slug.trim() : '',
+      note: normalizeNote(it && it.note)
+    }));
+  } else if (Array.isArray(body.urls)) {
+    if (body.urls.length > MAX_BATCH) return jsonResponse({ error: `批量创建一次最多 ${MAX_BATCH} 条` }, 400);
+    entries = body.urls.map(u => ({ url: String(u || '').trim(), slug: '', note: normalizeNote(body.note) }));
+  } else {
+    entries = [{ url: String(body.url || '').trim(), slug: typeof body.slug === 'string' ? body.slug.trim() : '', note: normalizeNote(body.note) }];
   }
-  if (!urlList.length) {
+  if (!entries.length || entries.some(e => !e.url)) {
     return jsonResponse({ error: 'URL is required' }, 400);
   }
+  const sharedNote = normalizeNote(body.note);
 
   // 选项校验（对单条与批量统一生效）
   const expiresAt = body.ttlDays !== undefined && body.ttlDays !== null && body.ttlDays !== 0
@@ -84,16 +96,6 @@ export async function onRequest({ request, env = {} }) {
   }
   const note = normalizeNote(body.note);
 
-  // 域名白名单（运行时设置）：防止公开实例被用作任意跳板
-  for (const url of urlList) {
-    if (!isAllowedUrl(url)) {
-      return jsonResponse({ error: 'Invalid URL format: ' + url }, 400);
-    }
-    if (!isHostAllowed(url, settings.domainWhitelist)) {
-      return jsonResponse({ error: `目标域名不在白名单内：${new URL(url).hostname}` }, 403);
-    }
-  }
-
   // 每 IP 每日创建上限（0 = 不限）；单 key 复用，按日期重置
   const ip = getClientIp(request);
   let createdToday = 0;
@@ -104,11 +106,11 @@ export async function onRequest({ request, env = {} }) {
     try { if (raw) counter = JSON.parse(raw); } catch (e) {}
     const today = new Date().toISOString().slice(0, 10);
     if (counter.date !== today) counter = { date: today, count: 0 };
-    if (counter.count + urlList.length > settings.dailyCreateLimit) {
+    if (counter.count + entries.length > settings.dailyCreateLimit) {
       return jsonResponse({ error: `已达每日创建上限（${settings.dailyCreateLimit} 条/天）` }, 429);
     }
-    createdToday = urlList.length;
-    counter.count += urlList.length;
+    createdToday = entries.length;
+    counter.count += entries.length;
     // 先落计数再创建，避免并发突破限额；创建失败造成的少量空耗可接受
     await DB.put(`dc:${ipHash}`, JSON.stringify(counter)).catch(() => {});
   }
@@ -116,11 +118,22 @@ export async function onRequest({ request, env = {} }) {
   const results = [];
   const errors = [];
 
-  for (const url of urlList) {
+  for (const [index, entry] of entries.entries()) {
+    const url = entry.url;
+
+    // 无效行按行报错（index 定位），有效行照常生成（部分成功语义）
+    if (!isAllowedUrl(url)) {
+      errors.push({ index, url, error: '链接格式不正确，请以 http/https 开头' });
+      continue;
+    }
+    if (!isHostAllowed(url, settings.domainWhitelist)) {
+      errors.push({ index, url, error: `目标域名不在白名单内：${new URL(url).hostname}` });
+      continue;
+    }
     const urlHash = await sha256(url);
 
-    // URL 去重（运行时设置开关）：相同长链接复用同一短链
-    if (settings.dedupHash && !isBatch) {
+    // URL 去重（运行时设置开关）：相同长链接复用同一短链（仅单条且未指定自定义短链时）
+    if (settings.dedupHash && !isBatch && !entry.slug) {
       const existingSlug = await DB.get(`hash:${urlHash}`).catch(() => null);
       if (existingSlug) {
         const existingLinkData = await DB.get(existingSlug).catch(() => null);
@@ -128,7 +141,7 @@ export async function onRequest({ request, env = {} }) {
           try {
             const parsed = JSON.parse(existingLinkData);
             if (parsed.original && !parsed.deletedAt) {
-              results.push({ slug: existingSlug, deduped: true, ...parsed });
+              results.push({ index, slug: existingSlug, deduped: true, ...parsed });
               continue;
             }
           } catch (e) {}
@@ -136,28 +149,23 @@ export async function onRequest({ request, env = {} }) {
       }
     }
 
-    let slug = typeof body.slug === 'string' ? body.slug.trim() : '';
-    if (slug && isBatch) {
-      // 批量模式不支持自定义 slug（一对多语义不明确）
-      return jsonResponse({ error: '批量创建不支持自定义短链' }, 400);
-    }
+    let slug = entry.slug;
 
     if (slug) {
       if (isReservedSlug(slug, adminPath, settings.extraReserved)) {
-        errors.push({ url, error: '该自定义短链不可用（保留字）' });
+        errors.push({ index, url, error: '该自定义短链不可用（保留字）' });
         continue;
       }
       if (!isValidSlug(slug)) {
-        errors.push({ url, error: '自定义短链仅可使用字母、数字、短横线、下划线，最长 64 位' });
+        errors.push({ index, url, error: '自定义短链仅可使用字母、数字、短横线、下划线，最长 64 位' });
         continue;
       }
       const existing = await DB.get(slug).catch(() => null);
       if (existing) {
-        errors.push({ url, error: '该自定义短链已被占用' });
+        errors.push({ index, url, error: '该自定义短链已被占用' });
         continue;
       }
     } else {
-      const length = Math.min(16, Math.max(4, Number(settings.slug && settings.slug.length) || 8));
       let found = false;
       for (let attempts = 0; attempts < 10 && !found; attempts++) {
         const candidate = generateSlug(settings);
@@ -169,7 +177,7 @@ export async function onRequest({ request, env = {} }) {
         }
       }
       if (!found) {
-        errors.push({ url, error: '生成短链失败，请重试' });
+        errors.push({ index, url, error: '生成短链失败，请重试' });
         continue;
       }
     }
@@ -178,13 +186,14 @@ export async function onRequest({ request, env = {} }) {
     if (expiresAt) linkData.expiresAt = expiresAt;
     if (maxVisits) linkData.maxVisits = maxVisits;
     if (pwdHash) linkData.pwdHash = pwdHash;
-    if (note) linkData.note = note;
+    const itemNote = entry.note || sharedNote;
+    if (itemNote) linkData.note = itemNote;
 
     const ops = [DB.put(slug, JSON.stringify(linkData))];
     if (settings.dedupHash) ops.push(DB.put(`hash:${urlHash}`, slug));
     await Promise.all(ops);
 
-    results.push({ slug, ...linkData });
+    results.push({ index, slug, ...linkData });
   }
 
   // 全部失败：回滚今日计数，避免失败请求占用额度
