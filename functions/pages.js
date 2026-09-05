@@ -4,7 +4,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
-const APP_VERSION = '3.0.1';
+const APP_VERSION = '3.0.2';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -191,7 +191,7 @@ function appShellCss() {
       .btn-primary:hover { filter: brightness(1.06); box-shadow: 0 12px 26px -10px rgba(26, 93, 224, .7), inset 0 1px 0 rgba(255, 255, 255, .18); }
       .btn-primary:active { transform: translateY(1px) scale(.99); }
       .btn-primary:disabled { opacity: .65; cursor: not-allowed; filter: saturate(.7); transform: none; }
-      .btn-ghost { height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; font-size: .9rem; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background-color .16s, border-color .16s; -webkit-tap-highlight-color: transparent; text-decoration: none; }
+      .btn-ghost { height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; font-size: .9rem; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background-color .16s, border-color .16s; -webkit-tap-highlight-color: transparent; text-decoration: none; }
       .btn-ghost:hover { background: var(--surface-2); border-color: var(--border-strong); }
       .btn-ghost svg { width: 16px; height: 16px; flex: none; }
       .btn-ghost .icon-github { fill: currentColor; }
@@ -216,7 +216,7 @@ function appShellCss() {
       .result-box { display: flex; align-items: stretch; gap: 10px; background: var(--primary-soft); border: 1px solid rgba(26, 93, 224, .18); border-radius: 12px; padding: 12px 14px; }
       .result-url { flex: 1; min-width: 0; display: flex; align-items: center; color: var(--link); font-weight: 700; font-size: .95rem; font-family: var(--mono); text-decoration: none; word-break: break-all; }
       .result-url:hover { text-decoration: underline; }
-      .copy-btn { flex: none; height: 40px; padding: 0 15px; border: 0; border-radius: 10px; background: var(--primary); color: #fff; font-size: .85rem; font-weight: 700; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: background-color .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
+      .copy-btn { flex: none; height: 40px; padding: 0 15px; border: 0; border-radius: 10px; background: var(--primary); color: #fff; font-size: .85rem; font-weight: 700; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: background-color .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
       .copy-btn svg { width: 15px; height: 15px; }
       .copy-btn:hover { background: var(--primary-deep); }
       .copy-btn:active { transform: scale(.96); }
@@ -346,14 +346,14 @@ function appShellCss() {
       @media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
 
       /* ---------- 确认弹窗（删除等破坏性操作） ---------- */
-      dialog { width: min(380px, calc(100% - 32px)); border: 1px solid var(--border); border-radius: 16px; padding: 24px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+      dialog { width: min(520px, calc(100% - 32px)); border: 1px solid var(--border); border-radius: 16px; padding: 24px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
       dialog h2 { margin: 0 0 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
       dialog h2 svg { width: 18px; height: 18px; color: var(--error); }
       dialog::backdrop { background: var(--scrim); }
       .dialog-text { margin: 0 0 18px; font-size: .9rem; color: var(--muted); line-height: 1.6; word-break: break-all; }
       .dialog-text b { color: var(--text); font-family: var(--mono); }
       .row-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      .btn-danger { height: 44px; border: 0; border-radius: 12px; background: var(--error); color: #fff; font-weight: 700; font-size: .9rem; font-family: inherit; cursor: pointer; transition: filter .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
+      .btn-danger { height: 44px; border: 0; border-radius: 12px; background: var(--error); color: #fff; font-weight: 700; font-size: .9rem; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: filter .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
       .btn-danger:hover { filter: brightness(1.08); }
       .btn-danger:active { transform: scale(.98); }
 
@@ -364,7 +364,7 @@ function appShellCss() {
       .detail-grid .span-2 { grid-column: 1 / -1; }
       .detail-grid .bar-chart { gap: 3px; }
       .detail-grid .bar-label { font-size: .64rem; }
-      @media (max-width: 620px) { .detail-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 620px) { .detail-grid { grid-template-columns: 1fr; } .opt-pair { grid-template-columns: 1fr; } }
 
       /* 二维码弹窗 */
       .qr-view { display: flex; justify-content: center; padding: 4px 0 16px; }
@@ -440,7 +440,7 @@ function appShellCss() {
       .settings-card legend { font-weight: 700; font-size: .84rem; color: var(--muted); padding: 0 6px; }
       .settings-card label { display: flex; flex-direction: column; gap: 5px; font-size: .8rem; font-weight: 600; color: var(--muted); }
       .settings-card label.chk { flex-direction: row; align-items: center; gap: 8px; }
-      .settings-card input[type="text"], .settings-card input[type="password"], .settings-card input[type="number"], .settings-card select, .settings-card textarea { height: 38px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .88rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
+      .settings-card input[type="text"], .settings-card input[type="password"], .settings-card input[type="number"], .settings-card select, .settings-card textarea { width: 100%; min-width: 0; height: 38px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .88rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
       .settings-card textarea { height: auto; padding: 8px 10px; resize: vertical; font-family: var(--mono); font-size: .8rem; line-height: 1.6; }
       .settings-card input:focus, .settings-card select:focus, .settings-card textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
       .settings-card input[type="color"] { padding: 2px; height: 38px; width: 64px; }
@@ -460,7 +460,7 @@ function appShellCss() {
       .edit-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
       .edit-form label { display: flex; flex-direction: column; gap: 5px; font-size: .8rem; font-weight: 600; color: var(--muted); }
       .edit-form label.chk { flex-direction: row; align-items: center; gap: 8px; }
-      .edit-form input, .edit-form select { height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .9rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
+      .edit-form input, .edit-form select { width: 100%; min-width: 0; height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .9rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
       .edit-form input:focus, .edit-form select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
       .edit-form input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
       .detail-section { margin-top: 14px; }
