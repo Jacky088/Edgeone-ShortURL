@@ -4,7 +4,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
-const APP_VERSION = '3.3.2';
+const APP_VERSION = '3.3.5';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -309,14 +309,12 @@ function appShellCss() {
       .auth-form input { min-height: 48px; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .95rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
       .auth-form input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
       .auth-error { display: none; margin-top: 12px; padding: 10px 14px; border-radius: 11px; font-size: .85rem; color: var(--error); background: var(--error-bg); border: 1px solid var(--error-border); }
-      .features { margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      .feature { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); font-size: .8rem; font-weight: 600; color: var(--text); text-align: left; }
-      .feature .fi { width: 26px; height: 26px; border-radius: 50%; color: #fff; display: inline-flex; align-items: center; justify-content: center; flex: none; }
-      .feature .fi svg { width: 14px; height: 14px; }
-      .fi-blue { background: var(--primary); } .fi-teal { background: var(--teal); } .fi-violet { background: #7c5cf6; } .fi-sky { background: #38bdf8; }
 
       /* ---------- 页脚 / Toast ---------- */
-      .app-footer { margin-top: auto; padding-top: 12px; text-align: center; font-size: .78rem; color: var(--faint); }
+      .app-footer { text-align: center; font-size: .78rem; color: var(--faint); }
+      /* 应用页页脚吸底；登录页页脚跟在卡片下方（不参与吸底，保证卡片居中） */
+      .app > .app-footer { margin-top: auto; padding-top: 12px; }
+      .auth-wrap .app-footer { margin-top: 14px; }
       .app-footer a { color: var(--muted); text-decoration: none; }
       .toast { position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 12px) scale(.98); opacity: 0; pointer-events: none; z-index: 50; background: var(--text); color: var(--surface); padding: 11px 18px; border-radius: 999px; font-size: .85rem; font-weight: 600; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .35); transition: opacity .2s, transform .2s; max-width: calc(100vw - 40px); text-align: center; }
       .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
@@ -434,18 +432,26 @@ function appShellCss() {
       .batch-import-wrap { display: flex; flex-direction: column; gap: 8px; }
       .batch-import-ops { display: flex; gap: 8px; flex-wrap: wrap; }
       .batch-submit { align-self: stretch; width: 100%; }
-      /* 批量逐行编辑器：宽屏一行排开（序号 + 三个输入框 + 删除），窄屏自动换行 */
+      /* 批量逐行编辑器：≥820px 一行排开（序号 + 三个输入框 + 删除）；
+         窄屏切换为固定两档网格（序号左栏贯穿，右侧三行），任何宽度都不会错位 */
       .batch-rows { display: flex; flex-direction: column; gap: 8px; }
-      .batch-row-edit { border: 1px solid var(--border); border-radius: 10px; background: var(--input-bg); padding: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+      .batch-row-edit { display: grid; grid-template-columns: min-content minmax(260px, 2.2fr) minmax(170px, 1.3fr) minmax(150px, 1fr) 38px; gap: 8px; align-items: center; border: 1px solid var(--border); border-radius: 10px; background: var(--input-bg); padding: 10px; }
       .batch-row-edit.invalid { border-color: var(--error); box-shadow: 0 0 0 3px var(--error-bg); }
-      .bre-idx { flex: none; min-width: 22px; text-align: center; font-size: .8rem; font-weight: 700; color: var(--faint); font-variant-numeric: tabular-nums; }
-      .batch-row-edit input { flex: 1 1 180px; min-width: 0; min-height: 38px; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: .88rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; }
+      .bre-idx { font-size: .8rem; font-weight: 700; color: var(--faint); font-variant-numeric: tabular-nums; text-align: center; }
+      .batch-row-edit input { min-width: 0; min-height: 38px; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: .88rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; }
       .batch-row-edit input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
-      .batch-row-edit .br-url { flex-grow: 2; }
-      .bre-del { flex: none; width: 38px; min-height: 38px; border: 0; border-radius: 9px; background: var(--error); color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: filter .16s, transform .12s; }
+      .bre-del { width: 38px; min-height: 38px; border: 0; border-radius: 9px; background: var(--error); color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: filter .16s, transform .12s; }
       .bre-del:hover { filter: brightness(1.08); }
       .bre-del:active { transform: scale(.94); }
       .bre-del svg { width: 14px; height: 14px; }
+      @media (max-width: 820px) {
+        .batch-row-edit { grid-template-columns: min-content 1fr 38px; grid-template-areas: "idx url del" "idx slug slug" "idx note note"; }
+        .bre-idx { grid-area: idx; }
+        .br-url { grid-area: url; }
+        .br-slug { grid-area: slug; }
+        .br-note { grid-area: note; }
+        .bre-del { grid-area: del; }
+      }
       .batch-ops { display: flex; gap: 8px; flex-wrap: wrap; }
       .batch-op { height: 36px; padding: 0 12px; font-size: .8rem; }
       .batch-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
@@ -832,12 +838,6 @@ export const loginHtml = buildPage({
             <button type="submit" class="btn-primary" id="btn">${ICON_SHIELD}<span>验证</span></button>
         </form>
         <div class="auth-error" id="error-msg">口令错误</div>
-        <div class="features">
-            <div class="feature"><span class="fi fi-blue">${ICON_CHAIN}</span>生成短链</div>
-            <div class="feature"><span class="fi fi-teal">${ICON_BOLT}</span>快速跳转</div>
-            <div class="feature"><span class="fi fi-violet">${ICON_CHART}</span>数据统计</div>
-            <div class="feature"><span class="fi fi-sky">${ICON_SHIELD}</span>安全稳定</div>
-        </div>
         <button type="button" class="auth-about open-about">${ICON_INFO}<span>关于项目 · v${APP_VERSION}</span></button>
     </div>
     ${appFooterHtml()}
