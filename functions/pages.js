@@ -4,7 +4,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
-const APP_VERSION = '3.1.0';
+const APP_VERSION = '3.1.1';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -259,10 +259,13 @@ function appShellCss() {
       .slug-link { font-family: var(--mono); }
       /* 短链列：单行布局，长链省略号截断（悬停见完整 URL），复制按钮不换行 */
       .slug-cell { white-space: nowrap; }
-      .slug-cell .slug-link { display: inline-block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+      .slug-cell .slug-link { display: inline-block; overflow: hidden; white-space: normal; word-break: break-all; vertical-align: middle; }
       .td-nowrap { white-space: nowrap; }
       td.td-actions { white-space: nowrap; }
-      .td-orig a { display: block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .td-orig a { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; max-width: 240px; text-align: left; }
+      /* 原始链接随窗口宽度折叠展示：宽屏显示更多信息 */
+      @media (min-width: 1440px) { .td-orig a { max-width: 480px; } .cell-note { max-width: 420px; } }
+      @media (min-width: 1800px) { .td-orig a { max-width: 640px; } .cell-note { max-width: 560px; } }
       .delete-btn { height: 32px; padding: 0 10px; border: 1px solid var(--error-border); border-radius: 9px; background: transparent; color: var(--error); font-size: .78rem; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; transition: background-color .16s, border-color .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
       .delete-btn:hover { background: var(--error-bg); border-color: var(--error); }
       .delete-btn svg { width: 14px; height: 14px; display: block; }
@@ -431,7 +434,7 @@ function appShellCss() {
       .batch-row:last-child { border-bottom: 0; }
       .batch-row .copy-btn { height: 34px; padding: 0 12px; }
       .batch-err { color: var(--error); font-size: .82rem; line-height: 1.5; word-break: break-all; }
-      .cell-note { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; color: var(--faint); margin-top: 2px; }
+      .cell-note { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; color: var(--faint); margin-top: 2px; }
       .cell-badge { display: inline-flex; margin-left: 6px; height: 18px; padding: 0 7px; align-items: center; border-radius: 999px; font-size: .68rem; font-weight: 700; background: var(--surface-3); color: var(--muted); vertical-align: middle; }
       .cell-badge.warn { background: var(--error-bg); color: var(--error); }
       .row-edit { height: 32px; padding: 0 8px; margin-right: 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--muted); font-size: .78rem; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; transition: color .16s, border-color .16s; -webkit-tap-highlight-color: transparent; }
