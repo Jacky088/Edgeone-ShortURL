@@ -4,7 +4,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
-const APP_VERSION = '3.3.5';
+const APP_VERSION = '3.3.6';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -316,7 +316,7 @@ function appShellCss() {
       .app > .app-footer { margin-top: auto; padding-top: 12px; }
       .auth-wrap .app-footer { margin-top: 14px; }
       .app-footer a { color: var(--muted); text-decoration: none; }
-      .toast { position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 12px) scale(.98); opacity: 0; pointer-events: none; z-index: 50; background: var(--text); color: var(--surface); padding: 11px 18px; border-radius: 999px; font-size: .85rem; font-weight: 600; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .35); transition: opacity .2s, transform .2s; max-width: calc(100vw - 40px); text-align: center; }
+      .toast { position: fixed; left: 50%; top: calc(24px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -12px) scale(.98); opacity: 0; pointer-events: none; z-index: 50; background: var(--text); color: var(--surface); padding: 11px 18px; border-radius: 999px; font-size: .85rem; font-weight: 600; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .35); transition: opacity .2s, transform .2s; max-width: calc(100vw - 40px); text-align: center; }
       .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
       /* 可关闭提醒（登录成功等）：3 秒自动消失，点 × 或气泡立即关闭 */
       .toast-closable { display: inline-flex; align-items: center; gap: 10px; }
