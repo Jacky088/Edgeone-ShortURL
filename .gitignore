@@ -46,3 +46,4 @@ edgeone.json
 !.edgeone/project.json
 .tef_dist/*
   
+.preview-tmp/
