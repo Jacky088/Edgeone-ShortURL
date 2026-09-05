@@ -2,7 +2,10 @@
 // 路由处理：favicon、管理后台、短链接跳转、主页。
 // 页面 HTML 模板见 functions/pages.js，工具函数见 functions/utils.js
 
-import { loginHtml, indexHtml, adminHtml } from '../pages.js';
+import { loginHtml, indexHtml, adminHtml, errorPageHtml } from '../pages.js';
+
+// 统一的 HTML 响应头（错误页与正常页面共用）
+const HTML_HEADERS = { 'Content-Type': 'text/html; charset=utf-8' };
 import { getKV, isAllowedUrl, verifySessionWithRenewal } from '../utils.js';
 
 // 浏览器标签页图标（与 public/favicon.svg 一致）。
@@ -62,7 +65,7 @@ export async function onRequest(context) {
 
       // 验证 slug 格式，防止路径遍历和注入攻击
       if (!/^[a-zA-Z0-9_-]{1,64}$/.test(cleanSlug)) {
-        return new Response('Invalid slug format', { status: 400 });
+        return new Response(errorPageHtml({ code: '400', title: '链接格式不正确', message: '短链接格式不正确，请检查访问的链接是否完整。' }), { status: 400, headers: HTML_HEADERS });
       }
 
       const linkStr = await DB.get(cleanSlug);
@@ -77,7 +80,7 @@ export async function onRequest(context) {
         }
 
         if (!linkData.original || !isAllowedUrl(linkData.original)) {
-          return new Response('Invalid link target', { status: 410 });
+          return new Response(errorPageHtml({ code: '410', title: '链接已失效', message: '该短链接的目标地址无效或已被禁用。' }), { status: 410, headers: HTML_HEADERS });
         }
 
         const newVisits = (linkData.visits || 0) + 1;
@@ -94,7 +97,7 @@ export async function onRequest(context) {
         }
         return Response.redirect(linkData.original, 302);
       } else {
-        return new Response('404 Not Found', { status: 404 });
+        return new Response(errorPageHtml({ code: '404', title: '链接不存在', message: '该短链接不存在或已被删除，请向分享者确认链接是否正确。' }), { status: 404, headers: HTML_HEADERS });
       }
     } catch (err) {
       console.error(`KV Error: ${err.message}`);
