@@ -119,6 +119,17 @@ export async function onRequest({ request, env = {} }) {
       centerLogo: body.qr.centerLogo === true,
       dark: /^#[0-9a-fA-F]{6}$/.test(String(body.qr.dark || '')) ? body.qr.dark : '#16181d'
     };
+    // 自定义中心 Logo：空串 = 恢复默认（网站 Logo）；否则仅接受 base64 图片且限制大小
+    if (body.qr.logoDataUrl !== undefined) {
+      const logo = String(body.qr.logoDataUrl || '');
+      if (logo === '') {
+        patch.qr.logoDataUrl = '';
+      } else if (/^data:image\/(png|jpe?g|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(logo) && logo.length <= 150000) {
+        patch.qr.logoDataUrl = logo;
+      } else {
+        errors.push('Logo 图片不合法（仅支持 PNG/JPG/WebP/SVG，且不超过 110KB）');
+      }
+    }
   }
 
   if (errors.length) {

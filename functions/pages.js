@@ -4,7 +4,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
-const APP_VERSION = '3.0.2';
+const APP_VERSION = '3.1.0';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -144,6 +144,13 @@ function appShellCss() {
   return `
       /* ---------- 顶栏 ---------- */
       .app { position: relative; z-index: 1; width: min(1160px, 100%); margin: 0 auto; padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(28px + env(safe-area-inset-bottom, 0px)); }
+      /* 大屏宽版：桌面大显示器下显示更多内容（列表 / 统计 / 设置同步加宽） */
+      @media (min-width: 1440px) {
+        .app { width: min(1560px, 100% - 48px); }
+      }
+      @media (min-width: 1800px) {
+        .app { width: min(1760px, 100% - 48px); }
+      }
       .app-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
       .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
       .brand-logo { width: 42px; height: 42px; flex: none; border-radius: 10px; box-shadow: 0 8px 18px -8px rgba(26, 93, 224, .55); }
@@ -447,6 +454,11 @@ function appShellCss() {
       .settings-card input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
       .settings-hint { margin: 0; font-size: .76rem; color: var(--faint); line-height: 1.6; }
       .opt-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .qr-logo-row { display: flex; gap: 12px; align-items: center; }
+      .qr-logo-preview { width: 52px; height: 52px; border-radius: 10px; background: #fff; border: 1px solid var(--border); object-fit: contain; padding: 4px; box-sizing: border-box; flex: none; }
+      .qr-logo-ops { display: flex; flex-direction: column; gap: 6px; }
+      .qr-upload-btn { height: 34px; padding: 0 12px; font-size: .8rem; cursor: pointer; }
+      .qr-upload-btn input[type="file"] { display: none; }
       .token-create { display: flex; gap: 8px; }
       .token-create input { flex: 1; min-width: 0; }
       .token-new { display: flex; align-items: center; gap: 10px; background: var(--success-bg); border: 1px solid rgba(38, 196, 160, .35); border-radius: 10px; padding: 8px 10px; }
@@ -1114,7 +1126,8 @@ export const indexHtml = buildPage({
                         ctx.fillRect((size - logoSize) / 2 - 4, (size - logoSize) / 2 - 4, logoSize + 8, logoSize + 8);
                         const img = new Image();
                         img.onload = function () { ctx.drawImage(img, (size - logoSize) / 2, (size - logoSize) / 2, logoSize, logoSize); };
-                        img.src = QR_LOGO_SRC;
+                        // 自定义 Logo 优先，未上传时使用网站品牌 Logo
+                        img.src = (QR_CFG && QR_CFG.logoDataUrl) || QR_LOGO_SRC;
                     }
                     qrBox.hidden = false;
                     if (qrDownload) qrDownload.hidden = false;
@@ -1451,6 +1464,14 @@ export const adminHtml = buildPage({
                                 </select>
                             </label>
                             <label class="chk"><input type="checkbox" id="set-qr-logo"> 二维码中心放置 Logo（自动提升纠错等级）</label>
+                            <div class="qr-logo-row">
+                                <img id="set-qr-logo-preview" class="qr-logo-preview" alt="当前 Logo 预览">
+                                <div class="qr-logo-ops">
+                                    <label class="btn-ghost qr-upload-btn">上传自定义 Logo<input type="file" id="set-qr-logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>
+                                    <button type="button" class="btn-ghost" id="set-qr-logo-reset">恢复默认 Logo</button>
+                                </div>
+                            </div>
+                            <p class="settings-hint">默认 Logo 为网站图标；自定义图片建议正方形 PNG / JPG，不超过 110KB。上传与恢复均即时生效，主页与后台的二维码同步更新。</p>
                             <label for="set-qr-dark">二维码前景色
                                 <input type="color" id="set-qr-dark" value="#16181d">
                             </label>
@@ -2089,7 +2110,8 @@ export const adminHtml = buildPage({
                         ctx.fillRect((size - logoSize) / 2 - 8, (size - logoSize) / 2 - 8, logoSize + 16, logoSize + 16);
                         const img = new Image();
                         img.onload = function () { ctx.drawImage(img, (size - logoSize) / 2, (size - logoSize) / 2, logoSize, logoSize); };
-                        img.src = QR_LOGO_SRC;
+                        // 自定义 Logo 优先，未上传时使用网站品牌 Logo
+                        img.src = (QR_CFG && QR_CFG.logoDataUrl) || QR_LOGO_SRC;
                     }
                     return true;
                 } catch (err) { return false; }
@@ -2331,6 +2353,11 @@ export const adminHtml = buildPage({
             setView(initialView);
 
             // ---------- 系统设置 ----------
+            let qrLogoCustom = '';
+            function updateQrLogoPreview() {
+                const img = document.getElementById('set-qr-logo-preview');
+                if (img) img.src = qrLogoCustom || QR_LOGO_SRC;
+            }
             async function loadSettings() {
                 try {
                     const res = await fetch('/api/settings', { headers: authHeaders });
@@ -2349,11 +2376,56 @@ export const adminHtml = buildPage({
                     document.getElementById('set-dedup-min').value = String(s.dedupMin || 0);
                     document.getElementById('set-qr-logo').checked = !!(s.qr && s.qr.centerLogo);
                     document.getElementById('set-qr-dark').value = (s.qr && s.qr.dark) || '#16181d';
+                    qrLogoCustom = (s.qr && s.qr.logoDataUrl) || '';
+                    updateQrLogoPreview();
                     document.getElementById('set-pwd-hint').textContent = s.hasCustomPassword
                         ? '当前使用自定义口令（保存在 KV，修改后所有旧会话立即失效）'
                         : '当前使用环境变量口令（未配置则无需登录）';
                 } catch (e) { showToast('设置加载失败'); }
             }
+
+            // 上传自定义 Logo（立即保存生效；自动勾选「中心放置 Logo」）
+            document.getElementById('set-qr-logo-file').addEventListener('change', async function () {
+                const file = this.files && this.files[0];
+                this.value = '';
+                if (!file) return;
+                if (file.size > 110 * 1024) { showToast('图片过大，请控制在 110KB 以内'); return; }
+                const dataUrl = await new Promise(function (resolve) {
+                    const reader = new FileReader();
+                    reader.onload = function () { resolve(String(reader.result || '')); };
+                    reader.onerror = function () { resolve(''); };
+                    reader.readAsDataURL(file);
+                });
+                if (!/^data:image\\/(png|jpe?g|webp|svg\\+xml);base64,/.test(dataUrl)) { showToast('仅支持 PNG / JPG / WebP / SVG 图片'); return; }
+                try {
+                    const res = await fetch('/api/settings', { method: 'POST', headers: authHeaders, body: JSON.stringify({ qr: { centerLogo: true, logoDataUrl: dataUrl } }) });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || 'Logo 上传失败');
+                    qrLogoCustom = dataUrl;
+                    // 同步内存配置：本页二维码弹窗立即使用新 Logo，无需刷新
+                    QR_CFG.logoDataUrl = dataUrl;
+                    QR_CFG.centerLogo = true;
+                    document.getElementById('set-qr-logo').checked = true;
+                    updateQrLogoPreview();
+                    showToast('自定义 Logo 已启用，二维码即时生效');
+                } catch (err) { showToast(err.message); }
+            });
+
+            // 恢复默认 Logo（网站图标），同样立即生效
+            document.getElementById('set-qr-logo-reset').addEventListener('click', async function () {
+                const btn = this;
+                btn.disabled = true;
+                try {
+                    const res = await fetch('/api/settings', { method: 'POST', headers: authHeaders, body: JSON.stringify({ qr: { logoDataUrl: '' } }) });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || '操作失败');
+                    qrLogoCustom = '';
+                    QR_CFG.logoDataUrl = '';
+                    updateQrLogoPreview();
+                    showToast('已恢复默认 Logo（网站图标）');
+                } catch (err) { showToast(err.message); }
+                finally { btn.disabled = false; }
+            });
 
             document.getElementById('settings-save').addEventListener('click', async function () {
                 const btn = this;
