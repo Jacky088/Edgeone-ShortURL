@@ -47,14 +47,26 @@ test('登录页：无「管理后台」入口，口令框自动聚焦，含统�
   assert.ok(loginHtml.includes('运行在 EdgeOne Pages'), '应包含统一页脚');
 });
 
-test('主页：侧边栏深链、二维码下载、会话过期保留输入、统一页脚', () => {
-  assert.ok(indexHtml.includes('data-admin-view="list"'), '侧边栏应深链到列表视图');
-  assert.ok(indexHtml.includes('data-admin-view="stats"'), '侧边栏应深链到统计视图');
+test('主页：专注创建（无侧边栏 / 统计卡 / 关于入口），管理入口交由服务端条件渲染', () => {
+  assert.ok(!indexHtml.includes('class="sidebar"'), '前台不应有侧边栏');
+  assert.ok(!indexHtml.includes('data-admin-view'), '深链导航应随侧边栏移除');
+  assert.ok(!indexHtml.includes('id="stat-visits"'), '迷你统计卡应移除');
+  assert.ok(!indexHtml.includes('loadIndexStats'), '统计拉取脚本应移除');
+  assert.ok(!indexHtml.includes('id="about-dialog"'), '关于弹窗入口应移至管理后台（样式为全站共用保留）');
+  assert.ok(indexHtml.includes('__ADMIN_TOP_BUTTON__'), '管理入口应交由服务端按 ADMIN_PATH 条件渲染');
   assert.ok(indexHtml.includes('id="qr-download"'), '结果卡应提供二维码下载');
   assert.ok(indexHtml.includes('pending_create_url'), '401 后应保存已填内容');
   assert.ok(indexHtml.includes('已恢复上次填写的内容'), '登录后应提示恢复');
   assert.ok(indexHtml.includes('运行在 EdgeOne Pages'), '应包含统一页脚');
-  assert.ok(!indexHtml.includes('>管理后台</span>'), '顶栏不应再有管理后台按钮');
+});
+
+test('主页占位符：管理入口按 ADMIN_PATH 条件渲染，二维码设置可注入', () => {
+  const render = (adminPath) => indexHtml
+    .split('__ADMIN_PATH_STATUS__').join(JSON.stringify(adminPath))
+    .split('__QR_SETTINGS__').join('{"centerLogo":false}')
+    .split('__ADMIN_TOP_BUTTON__').join(adminPath ? '<span>管理后台</span>' : '');
+  assert.ok(render('admin').includes('<span>管理后台</span>'), '配置 ADMIN_PATH 时应渲染管理入口');
+  assert.ok(!render('').includes('<span>管理后台</span>'), '未配置 ADMIN_PATH 时不渲染管理入口');
 });
 
 test('主页 + 登录页的 __ADMIN_PATH_STATUS__ 占位符可被服务端完整替换', () => {

@@ -4,7 +4,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
-const APP_VERSION = '3.1.1';
+const APP_VERSION = '3.2.0';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -183,6 +183,8 @@ function appShellCss() {
       .nav-sep { height: 1px; margin: 6px 10px; background: var(--border); flex: none; }
 
       .content { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+      /* 前台专注创建：内容窄栏居中，不随大屏铺满 */
+      .front-content { width: 100%; max-width: 820px; margin: 0 auto; }
       /* 视图容器：内部卡片与图表区保持统一间距，避免贴边重叠 */
       .view { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
       .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: clamp(18px, 3vw, 26px); box-shadow: var(--shadow); }
@@ -581,6 +583,9 @@ function appFooterHtml() {
   return `<footer class="app-footer">运行在 EdgeOne Pages · v${APP_VERSION} · <a href="${REPO_URL}" target="_blank" rel="noopener noreferrer">开源项目</a> · <a href="${ISSUES_URL}" target="_blank" rel="noopener noreferrer">问题反馈</a></footer>`;
 }
 
+// 前台顶栏「管理后台」入口：由服务端按 ADMIN_PATH 是否配置决定渲染（__ADMIN_TOP_BUTTON__ 占位符）
+export const ADMIN_BUTTON_HTML = `<a class="text-btn goto-admin" href="#">${ICON_SHIELD}<span>管理后台</span></a>`;
+
 // 登录页右上角动作区（不设「管理后台」入口：登录成功即进入系统，该入口在登录页只会造成困惑）
 function loginActionsHtml() {
   return `<div class="auth-top">
@@ -589,8 +594,7 @@ function loginActionsHtml() {
     </div>`;
 }
 
-// 生成已登录状态的动作区（主页 / 管理后台）
-// 主页不再放「管理后台」按钮：侧边栏「短链列表 / 访问统计」带参直达对应视图，避免三个入口指向同一处
+// 生成已登录状态的动作区（管理后台页使用；主页动作区因含条件渲染的管理入口而单独组装）
 // 「返回前台」固定在动作区第一位
 function authedActionsHtml({ admin = false, backHome = false } = {}) {
   return `<div class="top-actions">
@@ -675,8 +679,8 @@ const adminLinkJs = `
         return view ? base + '?view=' + encodeURIComponent(view) : base;
       }
       function gotoAdmin() { if (!adminPathStatus) { showToast('您未设置开启管理后台'); return; } window.location.href = adminUrl(); }
-      // 侧边栏入口带 data-admin-view，直达管理后台对应视图（列表 / 统计）
-      document.querySelectorAll('a.goto-admin[data-admin-view]').forEach(function (a) { a.href = adminPathStatus ? adminUrl(a.dataset.adminView) : '#'; });
+      // goto-admin 链接：带视图参数的入口直达管理后台对应视图（列表 / 统计），无参数则进默认视图
+      document.querySelectorAll('a.goto-admin').forEach(function (a) { a.href = adminPathStatus ? adminUrl(a.dataset.adminView) : '#'; });
       document.querySelectorAll('.goto-admin').forEach(btn => btn.addEventListener('click', function (e) {
         if (!adminPathStatus) { e.preventDefault(); showToast(btn.dataset.note || '您未设置开启管理后台'); return; }
         if (btn.dataset.note) { e.preventDefault(); showToast(btn.dataset.note); const pw = document.getElementById('password'); if (pw) pw.focus(); return; }
@@ -877,17 +881,14 @@ export const indexHtml = buildPage({
 <div class="app">
     <header class="app-header">
         ${brandHtml()}
-        ${authedActionsHtml()}
+        <div class="top-actions">
+            __ADMIN_TOP_BUTTON__
+            ${githubHtml()}
+            ${themeToggleHtml()}
+            <button type="button" class="text-btn" id="logout-btn">${ICON_POWER}<span>注销</span></button>
+        </div>
     </header>
-    <div class="app-body">
-        <nav class="sidebar" aria-label="主导航">
-            <button type="button" class="nav-item active" aria-current="page" id="nav-create">${ICON_CHAIN}<span>创建短链</span></button>
-            <a class="nav-item goto-admin" href="#" data-admin-view="list">${ICON_LIST}<span>短链列表</span></a>
-            <a class="nav-item goto-admin" href="#" data-admin-view="stats">${ICON_CHART}<span>访问统计</span></a>
-            <div class="nav-sep" aria-hidden="true"></div>
-            <button type="button" class="nav-item open-about">${ICON_INFO}<span>关于项目</span></button>
-        </nav>
-        <main class="content">
+    <main class="content front-content">
             <section class="card">
                 <h2 class="card-title">${ICON_CHAIN}<span>输入长链接</span></h2>
                 <form id="link-form" novalidate>
@@ -952,18 +953,11 @@ export const indexHtml = buildPage({
                 <p class="hint-line">短链已创建成功，点击链接可跳转原文并累计访问次数；也可扫码在手机上打开。</p>
             </section>
 
-            <section class="card">
-                <h2 class="card-title">${ICON_CHART}<span>访问统计</span></h2>
-                ${statsGridHtml('访问次数')}
-                <div class="stat-note" id="stats-note"></div>
-            </section>
-
             ${appFooterHtml()}
         </main>
-    </div>
 </div>
-` + aboutDialogHtml(),
-  script: QR_LIB_SRC + '\n' + themeJs + toastJs + loginToastJs('登录成功，现在可以创建短链接了。') + adminLinkJs + logoutJs + fmtUtilJs + aboutJs + `
+`,
+  script: QR_LIB_SRC + '\n' + themeJs + toastJs + loginToastJs('登录成功，现在可以创建短链接了。') + adminLinkJs + logoutJs + `
         // 创建短链逻辑（与原实现一致：POST /api/create）
         (function () {
             const form = document.getElementById('link-form');
@@ -1298,46 +1292,6 @@ export const indexHtml = buildPage({
                     a.remove();
                 } catch (err) { showToast('二维码下载失败，请截图保存'); }
             });
-        })();
-
-        // 访问统计：有管理后台权限时拉取 /api/links 汇总（只读，无副作用）
-        (async function loadIndexStats() {
-            const statVisits = document.getElementById('stat-visits');
-            if (!statVisits) return;
-            const statLinks = document.getElementById('stat-links');
-            const statCreated = document.getElementById('stat-created');
-            const note = document.getElementById('stats-note');
-            const statEls = [statVisits, statLinks, statCreated];
-            function resetStats() { statEls.forEach(function (el) { el.textContent = '–'; }); }
-            if (!adminPathStatus) { note.textContent = '未设置管理后台，无法汇总统计；配置 ADMIN_PATH 后即可启用。'; return; }
-            // 加载期间以骨架屏占位，与管理后台体验一致
-            statEls.forEach(function (el) {
-                el.textContent = '';
-                const bar = document.createElement('div');
-                bar.className = 'skel';
-                bar.style.cssText = 'width:64px;height:26px;';
-                el.appendChild(bar);
-            });
-            try {
-                const res = await fetch('/api/links', { headers: { 'X-Admin-Slug': adminPathStatus } });
-                if (res.status === 401) {
-                    resetStats();
-                    note.textContent = '需要管理权限才能查看统计。';
-                    const go = document.createElement('button');
-                    go.type = 'button'; go.className = 'btn-ghost'; go.textContent = '前往管理后台';
-                    go.addEventListener('click', gotoAdmin);
-                    note.appendChild(go);
-                    return;
-                }
-                if (!res.ok) throw new Error('x');
-                const links = await res.json();
-                let visits = 0, latest = 0;
-                links.forEach(function (l) { visits += (l.visits || 0); if (l.createdAt && l.createdAt > latest) latest = l.createdAt; });
-                statVisits.textContent = numberFormat(visits);
-                statLinks.textContent = numberFormat(links.length);
-                setStatDate(statCreated, latest);
-                note.textContent = '数据汇总自「管理后台」中的全部短链记录。';
-            } catch (err) { resetStats(); note.textContent = '统计数据加载失败。'; }
         })();
 `
 });

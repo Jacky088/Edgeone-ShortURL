@@ -1,7 +1,7 @@
 // functions/[slug]/index.js
 // 路由处理：favicon、管理后台、短链接跳转（支持有效期/次数上限/密码保护/访问去重/来源统计）、主页。
 
-import { loginHtml, indexHtml, adminHtml, errorPageHtml, passwordHtml } from '../pages.js';
+import { loginHtml, indexHtml, adminHtml, errorPageHtml, passwordHtml, ADMIN_BUTTON_HTML } from '../pages.js';
 import { getKV, isAllowedUrl, verifySessionWithRenewal, getSettings, getCookie, sha256 } from '../utils.js';
 
 // 浏览器标签页图标（与 public/favicon.svg 一致）。
@@ -213,11 +213,12 @@ export async function onRequest(context) {
       return new Response(finalLoginHtml, { headers: HTML_HEADERS, status: 200 });
   }
 
-  // 注入二维码样式设置（管理后台「系统设置」页可改）
+  // 注入二维码样式设置（管理后台「系统设置」页可改）；管理入口按 ADMIN_PATH 是否配置条件渲染
   const settings = await getSettings(DB);
   const finalIndexHtml = indexHtml
     .replace('__ADMIN_PATH_STATUS__', JSON.stringify(adminPathStatus))
-    .replace('__QR_SETTINGS__', JSON.stringify(settings.qr || {}));
+    .replace('__QR_SETTINGS__', JSON.stringify(settings.qr || {}))
+    .replace('__ADMIN_TOP_BUTTON__', adminPath ? ADMIN_BUTTON_HTML : '');
 
   return new Response(finalIndexHtml, {
       headers: HTML_HEADERS,
