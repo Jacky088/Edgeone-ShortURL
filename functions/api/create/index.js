@@ -68,7 +68,7 @@ export async function onRequest({ request, env = {} }) {
   } else {
     entries = [{ url: String(body.url || '').trim(), slug: typeof body.slug === 'string' ? body.slug.trim() : '', note: normalizeNote(body.note) }];
   }
-  if (!entries.length || entries.some(e => !e.url)) {
+  if (!entries.length) {
     return jsonResponse({ error: 'URL is required' }, 400);
   }
   const sharedNote = normalizeNote(body.note);
@@ -122,6 +122,10 @@ export async function onRequest({ request, env = {} }) {
     const url = entry.url;
 
     // 无效行按行报错（index 定位），有效行照常生成（部分成功语义）
+    if (!url) {
+      errors.push({ index, url, error: '缺少目标链接' });
+      continue;
+    }
     if (!isAllowedUrl(url)) {
       errors.push({ index, url, error: '链接格式不正确，请以 http/https 开头' });
       continue;

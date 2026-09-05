@@ -88,6 +88,18 @@ test('create API：无效行按行报错，有效行照常生成（部分成功�
   assert.equal(data.results[0].index, 1);
 });
 
+test('create API：缺少目标链接按行报错，其余行正常', async () => {
+  const store = {};
+  const res = await call(store, { items: [{ url: 'https://a.example/ok' }, { slug: 'only-slug', note: '缺链接' }] });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.errors.length, 1);
+  assert.equal(data.errors[0].index, 1);
+  assert.match(data.errors[0].error, /缺少目标链接/);
+  assert.equal(data.results.length, 1);
+  assert.equal(data.results[0].index, 0);
+});
+
 test('create API：超过 20 条拒绝', async () => {
   const store = {};
   const items = Array.from({ length: 21 }, (_, i) => ({ url: 'https://x.example/' + i }));

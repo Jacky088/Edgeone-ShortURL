@@ -424,18 +424,18 @@ function appShellCss() {
 
       /* ---------- 创建表单扩展（更多选项 / 批量创建） ---------- */
       .form-toggles { display: flex; gap: 4px 16px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
-      .opts-panel { margin-top: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; animation: fade-slide .22s ease; }
+      .opts-panel { margin-top: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px; animation: fade-slide .22s ease; }
       .opts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 16px; }
       .opts-grid label { display: flex; flex-direction: column; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--muted); }
       .opts-grid input, .opts-grid select { height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .9rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
       .opts-grid input:focus, .opts-grid select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
       #batch-import { width: 100%; resize: vertical; min-height: 72px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .88rem; font-family: var(--mono); line-height: 1.6; transition: border-color .18s, box-shadow .18s; }
       #batch-import:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
-      .batch-import-wrap { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+      .batch-import-wrap { display: flex; flex-direction: column; gap: 8px; }
       .batch-import-ops { display: flex; gap: 8px; flex-wrap: wrap; }
-      .batch-submit { width: 100%; }
+      .batch-submit { align-self: flex-start; }
       /* 批量逐行编辑器 */
-      .batch-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+      .batch-rows { display: flex; flex-direction: column; gap: 8px; }
       .batch-row-edit { border: 1px solid var(--border); border-radius: 10px; background: var(--input-bg); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
       .batch-row-edit.invalid { border-color: var(--error); box-shadow: 0 0 0 3px var(--error-bg); }
       .bre-head { display: flex; align-items: center; justify-content: space-between; }
@@ -476,10 +476,11 @@ function appShellCss() {
       .settings-card input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
       .settings-hint { margin: 0; font-size: .76rem; color: var(--faint); line-height: 1.6; }
       .opt-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      .qr-logo-row { display: flex; gap: 12px; align-items: center; }
-      .qr-logo-preview { width: 52px; height: 52px; border-radius: 10px; background: #fff; border: 1px solid var(--border); object-fit: contain; padding: 4px; box-sizing: border-box; flex: none; }
-      .qr-logo-ops { display: flex; flex-direction: column; gap: 6px; }
-      .qr-upload-btn { height: 34px; padding: 0 12px; font-size: .8rem; cursor: pointer; }
+      .qr-logo-row { display: flex; gap: 14px; align-items: center; }
+      .qr-logo-preview { width: 56px; height: 56px; border-radius: 12px; background: #fff; border: 1px solid var(--border); object-fit: contain; padding: 5px; box-sizing: border-box; flex: none; }
+      .qr-logo-ops { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+      .qr-logo-ops .btn-ghost { height: 36px; padding: 0 14px; font-size: .8rem; justify-content: center; }
+      .qr-upload-btn { cursor: pointer; }
       .qr-upload-btn input[type="file"] { display: none; }
       .token-create { display: flex; gap: 8px; }
       .token-create input { flex: 1; min-width: 0; }
@@ -523,6 +524,7 @@ function appShellCss() {
         .brand-sub { display: none; }
         .url-row { flex-direction: column; }
         .url-row .btn-primary { width: 100%; }
+        .batch-submit { width: 100%; align-self: stretch; }
         .result-box { flex-direction: column; align-items: stretch; }
         .result-flex { flex-direction: column; }
         .result-qr { flex-direction: row; align-self: center; }
@@ -956,7 +958,7 @@ export const indexHtml = buildPage({
                             <button type="button" class="btn-ghost batch-op" id="batch-clear">${ICON_TRASH}<span>清空</span></button>
                         </div>
                         <div class="batch-import-wrap" id="batch-import-wrap" hidden>
-                            <p class="settings-hint" style="margin: 0;">支持两种方式导入：① 复制 txt / csv 等任意文本文件的内容粘贴到下方输入框；② 直接选择 .txt / .csv 文件导入。每行一条，格式：<b>链接 [自定义短链] [备注]</b>（空格分隔）；doc / xls 等文档请先另存为 txt 或复制其中文本，一次最多 20 条。</p>
+                            <p class="settings-hint" style="margin: 0;">支持两种方式导入：① 将文本内容粘贴到下方输入框，每行一条；② 直接选择 .txt / .csv 文件导入，每行一条，一次最多 20 条。格式：链接 [自定义短链] [备注]（空格分隔）</p>
                             <textarea id="batch-import" rows="3" placeholder="https://example.com/a my-link&#10;https://example.com/b"></textarea>
                             <div class="batch-import-ops">
                                 <label class="btn-ghost batch-op">选择 .txt / .csv 文件<input type="file" id="batch-import-file" accept=".txt,.csv,text/plain,text/csv" hidden></label>
@@ -1150,19 +1152,33 @@ export const indexHtml = buildPage({
                 if (opening) batchImportEl.focus();
             });
             // 从文本导入：每行「链接 [自定义短链] [备注…]」，空格分隔
-            document.getElementById('batch-import-go').addEventListener('click', function () {
-                const lines = batchImportEl.value.split('\\n').map(s => s.trim()).filter(Boolean);
+            // 从文本导入（粘贴 / 文件共用）：每行「链接 [自定义短链] [备注…]」；
+            // 总行数不超过 20 条，超出部分截断并提示
+            function importLinesToRows(lines) {
+                const existing = batchRowsEl.querySelectorAll('.batch-row-edit').length;
+                const room = Math.max(0, 20 - existing);
                 let imported = 0;
-                lines.forEach(function (line) {
-                    const tokens = line.split(/\\s+/).filter(Boolean);
+                lines.forEach(function (line, li) {
+                    if (li >= room) return;
+                    const tokens = String(line).trim().split(/\\s+/).filter(Boolean);
                     if (!tokens.length) return;
                     batchAddRow(tokens[0], tokens[1] || '', tokens.slice(2).join(' '));
                     imported++;
                 });
+                if (imported) {
+                    showToast(room < lines.length
+                        ? '已导入前 ' + imported + ' 行（超出 20 条上限，其余未导入）'
+                        : '已导入 ' + imported + ' 行');
+                } else {
+                    showToast(room === 0 ? '已达 20 条上限，无法继续导入' : '没有可导入的内容');
+                }
+            }
+            document.getElementById('batch-import-go').addEventListener('click', function () {
+                const lines = batchImportEl.value.split('\\n').map(s => s.trim()).filter(Boolean);
+                importLinesToRows(lines);
                 batchImportEl.value = '';
                 batchImportWrap.hidden = true;
                 document.getElementById('batch-import-toggle').setAttribute('aria-expanded', 'false');
-                showToast(imported ? '已导入 ' + imported + ' 行' : '没有可导入的内容');
             });
             // 从 .txt / .csv 文件导入（按行解析，格式与文本粘贴一致）
             document.getElementById('batch-import-file').addEventListener('change', function () {
@@ -1172,15 +1188,7 @@ export const indexHtml = buildPage({
                 if (file.size > 1024 * 1024) { showToast('文件过大，请控制在 1MB 以内'); return; }
                 const reader = new FileReader();
                 reader.onload = function () {
-                    const lines = String(reader.result || '').split(/\\r?\\n/).map(s => s.trim()).filter(Boolean);
-                    let imported = 0;
-                    lines.forEach(function (line) {
-                        const tokens = line.split(/\\s+/).filter(Boolean);
-                        if (!tokens.length) return;
-                        batchAddRow(tokens[0], tokens[1] || '', tokens.slice(2).join(' '));
-                        imported++;
-                    });
-                    showToast(imported ? '已从文件导入 ' + imported + ' 行' : '文件中没有可导入的内容');
+                    importLinesToRows(String(reader.result || '').split(/\\r?\\n/).map(s => s.trim()).filter(Boolean));
                 };
                 reader.onerror = function () { showToast('文件读取失败'); };
                 reader.readAsText(file);
