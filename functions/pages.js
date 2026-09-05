@@ -4,7 +4,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
-const APP_VERSION = '3.3.0';
+const APP_VERSION = '3.3.2';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -113,7 +113,7 @@ const themeVarsCss = `
 function baseCss() {
   return `
       * { box-sizing: border-box; }
-      html { -webkit-text-size-adjust: 100%; }
+      html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
       body {
         margin: 0; min-height: 100vh;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "HarmonyOS Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
@@ -206,7 +206,7 @@ function appShellCss() {
 
       /* ---------- 表单 ---------- */
       .url-row { display: flex; gap: 10px; }
-      #url-input { flex: 1; min-width: 0; height: 48px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .95rem; font-family: inherit; transition: border-color .18s, box-shadow .18s, background-color .18s; -webkit-appearance: none; }
+      #url-input { flex: 1; min-width: 0; min-height: 48px; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .95rem; font-family: inherit; transition: border-color .18s, box-shadow .18s, background-color .18s; -webkit-appearance: none; }
       #url-input::placeholder { color: var(--faint); }
       #url-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
       /* 锁定浏览器自动填充底色，避免输入框被渲染成黄/粉色 */
@@ -215,7 +215,7 @@ function appShellCss() {
       .slug-label { font-size: .85rem; font-weight: 600; color: var(--muted); flex: none; }
       .slug-toggle { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 8px 2px; color: var(--primary); font-weight: 700; font-size: .88rem; font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
       .slug-toggle svg { width: 15px; height: 15px; }
-      #slug-input { flex: 1; min-width: 180px; height: 44px; padding: 0 14px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .92rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
+      #slug-input { flex: 1; min-width: 180px; min-height: 44px; padding: 10px 14px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .92rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
       #slug-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
       @keyframes fade-slide { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
       .hint-line { margin: 12px 0 0; font-size: .8rem; color: var(--muted); display: flex; gap: 6px; align-items: flex-start; line-height: 1.55; }
@@ -306,7 +306,7 @@ function appShellCss() {
       .auth-divider { width: 44px; height: 3px; margin: 18px auto; border-radius: 3px; background: linear-gradient(90deg, var(--primary), var(--teal)); }
       .auth-label { margin: 0 0 14px; font-size: .85rem; color: var(--muted); text-align: left; font-weight: 600; }
       .auth-form { display: flex; flex-direction: column; gap: 12px; }
-      .auth-form input { height: 48px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .95rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
+      .auth-form input { min-height: 48px; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .95rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
       .auth-form input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
       .auth-error { display: none; margin-top: 12px; padding: 10px 14px; border-radius: 11px; font-size: .85rem; color: var(--error); background: var(--error-bg); border: 1px solid var(--error-border); }
       .features { margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -330,7 +330,7 @@ function appShellCss() {
       .table-toolbar { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
       .search-wrap { position: relative; flex: 1; min-width: 200px; }
       .search-wrap > svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--faint); pointer-events: none; }
-      .search-wrap input { width: 100%; height: 42px; padding: 0 14px 0 37px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .9rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
+      .search-wrap input { width: 100%; min-height: 42px; padding: 10px 14px 10px 37px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .9rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
       .search-wrap input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
       .search-wrap input::placeholder { color: var(--faint); }
       .tb-btn { height: 42px; padding: 0 14px; font-size: .85rem; }
@@ -432,6 +432,8 @@ function appShellCss() {
       #batch-import { width: 100%; resize: vertical; min-height: 72px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .88rem; font-family: var(--mono); line-height: 1.6; transition: border-color .18s, box-shadow .18s; }
       #batch-import:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
       .batch-import-wrap { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+      .batch-import-ops { display: flex; gap: 8px; flex-wrap: wrap; }
+      .batch-submit { width: 100%; }
       /* 批量逐行编辑器 */
       .batch-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
       .batch-row-edit { border: 1px solid var(--border); border-radius: 10px; background: var(--input-bg); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
@@ -532,6 +534,10 @@ function appShellCss() {
         .col-orig { display: none; }
         .col-created { display: none; }
         .stat-value { font-size: 1.45rem; }
+        /* 后台菜单 2×2 网格完整显示，不横向滑动 */
+        .sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; overflow-x: visible; }
+        .nav-item { min-width: 0; }
+        .nav-sep { display: none; }
         /* iOS 聚焦时禁止自动放大 */
         input, #url-input, #slug-input, .auth-form input { font-size: 16px; }
       }
@@ -950,9 +956,14 @@ export const indexHtml = buildPage({
                             <button type="button" class="btn-ghost batch-op" id="batch-clear">${ICON_TRASH}<span>清空</span></button>
                         </div>
                         <div class="batch-import-wrap" id="batch-import-wrap" hidden>
-                            <textarea id="batch-import" rows="3" placeholder="每行一条，格式：链接 [自定义短链]&#10;例如：https://example.com/a my-link"></textarea>
-                            <button type="button" class="btn-ghost batch-op" id="batch-import-go">确认导入</button>
+                            <p class="settings-hint" style="margin: 0;">支持两种方式导入：① 复制 txt / csv 等任意文本文件的内容粘贴到下方输入框；② 直接选择 .txt / .csv 文件导入。每行一条，格式：<b>链接 [自定义短链] [备注]</b>（空格分隔）；doc / xls 等文档请先另存为 txt 或复制其中文本，一次最多 20 条。</p>
+                            <textarea id="batch-import" rows="3" placeholder="https://example.com/a my-link&#10;https://example.com/b"></textarea>
+                            <div class="batch-import-ops">
+                                <label class="btn-ghost batch-op">选择 .txt / .csv 文件<input type="file" id="batch-import-file" accept=".txt,.csv,text/plain,text/csv" hidden></label>
+                                <button type="button" class="btn-ghost batch-op" id="batch-import-go">确认导入</button>
+                            </div>
                         </div>
+                        <button type="submit" class="btn-primary batch-submit">${ICON_CHAIN}<span>生成短链</span></button>
                         <p class="hint-line">每行生成一条短链，「自定义短链 / 备注」可逐行填写（留空则随机生成）；上方「更多选项」将应用到全部，一次最多 20 条。</p>
                     </div>
                     <p class="hint-line">仅支持 http/https 开头的完整链接；自定义短链可使用字母、数字、短横线、下划线，最长 64 位。</p>
@@ -996,6 +1007,7 @@ export const indexHtml = buildPage({
             const qrBox = document.getElementById('result-qr');
             const qrDownload = document.getElementById('qr-download');
             const urlRow = document.querySelector('.url-row');
+            const slugRowEl = document.querySelector('.slug-row');
             const optsToggle = document.getElementById('opts-toggle');
             const optsPanel = document.getElementById('opts-panel');
             const batchToggle = document.getElementById('batch-toggle');
@@ -1056,6 +1068,8 @@ export const indexHtml = buildPage({
                 batchPanel.hidden = !opening;
                 batchToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
                 urlRow.hidden = opening;
+                // 自定义短链仅适用于单条创建：批量模式下隐藏
+                slugRowEl.hidden = opening;
                 if (opening) {
                     if (!batchRowsEl.children.length) { batchAddRow(); batchAddRow(); batchAddRow(); }
                     const first = batchRowsEl.querySelector('.br-url');
@@ -1149,6 +1163,27 @@ export const indexHtml = buildPage({
                 batchImportWrap.hidden = true;
                 document.getElementById('batch-import-toggle').setAttribute('aria-expanded', 'false');
                 showToast(imported ? '已导入 ' + imported + ' 行' : '没有可导入的内容');
+            });
+            // 从 .txt / .csv 文件导入（按行解析，格式与文本粘贴一致）
+            document.getElementById('batch-import-file').addEventListener('change', function () {
+                const file = this.files && this.files[0];
+                this.value = '';
+                if (!file) return;
+                if (file.size > 1024 * 1024) { showToast('文件过大，请控制在 1MB 以内'); return; }
+                const reader = new FileReader();
+                reader.onload = function () {
+                    const lines = String(reader.result || '').split(/\\r?\\n/).map(s => s.trim()).filter(Boolean);
+                    let imported = 0;
+                    lines.forEach(function (line) {
+                        const tokens = line.split(/\\s+/).filter(Boolean);
+                        if (!tokens.length) return;
+                        batchAddRow(tokens[0], tokens[1] || '', tokens.slice(2).join(' '));
+                        imported++;
+                    });
+                    showToast(imported ? '已从文件导入 ' + imported + ' 行' : '文件中没有可导入的内容');
+                };
+                reader.onerror = function () { showToast('文件读取失败'); };
+                reader.readAsText(file);
             });
 
             // 收集「更多选项」：有效期 / 次数上限 / 访问密码 / 备注
