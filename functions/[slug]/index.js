@@ -79,7 +79,10 @@ export async function onRequest(context) {
       const finalLoginHtml = loginHtml.replace('__ADMIN_PATH_STATUS__', JSON.stringify(adminPathStatus));
       return new Response(finalLoginHtml, { headers: HTML_HEADERS, status: 200 });
     }
-    return new Response(adminHtml, { headers: HTML_HEADERS });
+    // 注入二维码样式设置（后台二维码弹窗与主页保持一致）
+    const adminSettings = await getSettings(DB);
+    const finalAdminHtml = adminHtml.replace('__QR_SETTINGS__', JSON.stringify(adminSettings.qr || {}));
+    return new Response(finalAdminHtml, { headers: HTML_HEADERS });
   }
 
   // C. 处理短链接跳转 (公开访问)

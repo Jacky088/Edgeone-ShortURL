@@ -4,7 +4,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
-const APP_VERSION = '3.0.0';
+const APP_VERSION = '3.0.1';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -41,6 +41,7 @@ const ICON_X = icon('<path d="M18 6L6 18M6 6l12 12"/>');
 const ICON_FEEDBACK = icon('<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>');
 const ICON_DOWNLOAD = icon('<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/>');
 const ICON_SLIDERS = icon('<path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M1 14h6"/><path d="M9 8h6"/><path d="M17 16h6"/>');
+const ICON_QR = icon('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z"/><path d="M21 14v4"/><path d="M14 21h3"/><path d="M21 21h.01"/>');
 
 // 品牌二维码中心 Logo（data URL，供 canvas 绘制，UTF-8 编码安全注入页面脚本）
 const QR_LOGO_DATA_URL = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2c6bff"/><stop offset="1" stop-color="#1246b8"/></linearGradient></defs><rect width="32" height="32" rx="7" fill="url(#g)"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" transform="translate(4.6 4.6) scale(0.95)"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></g></svg>');
@@ -175,6 +176,8 @@ function appShellCss() {
       .nav-sep { height: 1px; margin: 6px 10px; background: var(--border); flex: none; }
 
       .content { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+      /* 视图容器：内部卡片与图表区保持统一间距，避免贴边重叠 */
+      .view { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
       .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: clamp(18px, 3vw, 26px); box-shadow: var(--shadow); }
       .card-title { margin: 0 0 14px; font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
       .card-title svg { width: 18px; height: 18px; color: var(--primary); }
@@ -353,6 +356,19 @@ function appShellCss() {
       .btn-danger { height: 44px; border: 0; border-radius: 12px; background: var(--error); color: #fff; font-weight: 700; font-size: .9rem; font-family: inherit; cursor: pointer; transition: filter .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
       .btn-danger:hover { filter: brightness(1.08); }
       .btn-danger:active { transform: scale(.98); }
+
+      /* 访问详情弹窗：宽版横向布局（移动端自动收窄为单列） */
+      #detail-dialog { width: min(760px, calc(100% - 32px)); }
+      #detail-body { display: flex; flex-direction: column; gap: 14px; }
+      .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .detail-grid .span-2 { grid-column: 1 / -1; }
+      .detail-grid .bar-chart { gap: 3px; }
+      .detail-grid .bar-label { font-size: .64rem; }
+      @media (max-width: 620px) { .detail-grid { grid-template-columns: 1fr; } }
+
+      /* 二维码弹窗 */
+      .qr-view { display: flex; justify-content: center; padding: 4px 0 16px; }
+      .qr-view canvas { width: 240px; height: 240px; image-rendering: pixelated; border-radius: 8px; background: #fff; }
 
       /* ---------- 「关于项目」弹窗 ---------- */
       .about-close { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: background-color .16s, color .16s; }
@@ -1503,10 +1519,21 @@ export const adminHtml = buildPage({
         <button type="button" class="btn-ghost" id="detail-close" style="grid-column: 1 / -1">关闭</button>
     </div>
 </dialog>
+<dialog id="qr-dialog">
+    <h2 style="color: var(--primary)">${ICON_QR}<span>短链二维码</span></h2>
+    <p class="dialog-text" id="qr-slug-label"></p>
+    <div class="qr-view"><canvas id="qr-dialog-canvas" aria-label="短链二维码"></canvas></div>
+    <div class="row-btns">
+        <button type="button" class="btn-primary" id="qr-dlg-download">${ICON_DOWNLOAD}<span>下载 PNG</span></button>
+        <button type="button" class="btn-ghost" id="qr-dlg-close">关闭</button>
+    </div>
+</dialog>
 ` + aboutDialogHtml(),
-  script: themeJs + toastJs + loginToastJs('登录成功。') + logoutJs + fmtUtilJs + aboutJs + `
-        // 管理后台逻辑（与原实现一致：GET /api/links + POST /api/delete）
+  script: QR_LIB_SRC + '\n' + themeJs + toastJs + loginToastJs('登录成功。') + logoutJs + fmtUtilJs + aboutJs + `
+        // 管理后台逻辑（GET /api/links + POST /api/delete 等；二维码绘制与主页同源）
         (function () {
+            const QR_CFG = __QR_SETTINGS__;
+            const QR_LOGO_SRC = '${QR_LOGO_DATA_URL}';
             const viewList = document.getElementById('view-list');
             const viewStats = document.getElementById('view-stats');
             const tbody = document.getElementById('links-table-body');
@@ -1527,12 +1554,14 @@ export const adminHtml = buildPage({
             const ICON_PENCIL_SVG = '${ICON_PENCIL}';
             const ICON_CHART_SVG = '${ICON_CHART}';
             const ICON_TRASH_SVG = '${ICON_TRASH}';
+            const ICON_QR_SVG = '${ICON_QR}';
             const trashToggle = document.getElementById('trash-toggle');
             const trashCount = document.getElementById('trash-count');
             const exportCsvBtn = document.getElementById('export-csv');
             const exportJsonBtn = document.getElementById('export-json');
             const editDialog = document.getElementById('edit-dialog');
             const detailDialog = document.getElementById('detail-dialog');
+            const qrDialog = document.getElementById('qr-dialog');
 
             // 列表状态：全量数据 + 搜索过滤 + 排序（默认与原版一致：按访问次数降序）
             let allLinks = [];
@@ -1709,6 +1738,14 @@ export const adminHtml = buildPage({
                         purgeButton.setAttribute('aria-label', '彻底删除 ' + link.slug);
                         actionCell.append(restoreButton, purgeButton);
                     } else {
+                        const qrButton = document.createElement('button');
+                        qrButton.type = 'button';
+                        qrButton.className = 'row-edit';
+                        qrButton.dataset.slug = link.slug;
+                        qrButton.dataset.act = 'qr';
+                        qrButton.title = '二维码';
+                        qrButton.innerHTML = ICON_QR_SVG;
+                        qrButton.setAttribute('aria-label', '查看 ' + link.slug + ' 的二维码');
                         const detailButton = document.createElement('button');
                         detailButton.type = 'button';
                         detailButton.className = 'row-edit';
@@ -1731,7 +1768,7 @@ export const adminHtml = buildPage({
                         deleteButton.innerHTML = ICON_TRASH_SVG;
                         deleteButton.title = '删除';
                         deleteButton.setAttribute('aria-label', '删除 ' + link.slug);
-                        actionCell.append(detailButton, editButton, deleteButton);
+                        actionCell.append(qrButton, detailButton, editButton, deleteButton);
                     }
 
                     row.append(shortCell, originalCell, visitsCell, createdCell, actionCell);
@@ -1920,6 +1957,7 @@ export const adminHtml = buildPage({
                     const link = allLinks.find(function (l) { return l.slug === actBtn.dataset.slug; });
                     if (link) {
                         if (actBtn.dataset.act === 'edit') openEdit(link);
+                        else if (actBtn.dataset.act === 'qr') openQr(link);
                         else openDetail(link);
                     }
                     return;
@@ -2023,6 +2061,64 @@ export const adminHtml = buildPage({
                 showToast('已导出 ' + allLinks.length + ' 条记录（JSON）');
             });
 
+            // ---------- 二维码查看（样式来自运行时设置，与主页一致） ----------
+            function drawQrCanvas(canvas, text) {
+                try {
+                    if (typeof qrcode !== 'function') return false;
+                    if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+                    const withLogo = !!(QR_CFG && QR_CFG.centerLogo);
+                    const qr = qrcode(0, withLogo ? 'H' : 'M');
+                    qr.addData(text);
+                    qr.make();
+                    const count = qr.getModuleCount();
+                    const quiet = 4, scale = 8;
+                    const size = (count + quiet * 2) * scale;
+                    canvas.width = size; canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, size, size);
+                    ctx.fillStyle = (QR_CFG && QR_CFG.dark) || '#16181d';
+                    for (let r = 0; r < count; r++) {
+                        for (let c = 0; c < count; c++) {
+                            if (qr.isDark(r, c)) ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+                        }
+                    }
+                    if (withLogo) {
+                        const logoSize = Math.round(size * 0.22);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect((size - logoSize) / 2 - 8, (size - logoSize) / 2 - 8, logoSize + 16, logoSize + 16);
+                        const img = new Image();
+                        img.onload = function () { ctx.drawImage(img, (size - logoSize) / 2, (size - logoSize) / 2, logoSize, logoSize); };
+                        img.src = QR_LOGO_SRC;
+                    }
+                    return true;
+                } catch (err) { return false; }
+            }
+
+            function openQr(link) {
+                const shortUrl = window.location.origin + '/' + link.slug;
+                document.getElementById('qr-slug-label').textContent = shortUrl.replace(/^https?:\\/\\//, '');
+                const okDrawn = drawQrCanvas(document.getElementById('qr-dialog-canvas'), shortUrl);
+                document.getElementById('qr-dialog-canvas').hidden = !okDrawn;
+                qrDialog.dataset.url = shortUrl;
+                qrDialog.showModal();
+            }
+            document.getElementById('qr-dlg-close').addEventListener('click', function () { qrDialog.close(); });
+            qrDialog.addEventListener('click', function (e) { if (e.target === qrDialog) qrDialog.close(); });
+            document.getElementById('qr-dlg-download').addEventListener('click', function () {
+                const canvas = document.getElementById('qr-dialog-canvas');
+                if (!canvas || !canvas.width) { showToast('二维码不可用'); return; }
+                try {
+                    const slugPart = (qrDialog.dataset.url || '').split('/').pop() || 'code';
+                    const a = document.createElement('a');
+                    a.href = canvas.toDataURL('image/png');
+                    a.download = 'shorturl-qr-' + slugPart + '.png';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                } catch (err) { showToast('二维码下载失败，请截图保存'); }
+            });
+
             // ---------- 编辑短链 ----------
             function toLocalInputValue(ts) {
                 const d = new Date(ts);
@@ -2076,13 +2172,13 @@ export const adminHtml = buildPage({
                 finally { btn.disabled = false; }
             });
 
-            // ---------- 访问详情弹窗 ----------
+            // ---------- 访问详情弹窗（横版：概览一行 + 趋势通栏 + 设备/来源双列） ----------
             function openDetail(link) {
                 document.getElementById('detail-slug').textContent = '访问详情 /' + link.slug + (link.note ? ' · ' + link.note : '');
                 const body = document.getElementById('detail-body');
                 body.textContent = '';
 
-                // 概览
+                // 概览：三卡一行
                 const overview = document.createElement('div');
                 overview.className = 'stats-grid';
                 const nowTs = Date.now();
@@ -2102,9 +2198,12 @@ export const adminHtml = buildPage({
                 });
                 body.appendChild(overview);
 
-                // 近 14 天访问柱状图
+                const grid = document.createElement('div');
+                grid.className = 'detail-grid';
+
+                // 近 14 天访问柱状图（通栏）；窄屏时隔天显示标签避免挤压换行
                 const chartCard = document.createElement('div');
-                chartCard.className = 'chart-card detail-section';
+                chartCard.className = 'chart-card span-2';
                 const chartTitle = document.createElement('h3');
                 chartTitle.textContent = '近 14 天访问';
                 const chart = document.createElement('div');
@@ -2118,7 +2217,8 @@ export const adminHtml = buildPage({
                 }
                 let maxDay = 1;
                 days.forEach(function (d) { if (d.count > maxDay) maxDay = d.count; });
-                days.forEach(function (d) {
+                const thinLabels = window.innerWidth < 640;
+                days.forEach(function (d, idx) {
                     const col = document.createElement('div'); col.className = 'bar-col';
                     const track = document.createElement('div'); track.className = 'bar-track';
                     const fill = document.createElement('div'); fill.className = 'bar-fill' + (d.today ? ' today' : '');
@@ -2128,15 +2228,14 @@ export const adminHtml = buildPage({
                         const val = document.createElement('div'); val.className = 'bar-val'; val.textContent = String(d.count);
                         track.insertBefore(val, fill);
                     }
-                    const lbl = document.createElement('div'); lbl.className = 'bar-label'; lbl.textContent = d.label;
+                    const lbl = document.createElement('div'); lbl.className = 'bar-label';
+                    lbl.textContent = (thinLabels && idx % 2 === 1) ? '' : d.label;
                     col.append(track, lbl); chart.appendChild(col);
                 });
                 chartCard.append(chartTitle, chart);
-                body.appendChild(chartCard);
+                grid.appendChild(chartCard);
 
-                // 设备占比 + 来路 TOP5
-                const grid = document.createElement('div');
-                grid.className = 'chart-grid detail-section';
+                // 设备占比
                 const dev = link.dev || { m: 0, d: 0 };
                 const devTotal = dev.m + dev.d;
                 const devCard = document.createElement('div');
@@ -2163,6 +2262,7 @@ export const adminHtml = buildPage({
                 devCard.append(devTitle, devBox);
                 grid.appendChild(devCard);
 
+                // 来源 TOP5
                 const refCard = document.createElement('div');
                 refCard.className = 'chart-card';
                 const refTitle = document.createElement('h3'); refTitle.textContent = '来源 TOP5';
@@ -2189,6 +2289,7 @@ export const adminHtml = buildPage({
                 }
                 refCard.append(refTitle, refBox);
                 grid.appendChild(refCard);
+
                 body.appendChild(grid);
 
                 detailDialog.showModal();
