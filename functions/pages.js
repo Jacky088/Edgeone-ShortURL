@@ -564,7 +564,7 @@ function buildPage({ title, extraHead = '', css, body, script }) {
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#eef4fe">
     <title>${title}</title>
-    <script>(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';localStorage.setItem('theme',t);}document.documentElement.setAttribute('data-theme',t);var mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.content=t==='dark'?'#0a1026':'#eef4fe';}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
+    <script>(function(){try{var mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;var t=null;try{t=localStorage.getItem('theme')}catch(e){}if(t!=='light'&&t!=='dark'){t=(mq&&mq.matches)?'dark':'light'}document.documentElement.setAttribute('data-theme',t);var mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.content=t==='dark'?'#0a1026':'#eef4fe';if(mq){var follow=function(e){var s=null;try{s=localStorage.getItem('theme')}catch(err){}if(s!=='light'&&s!=='dark'){var nt=e.matches?'dark':'light';document.documentElement.setAttribute('data-theme',nt);if(mc)mc.content=nt==='dark'?'#0a1026':'#eef4fe'}};mq.addEventListener?mq.addEventListener('change',follow):mq.addListener&&mq.addListener(follow)}}catch(e){document.documentElement.setAttribute('data-theme','light')}})();</script>
 ${extraHead}    <style>
 ${css}    </style>
 </head>

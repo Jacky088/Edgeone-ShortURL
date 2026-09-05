@@ -92,3 +92,12 @@ test('错误页：品牌化 404，含返回主页入口', () => {
   assert.ok(page.includes('返回主页'), '应提供返回主页入口');
   assert.ok(!page.includes('__ADMIN_PATH_STATUS__'), '错误页不依赖服务端注入变量');
 });
+
+test('主题：默认跟随系统（自动检测不落盘），手动切换才记忆', () => {
+  const head = extractScripts(loginHtml)[0];
+  assert.ok(head.includes('matchMedia'), '应检测系统主题');
+  assert.ok(!head.includes('setItem'), '自动检测结果不应写入 localStorage，否则无法继续跟随系统');
+  assert.ok(head.includes("addEventListener('change'"), '应监听系统主题变化实时跟随');
+  const body = extractScripts(loginHtml).slice(1).join('');
+  assert.ok(body.includes("localStorage.setItem('theme'"), '手动切换应记忆到 localStorage');
+});
