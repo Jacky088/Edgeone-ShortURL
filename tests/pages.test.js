@@ -97,7 +97,9 @@ test('主题：默认跟随系统（自动检测不落盘），手动切换才�
   const head = extractScripts(loginHtml)[0];
   assert.ok(head.includes('matchMedia'), '应检测系统主题');
   assert.ok(!head.includes('setItem'), '自动检测结果不应写入 localStorage，否则无法继续跟随系统');
+  assert.ok(head.includes('theme_manual'), '应迁移清除旧版自动检测残留（无手动标记的 theme）');
   assert.ok(head.includes("addEventListener('change'"), '应监听系统主题变化实时跟随');
   const body = extractScripts(loginHtml).slice(1).join('');
   assert.ok(body.includes("localStorage.setItem('theme'"), '手动切换应记忆到 localStorage');
+  assert.ok(body.includes("setItem('theme_manual'"), '手动切换应写入标记，与旧版残留区分');
 });

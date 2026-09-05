@@ -4,7 +4,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
-const APP_VERSION = '3.3.6';
+const APP_VERSION = '3.3.8';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -564,7 +564,7 @@ function buildPage({ title, extraHead = '', css, body, script }) {
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#eef4fe">
     <title>${title}</title>
-    <script>(function(){try{var mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;var t=null;try{t=localStorage.getItem('theme')}catch(e){}if(t!=='light'&&t!=='dark'){t=(mq&&mq.matches)?'dark':'light'}document.documentElement.setAttribute('data-theme',t);var mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.content=t==='dark'?'#0a1026':'#eef4fe';if(mq){var follow=function(e){var s=null;try{s=localStorage.getItem('theme')}catch(err){}if(s!=='light'&&s!=='dark'){var nt=e.matches?'dark':'light';document.documentElement.setAttribute('data-theme',nt);if(mc)mc.content=nt==='dark'?'#0a1026':'#eef4fe'}};mq.addEventListener?mq.addEventListener('change',follow):mq.addListener&&mq.addListener(follow)}}catch(e){document.documentElement.setAttribute('data-theme','light')}})();</script>
+    <script>(function(){try{var mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;var t=null;try{t=localStorage.getItem('theme')}catch(e){}if(t){var mm=null;try{mm=localStorage.getItem('theme_manual')}catch(e){}if(mm!=='1'){try{localStorage.removeItem('theme')}catch(e){}t=null}}if(t!=='light'&&t!=='dark'){t=(mq&&mq.matches)?'dark':'light'}document.documentElement.setAttribute('data-theme',t);var mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.content=t==='dark'?'#0a1026':'#eef4fe';if(mq){var follow=function(e){var s=null;try{s=localStorage.getItem('theme')}catch(err){}if(s!=='light'&&s!=='dark'){var nt=e.matches?'dark':'light';document.documentElement.setAttribute('data-theme',nt);if(mc)mc.content=nt==='dark'?'#0a1026':'#eef4fe'}};mq.addEventListener?mq.addEventListener('change',follow):mq.addListener&&mq.addListener(follow)}}catch(e){document.documentElement.setAttribute('data-theme','light')}})();</script>
 ${extraHead}    <style>
 ${css}    </style>
 </head>
@@ -645,7 +645,7 @@ const themeJs = `
         function syncIcons(mode) { if (moon) moon.style.display = mode === 'dark' ? 'none' : 'block'; if (sun) sun.style.display = mode === 'dark' ? 'block' : 'none'; }
         function setTheme(mode) {
           htmlEl.setAttribute('data-theme', mode);
-          try { localStorage.setItem('theme', mode); } catch (e) {}
+          try { localStorage.setItem('theme', mode); localStorage.setItem('theme_manual', '1'); } catch (e) {}
           syncIcons(mode);
           const mc = document.querySelector('meta[name="theme-color"]');
           if (mc) mc.content = mode === 'dark' ? '#0a1026' : '#eef4fe';
