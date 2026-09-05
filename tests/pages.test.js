@@ -11,9 +11,16 @@ function extractScripts(html) {
   return [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 }
 
+// 模拟服务端占位符替换（[slug]/index.js 返回页面前会替换这些变量）
+function serverRender(html) {
+  return html
+    .split('__ADMIN_PATH_STATUS__').join(JSON.stringify('admin'))
+    .split('__QR_SETTINGS__').join('{"centerLogo":false,"dark":"#16181d"}');
+}
+
 // 逐段编译内嵌脚本：只编译不执行，捕获语法错误与顶层重名声明
 function assertScriptsCompile(html, label) {
-  const scripts = extractScripts(html);
+  const scripts = extractScripts(serverRender(html));
   assert.ok(scripts.length >= 2, `${label} 应包含主题预载与页面脚本`);
   scripts.forEach((code, i) => {
     assert.doesNotThrow(() => new Function(code), `${label} 第 ${i + 1} 段内嵌脚本应可编译`);

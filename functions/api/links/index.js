@@ -1,40 +1,30 @@
 // functions/api/links/index.js
+// 获取短链列表：默认返回全部有效短链；?trash=1 返回回收站（软删除）的短链。
+// 返回字段包含创建选项与聚合统计（note / expiresAt / maxVisits / hasPassword / daily / ref / dev），
+// 供管理后台列表、详情弹窗与导出使用。
 
-import { getCookie, jsonResponse, getKV } from '../../utils.js';
+import { jsonResponse, getKV, checkAdmin } from '../../utils.js';
 
-async function isAuthorized(request, env, DB) {
-  const adminPath = env.ADMIN_PATH;
-  if (!adminPath || request.headers.get('X-Admin-Slug') !== adminPath) {
-    return false;
-  }
-
-  if (!env.PASSWORD) return true;
-
-  const token = getCookie(request, 'auth_session');
-  if (!token || !/^[a-f0-9]{16,128}$/.test(token) || !DB) return false;
-  try {
-    const raw = await DB.get(`sess:${token}`);
-    if (!raw) return false;
-    const session = JSON.parse(raw);
-    return typeof session.exp === 'number' && Date.now() < session.exp;
-  } catch (e) {
-    return false;
-  }
+// 内部键：不以短链数据存储，列表时跳过
+function isInternalKey(key, adminPath) {
+  return key.startsWith('hash:') || key.startsWith('sess:') || key.startsWith('rl:')
+    || key.startsWith('cfg:') || key.startsWith('dc:') || key === 'visitCount' || key === adminPath;
 }
 
 export async function onRequest({ request, env = {} }) {
-  const adminPath = env.ADMIN_PATH;
-
   if (request.method !== 'GET') {
     return new Response('Method Not Allowed', { status: 405 });
   }
 
+  const adminPath = env.ADMIN_PATH;
   const DB = getKV(env);
   if (!DB) return jsonResponse({ error: 'KV binding not found. Please bind a KV namespace in EdgeOne Pages settings.' }, 500);
 
-  if (!(await isAuthorized(request, env, DB))) {
+  if (!(await checkAdmin(request, env, DB))) {
     return new Response('Unauthorized', { status: 401 });
   }
+
+  const trashOnly = new URL(request.url).searchParams.get('trash') === '1';
 
   try {
     let allKeys = [];
@@ -57,7 +47,7 @@ export async function onRequest({ request, env = {} }) {
 
     const links = await Promise.all(
       allKeys.map(async ({ key }) => {
-        if (key.startsWith('hash:') || key.startsWith('sess:') || key.startsWith('rl:') || key === 'visitCount' || key === adminPath) {
+        if (isInternalKey(key, adminPath)) {
           return null;
         }
 
@@ -66,11 +56,21 @@ export async function onRequest({ request, env = {} }) {
           try {
             const data = JSON.parse(value);
             if (data.original) {
+              // 回收站模式只返回软删除记录；默认模式排除它们
+              if (trashOnly !== !!data.deletedAt) return null;
               return {
                 slug: key,
                 original: data.original,
                 visits: data.visits || 0,
-                createdAt: data.createdAt || 0
+                createdAt: data.createdAt || 0,
+                note: data.note || '',
+                expiresAt: data.expiresAt || 0,
+                maxVisits: data.maxVisits || 0,
+                hasPassword: !!data.pwdHash,
+                deletedAt: data.deletedAt || 0,
+                daily: data.daily || {},
+                ref: data.ref || {},
+                dev: data.dev || { m: 0, d: 0 }
               };
             }
           } catch (e) {

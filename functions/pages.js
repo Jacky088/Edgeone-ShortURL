@@ -4,7 +4,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '3.0.0';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -40,6 +40,10 @@ const ICON_INFO = icon('<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11.
 const ICON_X = icon('<path d="M18 6L6 18M6 6l12 12"/>');
 const ICON_FEEDBACK = icon('<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>');
 const ICON_DOWNLOAD = icon('<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/>');
+const ICON_SLIDERS = icon('<path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M1 14h6"/><path d="M9 8h6"/><path d="M17 16h6"/>');
+
+// 品牌二维码中心 Logo（data URL，供 canvas 绘制，UTF-8 编码安全注入页面脚本）
+const QR_LOGO_DATA_URL = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2c6bff"/><stop offset="1" stop-color="#1246b8"/></linearGradient></defs><rect width="32" height="32" rx="7" fill="url(#g)"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" transform="translate(4.6 4.6) scale(0.95)"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></g></svg>');
 
 const ICON_SUN   = '<svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1.5v2M12 20.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1.5 12h2M20.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>';
 const ICON_MOON  = '<svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
@@ -235,7 +239,8 @@ function appShellCss() {
       /* ---------- 表格 ---------- */
       .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
       .table-wrap table { width: 100%; border-collapse: collapse; font-size: .88rem; min-width: 620px; }
-      table th, table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); color: var(--text); }
+      table th, table td { padding: 12px 7px; text-align: left; border-bottom: 1px solid var(--border); color: var(--text); }
+      table th:first-child, table td:first-child { padding-left: 12px; }
       table th { background: var(--surface-2); color: var(--muted); font-weight: 700; font-size: .8rem; white-space: nowrap; }
       table tbody tr:last-child td { border-bottom: 0; }
       table tbody tr:hover td { background: var(--surface-2); }
@@ -244,11 +249,13 @@ function appShellCss() {
       .slug-link { font-family: var(--mono); }
       /* 短链列：单行布局，长链省略号截断（悬停见完整 URL），复制按钮不换行 */
       .slug-cell { white-space: nowrap; }
-      .slug-cell .slug-link { display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+      .slug-cell .slug-link { display: inline-block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
       .td-nowrap { white-space: nowrap; }
-      .td-orig a { display: block; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .delete-btn { height: 32px; padding: 0 12px; border: 1px solid var(--error-border); border-radius: 9px; background: transparent; color: var(--error); font-size: .78rem; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; transition: background-color .16s, border-color .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
+      td.td-actions { white-space: nowrap; }
+      .td-orig a { display: block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .delete-btn { height: 32px; padding: 0 10px; border: 1px solid var(--error-border); border-radius: 9px; background: transparent; color: var(--error); font-size: .78rem; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; transition: background-color .16s, border-color .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
       .delete-btn:hover { background: var(--error-bg); border-color: var(--error); }
+      .delete-btn svg { width: 14px; height: 14px; display: block; }
       .delete-btn:active { transform: scale(.96); }
       .badge { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; background: var(--primary-soft); color: var(--nav-active-text); font-size: .76rem; font-weight: 700; font-variant-numeric: tabular-nums; }
       .empty { text-align: center; color: var(--muted); padding: 26px 0; }
@@ -387,6 +394,60 @@ function appShellCss() {
       /* 自定义短链实时反馈 */
       #slug-input.invalid { border-color: var(--error); box-shadow: 0 0 0 4px var(--error-bg); }
       .slug-count { margin-left: 8px; font-size: .76rem; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+      /* ---------- 创建表单扩展（更多选项 / 批量创建） ---------- */
+      .form-toggles { display: flex; gap: 4px 16px; flex-wrap: wrap; align-items: center; }
+      .opts-panel { margin-top: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; animation: fade-slide .22s ease; }
+      .opts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 16px; }
+      .opts-grid label { display: flex; flex-direction: column; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--muted); }
+      .opts-grid input, .opts-grid select { height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .9rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
+      .opts-grid input:focus, .opts-grid select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
+      #batch-input { width: 100%; resize: vertical; min-height: 88px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .88rem; font-family: var(--mono); line-height: 1.6; transition: border-color .18s, box-shadow .18s; }
+      #batch-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
+      .batch-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+      .batch-row:last-child { border-bottom: 0; }
+      .batch-row .copy-btn { height: 34px; padding: 0 12px; }
+      .batch-err { color: var(--error); font-size: .82rem; line-height: 1.5; word-break: break-all; }
+      .cell-note { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; color: var(--faint); margin-top: 2px; }
+      .cell-badge { display: inline-flex; margin-left: 6px; height: 18px; padding: 0 7px; align-items: center; border-radius: 999px; font-size: .68rem; font-weight: 700; background: var(--surface-3); color: var(--muted); vertical-align: middle; }
+      .cell-badge.warn { background: var(--error-bg); color: var(--error); }
+      .row-edit { height: 32px; padding: 0 8px; margin-right: 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--muted); font-size: .78rem; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; transition: color .16s, border-color .16s; -webkit-tap-highlight-color: transparent; }
+      .row-edit svg { width: 14px; height: 14px; display: block; }
+      .row-edit:hover { color: var(--primary); border-color: var(--primary); }
+      .row-restore { color: var(--success); border-color: var(--success); }
+      .row-restore:hover { color: var(--success); border-color: var(--success); background: var(--success-bg); }
+      .trash-toggle.on { color: var(--nav-active-text); border-color: var(--primary); background: var(--nav-active-bg); }
+
+      /* ---------- 系统设置 ---------- */
+      .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+      .settings-card { border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; margin: 0; }
+      .settings-card legend { font-weight: 700; font-size: .84rem; color: var(--muted); padding: 0 6px; }
+      .settings-card label { display: flex; flex-direction: column; gap: 5px; font-size: .8rem; font-weight: 600; color: var(--muted); }
+      .settings-card label.chk { flex-direction: row; align-items: center; gap: 8px; }
+      .settings-card input[type="text"], .settings-card input[type="password"], .settings-card input[type="number"], .settings-card select, .settings-card textarea { height: 38px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .88rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
+      .settings-card textarea { height: auto; padding: 8px 10px; resize: vertical; font-family: var(--mono); font-size: .8rem; line-height: 1.6; }
+      .settings-card input:focus, .settings-card select:focus, .settings-card textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
+      .settings-card input[type="color"] { padding: 2px; height: 38px; width: 64px; }
+      .settings-card input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
+      .settings-hint { margin: 0; font-size: .76rem; color: var(--faint); line-height: 1.6; }
+      .opt-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .token-create { display: flex; gap: 8px; }
+      .token-create input { flex: 1; min-width: 0; }
+      .token-new { display: flex; align-items: center; gap: 10px; background: var(--success-bg); border: 1px solid rgba(38, 196, 160, .35); border-radius: 10px; padding: 8px 10px; }
+      .token-new code { flex: 1; font-family: var(--mono); font-size: .76rem; word-break: break-all; color: var(--success); font-weight: 700; }
+      .token-list { display: flex; flex-direction: column; gap: 6px; }
+      .token-item { display: flex; align-items: center; gap: 10px; font-size: .82rem; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+      .token-item .t-name { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .token-item .t-time { color: var(--faint); font-size: .74rem; white-space: nowrap; }
+
+      /* 编辑短链弹窗 */
+      .edit-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+      .edit-form label { display: flex; flex-direction: column; gap: 5px; font-size: .8rem; font-weight: 600; color: var(--muted); }
+      .edit-form label.chk { flex-direction: row; align-items: center; gap: 8px; }
+      .edit-form input, .edit-form select { height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .9rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
+      .edit-form input:focus, .edit-form select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
+      .edit-form input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
+      .detail-section { margin-top: 14px; }
 
       /* 主题切换过渡：仅在切换瞬间由 JS 挂上 theme-anim 类，避免首屏闪烁与日常动画冲突 */
       html.theme-anim * { transition: background-color .3s ease, color .3s ease, border-color .3s ease, box-shadow .3s ease; }
@@ -804,9 +865,39 @@ export const indexHtml = buildPage({
                         <button type="submit" class="btn-primary" id="submit-btn">${ICON_CHAIN}<span>生成短链</span></button>
                     </div>
                     <div class="slug-row">
-                        <button type="button" class="slug-toggle" id="slug-toggle" aria-expanded="false">${ICON_PENCIL}<span>自定义短链（可选）</span></button>
+                        <div class="form-toggles">
+                            <button type="button" class="slug-toggle" id="slug-toggle" aria-expanded="false">${ICON_PENCIL}<span>自定义短链</span></button>
+                            <button type="button" class="slug-toggle" id="opts-toggle" aria-expanded="false" aria-controls="opts-panel">${ICON_SLIDERS}<span>更多选项</span></button>
+                            <button type="button" class="slug-toggle" id="batch-toggle" aria-expanded="false" aria-controls="batch-panel">${ICON_LIST}<span>批量创建</span></button>
+                        </div>
                         <span class="slug-count" id="slug-count"></span>
                         <input type="text" id="slug-input" maxlength="64" placeholder="例如: my-link" autocomplete="off" spellcheck="false" aria-hidden="true">
+                    </div>
+                    <div class="opts-panel" id="opts-panel" hidden>
+                        <div class="opts-grid">
+                            <label for="opt-ttl">有效期
+                                <select id="opt-ttl">
+                                    <option value="0">永久有效</option>
+                                    <option value="1">1 天</option>
+                                    <option value="7">7 天</option>
+                                    <option value="30">30 天</option>
+                                    <option value="90">90 天</option>
+                                </select>
+                            </label>
+                            <label for="opt-max">次数上限
+                                <input type="number" id="opt-max" min="1" step="1" placeholder="不限">
+                            </label>
+                            <label for="opt-pwd">访问密码
+                                <input type="password" id="opt-pwd" maxlength="64" placeholder="无（公开访问）" autocomplete="new-password">
+                            </label>
+                            <label for="opt-note">备注
+                                <input type="text" id="opt-note" maxlength="100" placeholder="选填，仅管理后台可见">
+                            </label>
+                        </div>
+                    </div>
+                    <div class="opts-panel" id="batch-panel" hidden>
+                        <textarea id="batch-input" rows="4" placeholder="每行粘贴一个完整链接（http/https 开头），最多 20 条"></textarea>
+                        <p class="hint-line">批量模式：每行一个链接，上方「更多选项」将应用到全部；不支持自定义短链。</p>
                     </div>
                     <p class="hint-line">仅支持 http/https 开头的完整链接；自定义短链可使用字母、数字、短横线、下划线，最长 64 位。</p>
                     <div class="message error" id="error-message"></div>
@@ -815,7 +906,7 @@ export const indexHtml = buildPage({
 
             <section class="card" id="result-card" hidden>
                 <h2 class="card-title">${ICON_CHECK}<span>生成结果</span></h2>
-                <div class="result-flex">
+                <div class="result-flex" id="result-single">
                     <div class="result-box">
                         <a href="#" target="_blank" rel="noopener noreferrer" class="result-url" id="result-link"></a>
                         <button type="button" class="copy-btn" id="copy-btn">${ICON_COPY}<span>复制</span></button>
@@ -826,6 +917,7 @@ export const indexHtml = buildPage({
                         <button type="button" class="btn-ghost qr-dl-btn" id="qr-download" hidden>${ICON_DOWNLOAD}<span>下载</span></button>
                     </div>
                 </div>
+                <div id="result-list" hidden></div>
                 <p class="hint-line">短链已创建成功，点击链接可跳转原文并累计访问次数；也可扫码在手机上打开。</p>
             </section>
 
@@ -855,6 +947,22 @@ export const indexHtml = buildPage({
             const copyBtn = document.getElementById('copy-btn');
             const qrBox = document.getElementById('result-qr');
             const qrDownload = document.getElementById('qr-download');
+            const urlRow = document.querySelector('.url-row');
+            const optsToggle = document.getElementById('opts-toggle');
+            const optsPanel = document.getElementById('opts-panel');
+            const batchToggle = document.getElementById('batch-toggle');
+            const batchPanel = document.getElementById('batch-panel');
+            const batchInput = document.getElementById('batch-input');
+            const optTtl = document.getElementById('opt-ttl');
+            const optMax = document.getElementById('opt-max');
+            const optPwd = document.getElementById('opt-pwd');
+            const optNote = document.getElementById('opt-note');
+            const resultList = document.getElementById('result-list');
+            const resultSingle = document.getElementById('result-single');
+            const ICON_COPY_SVG = '${ICON_COPY}';
+            // 二维码样式来自运行时设置（服务端注入）；占位符由 functions/[slug]/index.js 替换
+            const QR_CFG = __QR_SETTINGS__;
+            const QR_LOGO_SRC = '${QR_LOGO_DATA_URL}';
             const submitLabel = submitBtn.querySelector('span');
 
             // 恢复会话过期前未提交的内容（登录成功回到本页时触发）
@@ -866,13 +974,21 @@ export const indexHtml = buildPage({
                 } catch (err) { return; }
                 if (!savedUrl) return;
                 try { sessionStorage.removeItem('pending_create_url'); sessionStorage.removeItem('pending_create_slug'); } catch (err) {}
-                urlInput.value = savedUrl;
-                if (savedSlug) {
-                    slugInput.value = savedSlug;
-                    slugCount.textContent = savedSlug.length + '/64';
-                    slugInput.classList.add('show');
-                    slugToggle.setAttribute('aria-expanded', 'true');
-                    slugInput.setAttribute('aria-hidden', 'false');
+                if (savedUrl.includes('\\n')) {
+                    // 批量草稿：展开批量面板并回填
+                    batchPanel.hidden = false;
+                    batchToggle.setAttribute('aria-expanded', 'true');
+                    urlRow.hidden = true;
+                    batchInput.value = savedUrl;
+                } else {
+                    urlInput.value = savedUrl;
+                    if (savedSlug) {
+                        slugInput.value = savedSlug;
+                        slugCount.textContent = savedSlug.length + '/64';
+                        slugInput.classList.add('show');
+                        slugToggle.setAttribute('aria-expanded', 'true');
+                        slugInput.setAttribute('aria-hidden', 'false');
+                    }
                 }
                 showToastClosable('已恢复上次填写的内容，点击「生成短链」继续。', 3600);
                 urlInput.focus();
@@ -885,6 +1001,43 @@ export const indexHtml = buildPage({
                 slugInput.setAttribute('aria-hidden', opening ? 'false' : 'true');
                 if (opening) slugInput.focus();
             });
+
+            // 「更多选项 / 批量创建」折叠面板切换；批量模式隐藏单链接输入行
+            optsToggle.addEventListener('click', () => {
+                const opening = optsPanel.hidden;
+                optsPanel.hidden = !opening;
+                optsToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+            });
+            batchToggle.addEventListener('click', () => {
+                const opening = batchPanel.hidden;
+                batchPanel.hidden = !opening;
+                batchToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+                urlRow.hidden = opening;
+                if (opening) {
+                    slugInput.classList.remove('show');
+                    slugCount.textContent = '';
+                    batchInput.focus();
+                } else {
+                    urlInput.focus();
+                }
+            });
+
+            // 收集「更多选项」：有效期 / 次数上限 / 访问密码 / 备注
+            function collectOptions() {
+                const payload = {};
+                if (Number(optTtl.value) > 0) payload.ttlDays = Number(optTtl.value);
+                if (optMax.value) {
+                    const n = Number(optMax.value);
+                    if (!Number.isInteger(n) || n < 1) return { error: '次数上限需为正整数' };
+                    payload.maxVisits = n;
+                }
+                if (optPwd.value) {
+                    if (optPwd.value.length < 4 || optPwd.value.length > 64) return { error: '访问密码长度需在 4-64 位之间' };
+                    payload.password = optPwd.value;
+                }
+                if (optNote.value.trim()) payload.note = optNote.value.trim().slice(0, 100);
+                return { payload };
+            }
 
             // 自定义校验（novalidate 替代浏览器原生气泡，规则与后端 utils.js 保持一致）
             function validateUrl(v) {
@@ -915,12 +1068,14 @@ export const indexHtml = buildPage({
                 errorMessage.style.display = 'block';
             }
 
-            // 将短链绘制为二维码（白底黑码保证任何主题下都可扫描）
+            // 将短链绘制为二维码（白底保证任何主题下都可扫描；
+            // 样式来自运行时设置：中心 Logo 时自动提升纠错等级为 H）
             function drawQr(text) {
                 try {
                     if (typeof qrcode !== 'function') { qrBox.hidden = true; if (qrDownload) qrDownload.hidden = true; return; }
                     if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
-                    const qr = qrcode(0, 'M');
+                    const withLogo = !!(QR_CFG && QR_CFG.centerLogo);
+                    const qr = qrcode(0, withLogo ? 'H' : 'M');
                     qr.addData(text);
                     qr.make();
                     const count = qr.getModuleCount();
@@ -931,11 +1086,19 @@ export const indexHtml = buildPage({
                     const ctx = canvas.getContext('2d');
                     ctx.fillStyle = '#ffffff';
                     ctx.fillRect(0, 0, size, size);
-                    ctx.fillStyle = '#16181d';
+                    ctx.fillStyle = (QR_CFG && QR_CFG.dark) || '#16181d';
                     for (let r = 0; r < count; r++) {
                         for (let c = 0; c < count; c++) {
                             if (qr.isDark(r, c)) ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
                         }
+                    }
+                    if (withLogo) {
+                        const logoSize = Math.round(size * 0.22);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect((size - logoSize) / 2 - 4, (size - logoSize) / 2 - 4, logoSize + 8, logoSize + 8);
+                        const img = new Image();
+                        img.onload = function () { ctx.drawImage(img, (size - logoSize) / 2, (size - logoSize) / 2, logoSize, logoSize); };
+                        img.src = QR_LOGO_SRC;
                     }
                     qrBox.hidden = false;
                     if (qrDownload) qrDownload.hidden = false;
@@ -943,6 +1106,8 @@ export const indexHtml = buildPage({
             }
 
             function showSuccess(newLink) {
+                resultList.hidden = true;
+                resultSingle.hidden = false;
                 const shortUrl = window.location.origin + '/' + newLink.slug;
                 resultLink.href = shortUrl;
                 resultLink.textContent = shortUrl.replace(/^https?:\\/\\//, '');
@@ -952,8 +1117,82 @@ export const indexHtml = buildPage({
                 resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
 
+            // 批量创建结果：每行一条短链 + 复制按钮；失败行展示原因
+            function showBatchSuccess(results, errors) {
+                resultSingle.hidden = true;
+                resultList.hidden = false;
+                resultList.textContent = '';
+                results.forEach(function (r) {
+                    const shortUrl = window.location.origin + '/' + r.slug;
+                    const row = document.createElement('div');
+                    row.className = 'batch-row';
+                    const a = document.createElement('a');
+                    a.className = 'result-url';
+                    a.href = shortUrl;
+                    a.target = '_blank'; a.rel = 'noopener noreferrer';
+                    a.textContent = shortUrl.replace(/^https?:\\/\\//, '');
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'copy-btn';
+                    btn.dataset.url = shortUrl;
+                    btn.innerHTML = ICON_COPY_SVG;
+                    btn.setAttribute('aria-label', '复制 ' + shortUrl);
+                    row.append(a, btn);
+                    resultList.appendChild(row);
+                });
+                (errors || []).forEach(function (err) {
+                    const row = document.createElement('div');
+                    row.className = 'batch-row';
+                    const msg = document.createElement('div');
+                    msg.className = 'batch-err';
+                    msg.textContent = '✕ ' + err.url + '：' + err.error;
+                    row.appendChild(msg);
+                    resultList.appendChild(row);
+                });
+                resultCard.hidden = false;
+                resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            // 会话过期时保存草稿（单条保存 URL/slug；批量保存整个文本框）
+            function savePendingDraft(url, slug) {
+                try {
+                    sessionStorage.setItem('pending_create_url', url);
+                    if (slug) sessionStorage.setItem('pending_create_slug', slug);
+                    else sessionStorage.removeItem('pending_create_slug');
+                } catch (err) {}
+            }
+
             async function createLink(e) {
                 e.preventDefault();
+                const opts = collectOptions();
+                if (opts.error) { showError(opts.error); return; }
+
+                // 批量模式：逐行校验后一次性提交（最多 20 条）
+                if (!batchPanel.hidden) {
+                    const urls = batchInput.value.split('\\n').map(s => s.trim()).filter(Boolean);
+                    if (!urls.length) { showError('请输入至少一个长链接'); batchInput.focus(); return; }
+                    if (urls.length > 20) { showError('批量创建一次最多 20 条'); return; }
+                    for (let i = 0; i < urls.length; i++) {
+                        const err = validateUrl(urls[i]);
+                        if (err) { showError('第 ' + (i + 1) + ' 行：' + err); return; }
+                    }
+                    setLoading(true);
+                    errorMessage.style.display = 'none';
+                    try {
+                        const res = await fetch('/api/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ urls: urls }, opts.payload)) });
+                        if (res.status === 401) { savePendingDraft(urls.join('\\n'), ''); window.location.reload(); return; }
+                        if (!res.ok) {
+                            const data = await res.json().catch(() => ({}));
+                            throw new Error(data.error || '创建链接失败。');
+                        }
+                        const data = await res.json();
+                        batchInput.value = '';
+                        showBatchSuccess(data.results || [], data.errors || []);
+                    } catch (err) { showError(err.message); } finally { setLoading(false); }
+                    return;
+                }
+
+                // 单条模式
                 const originalUrl = urlInput.value.trim();
                 const customSlug = slugInput.value.trim();
                 const urlError = validateUrl(originalUrl);
@@ -965,16 +1204,12 @@ export const indexHtml = buildPage({
                 setLoading(true);
                 errorMessage.style.display = 'none';
                 try {
-                    const payload = { url: originalUrl };
+                    const payload = Object.assign({ url: originalUrl }, opts.payload);
                     if (customSlug) payload.slug = customSlug;
                     const res = await fetch('/api/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (res.status === 401) {
                         // 会话过期：先保存已填内容再刷新，登录后自动恢复，避免用户重新输入
-                        try {
-                            sessionStorage.setItem('pending_create_url', originalUrl);
-                            if (customSlug) sessionStorage.setItem('pending_create_slug', customSlug);
-                            else sessionStorage.removeItem('pending_create_slug');
-                        } catch (err) {}
+                        savePendingDraft(originalUrl, customSlug);
                         window.location.reload();
                         return;
                     }
@@ -1005,6 +1240,17 @@ export const indexHtml = buildPage({
             });
 
             form.addEventListener('submit', createLink);
+
+            // 批量结果行的复制按钮（事件委托）
+            resultList.addEventListener('click', async (e) => {
+                const btn = e.target.closest('.copy-btn');
+                if (!btn || !btn.dataset.url) return;
+                try {
+                    await navigator.clipboard.writeText(btn.dataset.url);
+                    btn.classList.add('copied');
+                    setTimeout(() => btn.classList.remove('copied'), 1500);
+                } catch (err) { showToast('复制失败，请手动复制'); }
+            });
 
             // 二维码下载：画布导出 PNG
             if (qrDownload) qrDownload.addEventListener('click', function () {
@@ -1080,6 +1326,7 @@ export const adminHtml = buildPage({
         <nav class="sidebar" aria-label="主导航">
             <button type="button" class="nav-item active" aria-current="page" data-view="list">${ICON_LIST}<span>短链列表</span></button>
             <button type="button" class="nav-item" data-view="stats">${ICON_CHART}<span>访问统计</span></button>
+            <button type="button" class="nav-item" data-view="settings">${ICON_SLIDERS}<span>系统设置</span></button>
             <div class="nav-sep" aria-hidden="true"></div>
             <button type="button" class="nav-item open-about">${ICON_INFO}<span>关于项目</span></button>
         </nav>
@@ -1093,6 +1340,9 @@ export const adminHtml = buildPage({
                     <div class="table-toolbar">
                         <div class="search-wrap">${ICON_SEARCH}<input type="search" id="link-search" placeholder="搜索短链或原始链接…" autocomplete="off" aria-label="搜索短链或原始链接"></div>
                         <button type="button" class="btn-ghost tb-btn" id="refresh-btn">${ICON_REFRESH}<span>刷新</span></button>
+                        <button type="button" class="btn-ghost tb-btn trash-toggle" id="trash-toggle" aria-pressed="false">${ICON_TRASH}<span>回收站</span><span class="badge" id="trash-count" hidden>0</span></button>
+                        <button type="button" class="btn-ghost tb-btn" id="export-csv">${ICON_DOWNLOAD}<span>CSV</span></button>
+                        <button type="button" class="btn-ghost tb-btn" id="export-json">${ICON_DOWNLOAD}<span>JSON</span></button>
                     </div>
                     <div class="table-wrap">
                         <table>
@@ -1116,6 +1366,95 @@ export const adminHtml = buildPage({
                     <div class="chart-card"><h3>访问量 TOP 短链</h3><div class="top-links" id="top-links"></div></div>
                 </div>
             </section>
+            <section class="view" id="view-settings" hidden>
+                <div class="card">
+                    <div class="card-title-row">
+                        <h2 class="card-title">${ICON_SLIDERS}<span>系统设置</span></h2>
+                        <button type="button" class="btn-primary" id="settings-save" style="height:40px; padding: 0 18px;">保存设置</button>
+                    </div>
+                    <p class="card-desc">设置保存在 KV 中，保存后即时生效，无需重新部署。留空或关闭的项使用默认值。</p>
+                    <div class="settings-grid">
+                        <fieldset class="settings-card">
+                            <legend>安全</legend>
+                            <label for="set-password">自定义访问口令
+                                <input type="password" id="set-password" placeholder="留空保持不变" autocomplete="new-password">
+                            </label>
+                            <p class="settings-hint" id="set-pwd-hint">加载中…</p>
+                            <label class="chk"><input type="checkbox" id="set-clearpwd"> 恢复为环境变量口令（清除自定义口令）</label>
+                            <label for="set-session">会话有效期（小时，1-720）
+                                <input type="number" id="set-session" min="1" max="720">
+                            </label>
+                            <div class="opt-pair">
+                                <label for="set-rl-max">限流次数
+                                    <input type="number" id="set-rl-max" min="1" max="100">
+                                </label>
+                                <label for="set-rl-win">限流窗口（分钟）
+                                    <input type="number" id="set-rl-win" min="1" max="1440">
+                                </label>
+                            </div>
+                        </fieldset>
+                        <fieldset class="settings-card">
+                            <legend>短链</legend>
+                            <div class="opt-pair">
+                                <label for="set-slug-len">随机短链长度（4-16）
+                                    <input type="number" id="set-slug-len" min="4" max="16">
+                                </label>
+                                <label for="set-slug-charset">字符集
+                                    <select id="set-slug-charset">
+                                        <option value="safe">易读（去 0O1lI）</option>
+                                        <option value="full">完整（a-z0-9）</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <label class="chk"><input type="checkbox" id="set-dedup"> 相同长链接复用同一短链（去重）</label>
+                            <label for="set-redirect">默认跳转方式
+                                <select id="set-redirect">
+                                    <option value="302">302 临时（推荐）</option>
+                                    <option value="301">301 永久（浏览器会缓存，影响统计）</option>
+                                </select>
+                            </label>
+                            <label for="set-daily-limit">每 IP 每日创建上限（0 = 不限）
+                                <input type="number" id="set-daily-limit" min="0" max="10000">
+                            </label>
+                            <label for="set-whitelist">目标域名白名单（每行一个，空 = 不限制）
+                                <textarea id="set-whitelist" rows="3" placeholder="example.com&#10;sub.example.org"></textarea>
+                            </label>
+                            <label for="set-reserved">自定义保留字（每行一个）
+                                <textarea id="set-reserved" rows="2" placeholder="admin&#10;login"></textarea>
+                            </label>
+                        </fieldset>
+                        <fieldset class="settings-card">
+                            <legend>统计与二维码</legend>
+                            <label for="set-dedup-min">访问去重窗口（同一访客短时间内不重复计数）
+                                <select id="set-dedup-min">
+                                    <option value="0">关闭（每次跳转都计数）</option>
+                                    <option value="5">5 分钟</option>
+                                    <option value="30">30 分钟</option>
+                                    <option value="60">1 小时</option>
+                                    <option value="240">4 小时</option>
+                                </select>
+                            </label>
+                            <label class="chk"><input type="checkbox" id="set-qr-logo"> 二维码中心放置 Logo（自动提升纠错等级）</label>
+                            <label for="set-qr-dark">二维码前景色
+                                <input type="color" id="set-qr-dark" value="#16181d">
+                            </label>
+                        </fieldset>
+                        <fieldset class="settings-card">
+                            <legend>API Token</legend>
+                            <p class="settings-hint">用于脚本 / 第三方调用管理接口：请求头携带 <b>X-API-Token</b>，可访问创建 / 列表 / 编辑 / 删除 / 设置等全部管理接口。Token 仅在创建时完整显示一次。</p>
+                            <div class="token-create">
+                                <input type="text" id="token-name" placeholder="Token 名称（如：自动化脚本）" maxlength="30">
+                                <button type="button" class="btn-ghost" id="token-create">生成 Token</button>
+                            </div>
+                            <div class="token-new" id="token-new" hidden>
+                                <code id="token-new-value"></code>
+                                <button type="button" class="copy-btn" id="token-copy">复制</button>
+                            </div>
+                            <div class="token-list" id="token-list"></div>
+                        </fieldset>
+                    </div>
+                </div>
+            </section>
             ${appFooterHtml()}
         </main>
     </div>
@@ -1126,6 +1465,42 @@ export const adminHtml = buildPage({
     <div class="row-btns">
         <button type="button" class="btn-danger" id="confirm-del">删除</button>
         <button type="button" class="btn-ghost" id="cancel-del">取消</button>
+    </div>
+</dialog>
+<dialog id="edit-dialog">
+    <h2 style="color: var(--primary)">${ICON_PENCIL}<span>编辑短链</span></h2>
+    <p class="dialog-text" id="edit-slug-label"></p>
+    <div class="edit-form">
+        <label for="edit-original">目标链接
+            <input type="url" id="edit-original" placeholder="https://…">
+        </label>
+        <label for="edit-note">备注
+            <input type="text" id="edit-note" maxlength="100" placeholder="仅管理后台可见">
+        </label>
+        <div class="opt-pair">
+            <label for="edit-exp">有效期（留空 = 永久）
+                <input type="datetime-local" id="edit-exp">
+            </label>
+            <label for="edit-max">次数上限（留空 = 不限）
+                <input type="number" id="edit-max" min="1" step="1">
+            </label>
+        </div>
+        <label for="edit-pwd">新访问密码（留空保持不变）
+            <input type="password" id="edit-pwd" maxlength="64" autocomplete="new-password">
+        </label>
+        <label class="chk"><input type="checkbox" id="edit-clearpwd"> 清除访问密码</label>
+    </div>
+    <div class="row-btns">
+        <button type="button" class="btn-primary" id="edit-save">保存</button>
+        <button type="button" class="btn-ghost" id="edit-cancel">取消</button>
+    </div>
+</dialog>
+<dialog id="detail-dialog">
+    <h2 style="color: var(--primary)">${ICON_CHART}<span>访问详情</span></h2>
+    <p class="dialog-text" id="detail-slug"></p>
+    <div id="detail-body"></div>
+    <div class="row-btns" style="margin-top: 16px">
+        <button type="button" class="btn-ghost" id="detail-close" style="grid-column: 1 / -1">关闭</button>
     </div>
 </dialog>
 ` + aboutDialogHtml(),
@@ -1149,6 +1524,15 @@ export const adminHtml = buildPage({
             const authHeaders = { 'Content-Type': 'application/json', 'X-Admin-Slug': adminSlug };
             const ICON_COPY_SVG = '${ICON_COPY}';
             const ICON_CHECK_SVG = '${ICON_CHECK}';
+            const ICON_PENCIL_SVG = '${ICON_PENCIL}';
+            const ICON_CHART_SVG = '${ICON_CHART}';
+            const ICON_TRASH_SVG = '${ICON_TRASH}';
+            const trashToggle = document.getElementById('trash-toggle');
+            const trashCount = document.getElementById('trash-count');
+            const exportCsvBtn = document.getElementById('export-csv');
+            const exportJsonBtn = document.getElementById('export-json');
+            const editDialog = document.getElementById('edit-dialog');
+            const detailDialog = document.getElementById('detail-dialog');
 
             // 列表状态：全量数据 + 搜索过滤 + 排序（默认与原版一致：按访问次数降序）
             let allLinks = [];
@@ -1156,6 +1540,12 @@ export const adminHtml = buildPage({
             let sortKey = 'visits';
             let sortDir = 'desc';
             let pendingSlug = null;
+            let pendingPurge = false;
+            // 视图状态：list（有效短链）| trash（回收站）；lastActive 供统计视图聚合使用
+            let viewMode = 'list';
+            let lastActive = [];
+            let trashTotal = null;
+            let settingsLoaded = false;
             // 客户端分页：一次渲染前 PAGE_SIZE 条，「加载更多」追加，避免大列表全量渲染卡顿
             const PAGE_SIZE = 50;
             let shownCount = PAGE_SIZE;
@@ -1184,6 +1574,10 @@ export const adminHtml = buildPage({
                 if (!allLinks.length) { adminNote.textContent = ''; return; }
                 const filtered = visibleLinks();
                 const shown = Math.min(filtered.length, shownCount);
+                if (viewMode === 'trash') {
+                    adminNote.textContent = '回收站共 ' + allLinks.length + ' 条，可恢复或彻底删除。';
+                    return;
+                }
                 const sortLabel = (sortKey === 'visits' ? '访问次数' : '创建时间') + (sortDir === 'asc' ? '升序' : '降序');
                 adminNote.textContent = '共 ' + allLinks.length + ' 条记录' + (filterText ? '，筛选出 ' + filtered.length + ' 条' : '') + '，按' + sortLabel + '排列' + (filtered.length > shown ? '，当前显示前 ' + shown + ' 条' : '') + '。';
             }
@@ -1203,6 +1597,14 @@ export const adminHtml = buildPage({
                 }
             }
 
+            // 行内状态徽标
+            function addCellBadge(cell, text, cls) {
+                const badge = document.createElement('span');
+                badge.className = 'cell-badge' + (cls ? ' ' + cls : '');
+                badge.textContent = text;
+                cell.appendChild(badge);
+            }
+
             function renderList() {
                 tbody.textContent = '';
                 const filtered = visibleLinks();
@@ -1216,7 +1618,7 @@ export const adminHtml = buildPage({
                     const tr = document.createElement('tr');
                     const td = document.createElement('td');
                     td.colSpan = 5; td.className = 'empty';
-                    td.textContent = '暂无短链接，回到前台「创建短链」生成一个吧。';
+                    td.textContent = viewMode === 'trash' ? '回收站是空的。' : '暂无短链接，回到前台「创建短链」生成一个吧。';
                     tr.appendChild(td); tbody.appendChild(tr);
                     linkCount.textContent = '0';
                     return;
@@ -1254,6 +1656,26 @@ export const adminHtml = buildPage({
                     rowCopy.innerHTML = ICON_COPY_SVG;
                     shortCell.appendChild(rowCopy);
 
+                    // 状态徽标：过期 / 达上限 / 密码保护 / 回收站
+                    const nowTs = Date.now();
+                    if (viewMode === 'trash') {
+                        addCellBadge(shortCell, '回收站', '');
+                    } else if (link.expiresAt && nowTs > link.expiresAt) {
+                        addCellBadge(shortCell, '已过期', 'warn');
+                    } else if (link.maxVisits && (link.visits || 0) >= link.maxVisits) {
+                        addCellBadge(shortCell, '已达上限', 'warn');
+                    }
+                    if (link.hasPassword) addCellBadge(shortCell, '密码', '');
+
+                    // 备注：短链下方小字展示
+                    if (link.note) {
+                        const noteDiv = document.createElement('div');
+                        noteDiv.className = 'cell-note';
+                        noteDiv.textContent = link.note;
+                        noteDiv.title = link.note;
+                        shortCell.appendChild(noteDiv);
+                    }
+
                     const originalCell = document.createElement('td');
                     originalCell.className = 'td-orig col-orig';
                     const originalAnchor = document.createElement('a');
@@ -1271,12 +1693,46 @@ export const adminHtml = buildPage({
                     if (link.createdAt) createdCell.title = fmtFullDateTime(link.createdAt);
 
                     const actionCell = document.createElement('td');
-                    const deleteButton = document.createElement('button');
-                    deleteButton.className = 'delete-btn';
-                    deleteButton.dataset.slug = link.slug;
-                    deleteButton.textContent = '删除';
-                    deleteButton.setAttribute('aria-label', '删除 ' + link.slug);
-                    actionCell.appendChild(deleteButton);
+                    actionCell.className = 'td-actions';
+                    if (viewMode === 'trash') {
+                        const restoreButton = document.createElement('button');
+                        restoreButton.type = 'button';
+                        restoreButton.className = 'row-edit row-restore';
+                        restoreButton.dataset.slug = link.slug;
+                        restoreButton.textContent = '恢复';
+                        restoreButton.setAttribute('aria-label', '恢复 ' + link.slug);
+                        const purgeButton = document.createElement('button');
+                        purgeButton.className = 'delete-btn';
+                        purgeButton.dataset.slug = link.slug;
+                        purgeButton.dataset.purge = '1';
+                        purgeButton.textContent = '彻底删除';
+                        purgeButton.setAttribute('aria-label', '彻底删除 ' + link.slug);
+                        actionCell.append(restoreButton, purgeButton);
+                    } else {
+                        const detailButton = document.createElement('button');
+                        detailButton.type = 'button';
+                        detailButton.className = 'row-edit';
+                        detailButton.dataset.slug = link.slug;
+                        detailButton.dataset.act = 'detail';
+                        detailButton.title = '访问详情';
+                        detailButton.innerHTML = ICON_CHART_SVG;
+                        detailButton.setAttribute('aria-label', '查看 ' + link.slug + ' 的访问详情');
+                        const editButton = document.createElement('button');
+                        editButton.type = 'button';
+                        editButton.className = 'row-edit';
+                        editButton.dataset.slug = link.slug;
+                        editButton.dataset.act = 'edit';
+                        editButton.title = '编辑';
+                        editButton.innerHTML = ICON_PENCIL_SVG;
+                        editButton.setAttribute('aria-label', '编辑 ' + link.slug);
+                        const deleteButton = document.createElement('button');
+                        deleteButton.className = 'delete-btn';
+                        deleteButton.dataset.slug = link.slug;
+                        deleteButton.innerHTML = ICON_TRASH_SVG;
+                        deleteButton.title = '删除';
+                        deleteButton.setAttribute('aria-label', '删除 ' + link.slug);
+                        actionCell.append(detailButton, editButton, deleteButton);
+                    }
 
                     row.append(shortCell, originalCell, visitsCell, createdCell, actionCell);
                     tbody.appendChild(row);
@@ -1349,7 +1805,7 @@ export const adminHtml = buildPage({
                 renderSkeleton();
                 adminNote.textContent = '加载中…';
                 try {
-                    const res = await fetch('/api/links', { headers: authHeaders });
+                    const res = await fetch(viewMode === 'trash' ? '/api/links?trash=1' : '/api/links', { headers: authHeaders });
                     if (res.status === 401) {
                         adminNote.textContent = '';
                         const card = document.querySelector('#view-list .card');
@@ -1365,39 +1821,87 @@ export const adminHtml = buildPage({
                     if (!res.ok) throw new Error('获取链接列表失败。');
                     allLinks = await res.json();
                     shownCount = PAGE_SIZE;
+                    if (viewMode === 'list') {
+                        lastActive = allLinks;
+                    } else {
+                        trashTotal = allLinks.length;
+                        updateTrashBadge();
+                    }
                     renderList();
-                    renderStats(allLinks);
+                    renderStats(lastActive);
                     updateNote();
                     updateSortArrows();
                 } catch (err) { if (err.message !== 'auth') { adminNote.textContent = err.message; console.error(err); } }
             }
 
             // 删除确认：自定义弹窗替代原生 confirm()，风格与整体一致
-            function requestDelete(slug) {
+            function requestDelete(slug, purge) {
                 pendingSlug = slug;
-                confirmText.textContent = '确定要删除短链接 ';
-                const b = document.createElement('b');
-                b.textContent = '/' + slug;
-                confirmText.appendChild(b);
-                confirmText.appendChild(document.createTextNode(' 吗？删除后该短链立即失效。'));
+                pendingPurge = purge === true;
+                if (pendingPurge) {
+                    confirmText.textContent = '彻底删除 ';
+                    const b = document.createElement('b');
+                    b.textContent = '/' + slug;
+                    confirmText.append(b, document.createTextNode(' 吗？该操作不可恢复。'));
+                } else {
+                    confirmText.textContent = '确定要删除短链接 ';
+                    const b = document.createElement('b');
+                    b.textContent = '/' + slug;
+                    confirmText.append(b, document.createTextNode(' 吗？删除后将进入回收站，可随时恢复。'));
+                }
                 if (typeof dialog.showModal !== 'function') {
-                    if (window.confirm('您确定要删除短链接 "' + slug + '" 吗？')) doDelete(slug);
+                    if (window.confirm('您确定要删除短链接 "' + slug + '" 吗？')) doDelete(slug, pendingPurge);
                     return;
                 }
                 dialog.showModal();
             }
 
-            async function doDelete(slug) {
+            async function doDelete(slug, purge) {
                 try {
-                    const res = await fetch('/api/delete', { method: 'POST', headers: authHeaders, body: JSON.stringify({ slug: slug }) });
-                    if (!res.ok) throw new Error('删除失败。');
+                    const res = await fetch('/api/delete', { method: 'POST', headers: authHeaders, body: JSON.stringify({ slug: slug, purge: purge === true }) });
+                    if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        throw new Error(data.error || '删除失败。');
+                    }
+                    const wasPurge = purge === true;
                     // 从内存数据移除后整表重渲染，列表 / 徽标 / 统计视图保持同步
                     allLinks = allLinks.filter(function (l) { return l.slug !== slug; });
+                    if (viewMode === 'list') {
+                        lastActive = allLinks;
+                        if (trashTotal != null) { trashTotal += 1; updateTrashBadge(); }
+                    } else {
+                        trashTotal = Math.max(0, trashTotal - 1);
+                        updateTrashBadge();
+                    }
                     renderList();
-                    renderStats(allLinks);
+                    renderStats(lastActive);
                     updateNote();
-                    showToast('已删除 ' + slug);
+                    showToast(wasPurge ? '已彻底删除 ' + slug : '已移入回收站：/' + slug);
                 } catch (err) { showToast(err.message); }
+            }
+
+            // 从回收站恢复短链
+            async function doRestore(slug) {
+                try {
+                    const res = await fetch('/api/restore', { method: 'POST', headers: authHeaders, body: JSON.stringify({ slug: slug }) });
+                    if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        throw new Error(data.error || '恢复失败。');
+                    }
+                    allLinks = allLinks.filter(function (l) { return l.slug !== slug; });
+                    trashTotal = Math.max(0, trashTotal - 1);
+                    updateTrashBadge();
+                    renderList();
+                    updateNote();
+                    showToast('已恢复 /' + slug);
+                } catch (err) { showToast(err.message); }
+            }
+
+            function updateTrashBadge() {
+                if (!trashCount) return;
+                if (trashTotal == null) { trashCount.hidden = true; return; }
+                trashCount.hidden = trashTotal === 0;
+                trashCount.textContent = String(trashTotal);
             }
 
             tbody.addEventListener('click', function (e) {
@@ -1411,11 +1915,22 @@ export const adminHtml = buildPage({
                     }).catch(function () { showToast('复制失败，请手动复制'); });
                     return;
                 }
+                const actBtn = e.target.closest('.row-edit');
+                if (actBtn) {
+                    const link = allLinks.find(function (l) { return l.slug === actBtn.dataset.slug; });
+                    if (link) {
+                        if (actBtn.dataset.act === 'edit') openEdit(link);
+                        else openDetail(link);
+                    }
+                    return;
+                }
+                const restoreBtn = e.target.closest('.row-restore');
+                if (restoreBtn) { doRestore(restoreBtn.dataset.slug); return; }
                 const btn = e.target.closest('.delete-btn');
-                if (btn) requestDelete(btn.dataset.slug);
+                if (btn) requestDelete(btn.dataset.slug, btn.dataset.purge === '1');
             });
 
-            confirmDel.addEventListener('click', function () { const s = pendingSlug; pendingSlug = null; dialog.close(); if (s) doDelete(s); });
+            confirmDel.addEventListener('click', function () { const s = pendingSlug; const p = pendingPurge; pendingSlug = null; pendingPurge = false; dialog.close(); if (s) doDelete(s, p); });
             cancelDel.addEventListener('click', function () { pendingSlug = null; dialog.close(); });
             dialog.addEventListener('click', function (e) { if (e.target === dialog) { pendingSlug = null; dialog.close(); } });
             dialog.addEventListener('close', function () { pendingSlug = null; });
@@ -1453,6 +1968,234 @@ export const adminHtml = buildPage({
                 if (label) label.textContent = '刷新';
             });
 
+            // ---------- 回收站切换 ----------
+            trashToggle.addEventListener('click', async function () {
+                viewMode = viewMode === 'list' ? 'trash' : 'list';
+                const label = trashToggle.querySelector('span');
+                if (label) label.textContent = viewMode === 'trash' ? '返回列表' : '回收站';
+                trashToggle.classList.toggle('on', viewMode === 'trash');
+                trashToggle.setAttribute('aria-pressed', viewMode === 'trash' ? 'true' : 'false');
+                searchInput.value = '';
+                filterText = '';
+                await getLinks();
+            });
+
+            // 启动时后台获取回收站数量（徽标提示）
+            (async function () {
+                try {
+                    const res = await fetch('/api/links?trash=1', { headers: authHeaders });
+                    if (res.ok) {
+                        trashTotal = (await res.json()).length;
+                        updateTrashBadge();
+                    }
+                } catch (e) {}
+            })();
+
+            // ---------- 数据导出（CSV / JSON，来自当前内存数据） ----------
+            function downloadFile(name, content, mime) {
+                const blob = new Blob([content], { type: mime });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+            }
+            function csvCell(v) {
+                const s = String(v == null ? '' : v);
+                return /[",\\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+            }
+            exportCsvBtn.addEventListener('click', function () {
+                if (!allLinks.length) { showToast('暂无数据可导出'); return; }
+                const header = ['slug', 'original', 'visits', 'createdAt', 'note', 'expiresAt', 'maxVisits', 'hasPassword'];
+                const lines = [header.join(',')];
+                allLinks.forEach(function (l) {
+                    lines.push([l.slug, l.original, l.visits, new Date(l.createdAt).toISOString(), l.note, l.expiresAt || '', l.maxVisits || '', l.hasPassword ? 'yes' : 'no'].map(csvCell).join(','));
+                });
+                const d = new Date();
+                downloadFile('shorturl-export-' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '.csv', '\\ufeff' + lines.join('\\n'), 'text/csv;charset=utf-8');
+                showToast('已导出 ' + allLinks.length + ' 条记录（CSV）');
+            });
+            exportJsonBtn.addEventListener('click', function () {
+                if (!allLinks.length) { showToast('暂无数据可导出'); return; }
+                downloadFile('shorturl-export.json', JSON.stringify(allLinks, null, 2), 'application/json');
+                showToast('已导出 ' + allLinks.length + ' 条记录（JSON）');
+            });
+
+            // ---------- 编辑短链 ----------
+            function toLocalInputValue(ts) {
+                const d = new Date(ts);
+                return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+            }
+            function openEdit(link) {
+                document.getElementById('edit-slug-label').textContent = '编辑 /' + link.slug;
+                document.getElementById('edit-original').value = link.original;
+                document.getElementById('edit-note').value = link.note || '';
+                document.getElementById('edit-exp').value = link.expiresAt ? toLocalInputValue(link.expiresAt) : '';
+                document.getElementById('edit-max').value = link.maxVisits || '';
+                document.getElementById('edit-pwd').value = '';
+                document.getElementById('edit-clearpwd').checked = false;
+                editDialog.dataset.slug = link.slug;
+                editDialog.showModal();
+            }
+            document.getElementById('edit-cancel').addEventListener('click', function () { editDialog.close(); });
+            editDialog.addEventListener('click', function (e) { if (e.target === editDialog) editDialog.close(); });
+            document.getElementById('edit-save').addEventListener('click', async function () {
+                const slug = editDialog.dataset.slug;
+                const payload = {
+                    slug: slug,
+                    original: document.getElementById('edit-original').value.trim(),
+                    note: document.getElementById('edit-note').value.trim()
+                };
+                const expVal = document.getElementById('edit-exp').value;
+                payload.expiresAt = expVal ? new Date(expVal).getTime() : null;
+                payload.maxVisits = document.getElementById('edit-max').value ? Number(document.getElementById('edit-max').value) : null;
+                if (document.getElementById('edit-pwd').value) payload.password = document.getElementById('edit-pwd').value;
+                payload.clearPassword = document.getElementById('edit-clearpwd').checked;
+                if (payload.original && !/^https?:\\/\\//.test(payload.original)) {
+                    showToast('目标链接需以 http/https 开头'); return;
+                }
+                const btn = this;
+                btn.disabled = true;
+                try {
+                    const res = await fetch('/api/update', { method: 'POST', headers: authHeaders, body: JSON.stringify(payload) });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || '保存失败');
+                    // 就地更新内存数据，保持列表与详情一致
+                    const idx = allLinks.findIndex(function (l) { return l.slug === slug; });
+                    if (idx > -1) allLinks[idx] = Object.assign({}, allLinks[idx], {
+                        original: data.original, note: data.note || '', expiresAt: data.expiresAt || 0,
+                        maxVisits: data.maxVisits || 0, hasPassword: !!data.hasPassword
+                    });
+                    renderList();
+                    updateNote();
+                    editDialog.close();
+                    showToast('已保存 /' + slug);
+                } catch (err) { showToast(err.message); }
+                finally { btn.disabled = false; }
+            });
+
+            // ---------- 访问详情弹窗 ----------
+            function openDetail(link) {
+                document.getElementById('detail-slug').textContent = '访问详情 /' + link.slug + (link.note ? ' · ' + link.note : '');
+                const body = document.getElementById('detail-body');
+                body.textContent = '';
+
+                // 概览
+                const overview = document.createElement('div');
+                overview.className = 'stats-grid';
+                const nowTs = Date.now();
+                const status = link.expiresAt && nowTs > link.expiresAt ? '已过期'
+                    : (link.maxVisits && (link.visits || 0) >= link.maxVisits ? '已达上限' : '正常');
+                [[numberFormat(link.visits), '总访问'], [fmtDateTime(link.createdAt), '创建时间'], [status, '状态']].forEach(function (pair) {
+                    const card = document.createElement('div');
+                    card.className = 'stat-card';
+                    const head = document.createElement('div');
+                    head.className = 'stat-head';
+                    head.textContent = pair[1];
+                    const value = document.createElement('b');
+                    value.className = 'stat-value stat-value-text';
+                    value.textContent = pair[0];
+                    card.append(head, value);
+                    overview.appendChild(card);
+                });
+                body.appendChild(overview);
+
+                // 近 14 天访问柱状图
+                const chartCard = document.createElement('div');
+                chartCard.className = 'chart-card detail-section';
+                const chartTitle = document.createElement('h3');
+                chartTitle.textContent = '近 14 天访问';
+                const chart = document.createElement('div');
+                chart.className = 'bar-chart';
+                const days = [];
+                const nowD = new Date();
+                for (let i = 13; i >= 0; i--) {
+                    const d = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() - i);
+                    const key = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+                    days.push({ key: key, label: pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()), count: (link.daily && link.daily[key]) || 0, today: i === 0 });
+                }
+                let maxDay = 1;
+                days.forEach(function (d) { if (d.count > maxDay) maxDay = d.count; });
+                days.forEach(function (d) {
+                    const col = document.createElement('div'); col.className = 'bar-col';
+                    const track = document.createElement('div'); track.className = 'bar-track';
+                    const fill = document.createElement('div'); fill.className = 'bar-fill' + (d.today ? ' today' : '');
+                    fill.style.height = d.count ? Math.max(5, Math.round(d.count / maxDay * 100)) + '%' : '0%';
+                    track.appendChild(fill);
+                    if (d.count) {
+                        const val = document.createElement('div'); val.className = 'bar-val'; val.textContent = String(d.count);
+                        track.insertBefore(val, fill);
+                    }
+                    const lbl = document.createElement('div'); lbl.className = 'bar-label'; lbl.textContent = d.label;
+                    col.append(track, lbl); chart.appendChild(col);
+                });
+                chartCard.append(chartTitle, chart);
+                body.appendChild(chartCard);
+
+                // 设备占比 + 来路 TOP5
+                const grid = document.createElement('div');
+                grid.className = 'chart-grid detail-section';
+                const dev = link.dev || { m: 0, d: 0 };
+                const devTotal = dev.m + dev.d;
+                const devCard = document.createElement('div');
+                devCard.className = 'chart-card';
+                const devTitle = document.createElement('h3'); devTitle.textContent = '设备占比';
+                const devBox = document.createElement('div'); devBox.className = 'top-links';
+                [['移动端', dev.m], ['桌面端', dev.d]].forEach(function (pair) {
+                    const row = document.createElement('div'); row.className = 'top-link';
+                    const head = document.createElement('div'); head.className = 'top-link-head';
+                    const name = document.createElement('span'); name.className = 'top-link-slug'; name.textContent = pair[0];
+                    const cnt = document.createElement('span'); cnt.className = 'top-link-count';
+                    cnt.textContent = devTotal ? Math.round(pair[1] / devTotal * 100) + '%' : '—';
+                    head.append(name, cnt);
+                    const prog = document.createElement('div'); prog.className = 'progress';
+                    const bar = document.createElement('i');
+                    bar.style.width = devTotal ? Math.max(2, Math.round(pair[1] / devTotal * 100)) + '%' : '0%';
+                    prog.appendChild(bar);
+                    row.append(head, prog); devBox.appendChild(row);
+                });
+                if (!devTotal) {
+                    const empty = document.createElement('div'); empty.className = 'empty'; empty.textContent = '暂无访问数据';
+                    devBox.appendChild(empty);
+                }
+                devCard.append(devTitle, devBox);
+                grid.appendChild(devCard);
+
+                const refCard = document.createElement('div');
+                refCard.className = 'chart-card';
+                const refTitle = document.createElement('h3'); refTitle.textContent = '来源 TOP5';
+                const refBox = document.createElement('div'); refBox.className = 'top-links';
+                const refs = Object.entries(link.ref || {}).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 5);
+                if (!refs.length) {
+                    const empty = document.createElement('div'); empty.className = 'empty'; empty.textContent = '暂无来源数据';
+                    refBox.appendChild(empty);
+                } else {
+                    let maxRef = 1;
+                    refs.forEach(function (r) { if (r[1] > maxRef) maxRef = r[1]; });
+                    refs.forEach(function (r) {
+                        const row = document.createElement('div'); row.className = 'top-link';
+                        const head = document.createElement('div'); head.className = 'top-link-head';
+                        const slug = document.createElement('span'); slug.className = 'top-link-slug'; slug.textContent = r[0];
+                        const cnt = document.createElement('span'); cnt.className = 'top-link-count'; cnt.textContent = numberFormat(r[1]);
+                        head.append(slug, cnt);
+                        const prog = document.createElement('div'); prog.className = 'progress';
+                        const bar = document.createElement('i');
+                        bar.style.width = Math.max(2, Math.round(r[1] / maxRef * 100)) + '%';
+                        prog.appendChild(bar);
+                        row.append(head, prog); refBox.appendChild(row);
+                    });
+                }
+                refCard.append(refTitle, refBox);
+                grid.appendChild(refCard);
+                body.appendChild(grid);
+
+                detailDialog.showModal();
+            }
+            document.getElementById('detail-close').addEventListener('click', function () { detailDialog.close(); });
+            detailDialog.addEventListener('click', function (e) { if (e.target === detailDialog) detailDialog.close(); });
+
             // 加载更多：追加下一页数据（纯客户端分页）
             if (loadMoreBtn) loadMoreBtn.addEventListener('click', function () {
                 shownCount += PAGE_SIZE;
@@ -1460,22 +2203,173 @@ export const adminHtml = buildPage({
                 updateNote();
             });
 
-            // 侧边栏切换「短链列表 / 访问统计」，支持 ?view=stats 深链直达统计视图
+            // 侧边栏切换「短链列表 / 访问统计 / 系统设置」，支持 ?view= 深链直达
             function setView(v) {
                 viewList.hidden = v !== 'list';
                 viewStats.hidden = v !== 'stats';
+                document.getElementById('view-settings').hidden = v !== 'settings';
                 document.querySelectorAll('.nav-item[data-view]').forEach(function (x) {
                     const active = x.dataset.view === v;
                     x.classList.toggle('active', active);
                     if (active) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current');
                 });
+                if (v === 'settings' && !settingsLoaded) {
+                    settingsLoaded = true;
+                    loadSettings();
+                    loadTokens();
+                }
             }
             document.querySelectorAll('.nav-item[data-view]').forEach(function (b) {
                 b.addEventListener('click', function () { setView(b.dataset.view); });
             });
             let initialView = 'list';
-            try { if (new URLSearchParams(window.location.search).get('view') === 'stats') initialView = 'stats'; } catch (err) {}
+            try {
+                const requested = new URLSearchParams(window.location.search).get('view');
+                if (requested === 'stats' || requested === 'settings') initialView = requested;
+            } catch (err) {}
             setView(initialView);
+
+            // ---------- 系统设置 ----------
+            async function loadSettings() {
+                try {
+                    const res = await fetch('/api/settings', { headers: authHeaders });
+                    if (!res.ok) throw new Error('x');
+                    const s = await res.json();
+                    document.getElementById('set-session').value = s.sessionHours || 24;
+                    document.getElementById('set-rl-max').value = s.rateLimit ? s.rateLimit.max : 5;
+                    document.getElementById('set-rl-win').value = s.rateLimit ? s.rateLimit.windowMin : 10;
+                    document.getElementById('set-slug-len').value = s.slug ? s.slug.length : 8;
+                    document.getElementById('set-slug-charset').value = s.slug ? s.slug.charset : 'safe';
+                    document.getElementById('set-dedup').checked = s.dedupHash !== false;
+                    document.getElementById('set-redirect').value = s.redirectCode === 301 ? '301' : '302';
+                    document.getElementById('set-daily-limit').value = s.dailyCreateLimit || 0;
+                    document.getElementById('set-whitelist').value = (s.domainWhitelist || []).join('\\n');
+                    document.getElementById('set-reserved').value = (s.extraReserved || []).join('\\n');
+                    document.getElementById('set-dedup-min').value = String(s.dedupMin || 0);
+                    document.getElementById('set-qr-logo').checked = !!(s.qr && s.qr.centerLogo);
+                    document.getElementById('set-qr-dark').value = (s.qr && s.qr.dark) || '#16181d';
+                    document.getElementById('set-pwd-hint').textContent = s.hasCustomPassword
+                        ? '当前使用自定义口令（保存在 KV，修改后所有旧会话立即失效）'
+                        : '当前使用环境变量口令（未配置则无需登录）';
+                } catch (e) { showToast('设置加载失败'); }
+            }
+
+            document.getElementById('settings-save').addEventListener('click', async function () {
+                const btn = this;
+                btn.disabled = true;
+                const payload = {
+                    sessionHours: Number(document.getElementById('set-session').value) || 24,
+                    rateLimit: {
+                        max: Number(document.getElementById('set-rl-max').value) || 5,
+                        windowMin: Number(document.getElementById('set-rl-win').value) || 10
+                    },
+                    slug: {
+                        length: Number(document.getElementById('set-slug-len').value) || 8,
+                        charset: document.getElementById('set-slug-charset').value
+                    },
+                    dedupHash: document.getElementById('set-dedup').checked,
+                    redirectCode: document.getElementById('set-redirect').value === '301' ? 301 : 302,
+                    dailyCreateLimit: Number(document.getElementById('set-daily-limit').value) || 0,
+                    domainWhitelist: document.getElementById('set-whitelist').value.split('\\n').map(s => s.trim()).filter(Boolean),
+                    extraReserved: document.getElementById('set-reserved').value.split('\\n').map(s => s.trim()).filter(Boolean),
+                    dedupMin: Number(document.getElementById('set-dedup-min').value) || 0,
+                    qr: {
+                        centerLogo: document.getElementById('set-qr-logo').checked,
+                        dark: document.getElementById('set-qr-dark').value
+                    }
+                };
+                const newPwd = document.getElementById('set-password').value;
+                if (newPwd) payload.password = newPwd;
+                if (document.getElementById('set-clearpwd').checked) payload.clearPassword = true;
+                try {
+                    const res = await fetch('/api/settings', { method: 'POST', headers: authHeaders, body: JSON.stringify(payload) });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || '保存失败');
+                    document.getElementById('set-password').value = '';
+                    document.getElementById('set-clearpwd').checked = false;
+                    loadSettings();
+                    if (data.sessionInvalidated) {
+                        showToastClosable('口令已更新，所有旧会话已失效，即将重新登录…', 2600);
+                        setTimeout(function () { window.location.href = '/'; }, 1600);
+                    } else {
+                        showToast('设置已保存，即时生效');
+                    }
+                } catch (err) { showToast(err.message || '保存失败'); }
+                finally { btn.disabled = false; }
+            });
+
+            // ---------- API Token ----------
+            async function loadTokens() {
+                const list = document.getElementById('token-list');
+                try {
+                    const res = await fetch('/api/token', { headers: authHeaders });
+                    if (!res.ok) throw new Error('x');
+                    const tokens = await res.json();
+                    list.textContent = '';
+                    if (!tokens.length) {
+                        const empty = document.createElement('div');
+                        empty.className = 'settings-hint';
+                        empty.textContent = '暂无 Token';
+                        list.appendChild(empty);
+                        return;
+                    }
+                    tokens.forEach(function (t) {
+                        const item = document.createElement('div');
+                        item.className = 'token-item';
+                        const name = document.createElement('span');
+                        name.className = 't-name';
+                        name.textContent = t.name;
+                        const time = document.createElement('span');
+                        time.className = 't-time';
+                        time.textContent = '创建于 ' + fmtDateShort(t.createdAt);
+                        const revoke = document.createElement('button');
+                        revoke.type = 'button';
+                        revoke.className = 'delete-btn';
+                        revoke.textContent = '吊销';
+                        revoke.setAttribute('aria-label', '吊销 ' + t.name);
+                        revoke.addEventListener('click', async function () {
+                            revoke.disabled = true;
+                            try {
+                                const res2 = await fetch('/api/token', { method: 'DELETE', headers: authHeaders, body: JSON.stringify({ id: t.id }) });
+                                if (!res2.ok) throw new Error();
+                                showToast('已吊销 ' + t.name);
+                                loadTokens();
+                            } catch (e) { showToast('吊销失败'); revoke.disabled = false; }
+                        });
+                        item.append(name, time, revoke);
+                        list.appendChild(item);
+                    });
+                } catch (e) {
+                    list.textContent = '';
+                    const empty = document.createElement('div');
+                    empty.className = 'settings-hint';
+                    empty.textContent = 'Token 列表加载失败';
+                    list.appendChild(empty);
+                }
+            }
+
+            document.getElementById('token-create').addEventListener('click', async function () {
+                const btn = this;
+                btn.disabled = true;
+                try {
+                    const res = await fetch('/api/token', { method: 'POST', headers: authHeaders, body: JSON.stringify({ name: document.getElementById('token-name').value }) });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || '创建失败');
+                    document.getElementById('token-new').hidden = false;
+                    document.getElementById('token-new-value').textContent = data.token;
+                    document.getElementById('token-name').value = '';
+                    loadTokens();
+                } catch (err) { showToast(err.message || '创建失败'); }
+                finally { btn.disabled = false; }
+            });
+            document.getElementById('token-copy').addEventListener('click', async function () {
+                const btn = this;
+                try {
+                    await navigator.clipboard.writeText(document.getElementById('token-new-value').textContent);
+                    btn.textContent = '已复制';
+                    setTimeout(function () { btn.textContent = '复制'; }, 1500);
+                } catch (e) { showToast('复制失败，请手动复制'); }
+            });
 
             getLinks();
         })();
@@ -1483,7 +2377,35 @@ export const adminHtml = buildPage({
 });
 
 // ==========================================
-// 4. 错误页（404 / 无效短链：面向外部访客的品牌化页面）
+// 4. 密码保护页（单条短链设置访问密码后的中转验证页）
+// ==========================================
+export function passwordHtml({ slug, error = '' } = {}) {
+  return buildPage({
+    title: '访问验证 · Edgeone-ShortURL',
+    css: themeVarsCss + baseCss() + appShellCss(),
+    body: decoHtml() + `
+<div class="auth-wrap">
+    <div class="auth-card">
+        ${logoHtml('auth-logo')}
+        <h1>密码保护链接</h1>
+        <p class="auth-sub">该短链接设置了访问密码，验证通过后即可继续访问（24 小时内免重复输入）。</p>
+        <div class="auth-divider"></div>
+        <form method="POST" action="/${slug}">
+            <div class="pw-wrap">
+                <input type="password" name="pw" placeholder="输入访问密码…" autocomplete="current-password" required autofocus>
+            </div>
+            ${error ? `<div class="auth-error" style="display:block">${error}</div>` : ''}
+            <button type="submit" class="btn-primary" style="width:100%; margin-top:12px">${ICON_SHIELD}<span>继续访问</span></button>
+        </form>
+    </div>
+</div>
+`,
+    script: themeJs
+  });
+}
+
+// ==========================================
+// 5. 错误页（404 / 无效短链：面向外部访客的品牌化页面）
 // ==========================================
 export function errorPageHtml({ code = '404', title = '链接不存在', message = '该短链接不存在或已被删除。' } = {}) {
   return buildPage({
