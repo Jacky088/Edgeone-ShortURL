@@ -433,20 +433,19 @@ function appShellCss() {
       #batch-import:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
       .batch-import-wrap { display: flex; flex-direction: column; gap: 8px; }
       .batch-import-ops { display: flex; gap: 8px; flex-wrap: wrap; }
-      .batch-submit { align-self: flex-start; }
-      /* 批量逐行编辑器 */
+      .batch-submit { align-self: stretch; width: 100%; }
+      /* 批量逐行编辑器：宽屏一行排开（序号 + 三个输入框 + 删除），窄屏自动换行 */
       .batch-rows { display: flex; flex-direction: column; gap: 8px; }
-      .batch-row-edit { border: 1px solid var(--border); border-radius: 10px; background: var(--input-bg); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+      .batch-row-edit { border: 1px solid var(--border); border-radius: 10px; background: var(--input-bg); padding: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
       .batch-row-edit.invalid { border-color: var(--error); box-shadow: 0 0 0 3px var(--error-bg); }
-      .bre-head { display: flex; align-items: center; justify-content: space-between; }
-      .bre-idx { font-size: .74rem; font-weight: 700; color: var(--faint); font-variant-numeric: tabular-nums; }
-      .bre-del { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: color .16s, border-color .16s; }
-      .bre-del:hover { color: var(--error); border-color: var(--error); }
-      .bre-del svg { width: 12px; height: 12px; }
-      .batch-row-edit input { width: 100%; min-width: 0; height: 38px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: .88rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; }
+      .bre-idx { flex: none; min-width: 22px; text-align: center; font-size: .8rem; font-weight: 700; color: var(--faint); font-variant-numeric: tabular-nums; }
+      .batch-row-edit input { flex: 1 1 180px; min-width: 0; min-height: 38px; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: .88rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; }
       .batch-row-edit input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
-      .bre-line2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-      @media (max-width: 620px) { .bre-line2 { grid-template-columns: 1fr; } }
+      .batch-row-edit .br-url { flex-grow: 2; }
+      .bre-del { flex: none; width: 38px; min-height: 38px; border: 0; border-radius: 9px; background: var(--error); color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: filter .16s, transform .12s; }
+      .bre-del:hover { filter: brightness(1.08); }
+      .bre-del:active { transform: scale(.94); }
+      .bre-del svg { width: 14px; height: 14px; }
       .batch-ops { display: flex; gap: 8px; flex-wrap: wrap; }
       .batch-op { height: 36px; padding: 0 12px; font-size: .8rem; }
       .batch-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
@@ -524,7 +523,6 @@ function appShellCss() {
         .brand-sub { display: none; }
         .url-row { flex-direction: column; }
         .url-row .btn-primary { width: 100%; }
-        .batch-submit { width: 100%; align-self: stretch; }
         .result-box { flex-direction: column; align-items: stretch; }
         .result-flex { flex-direction: column; }
         .result-qr { flex-direction: row; align-self: center; }
@@ -1082,21 +1080,12 @@ export const indexHtml = buildPage({
             });
 
             // ---------- 批量逐行编辑器 ----------
+            // 批量行结构：序号 + 目标链接 + 自定义短链 + 备注 + 删除（宽屏一行排开，窄屏自动换行）
             function batchAddRow(url = '', slug = '', note = '') {
                 const row = document.createElement('div');
                 row.className = 'batch-row-edit';
-                const head = document.createElement('div');
-                head.className = 'bre-head';
                 const idx = document.createElement('span');
                 idx.className = 'bre-idx';
-                const del = document.createElement('button');
-                del.type = 'button';
-                del.className = 'bre-del';
-                del.innerHTML = ICON_X_SVG;
-                del.title = '删除此行';
-                del.setAttribute('aria-label', '删除此行');
-                del.addEventListener('click', function () { row.remove(); renumberBatchRows(); });
-                head.append(idx, del);
                 const urlIn = document.createElement('input');
                 urlIn.type = 'url';
                 urlIn.className = 'br-url';
@@ -1104,8 +1093,6 @@ export const indexHtml = buildPage({
                 urlIn.value = url;
                 urlIn.autocomplete = 'off';
                 urlIn.spellcheck = false;
-                const line2 = document.createElement('div');
-                line2.className = 'bre-line2';
                 const slugIn = document.createElement('input');
                 slugIn.type = 'text';
                 slugIn.className = 'br-slug';
@@ -1121,8 +1108,14 @@ export const indexHtml = buildPage({
                 noteIn.placeholder = '备注（可选）';
                 noteIn.value = note;
                 noteIn.autocomplete = 'off';
-                line2.append(slugIn, noteIn);
-                row.append(head, urlIn, line2);
+                const del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'bre-del';
+                del.innerHTML = ICON_X_SVG;
+                del.title = '删除此行';
+                del.setAttribute('aria-label', '删除此行');
+                del.addEventListener('click', function () { row.remove(); renumberBatchRows(); });
+                row.append(idx, urlIn, slugIn, noteIn, del);
                 batchRowsEl.appendChild(row);
                 renumberBatchRows();
                 return row;
