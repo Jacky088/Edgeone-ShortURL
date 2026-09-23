@@ -17,7 +17,14 @@ const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="
 </svg>`;
 
 // 统一的 HTML 响应头（错误页 / 密码页与正常页面共用）
-const HTML_HEADERS = { 'Content-Type': 'text/html; charset=utf-8' };
+// private, no-store：认证相关页面绝不允许边缘/CDN 缓存，避免已登录 HTML 被吐给未登录用户
+const HTML_HEADERS = {
+  'Content-Type': 'text/html; charset=utf-8',
+  'Cache-Control': 'private, no-store',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'no-referrer',
+  'X-Frame-Options': 'DENY'
+};
 
 const MOBILE_UA = /Mobi|Android|iPhone|iPad|iPod/i;
 const MAX_DAILY_KEYS = 30;   // 单条短链保留最近 30 天的按日访问计数

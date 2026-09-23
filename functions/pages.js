@@ -4,7 +4,9 @@ import { QR_LIB_SRC } from './qr-src.js';
 
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
-const APP_VERSION = '3.3.8';
+// 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
+const APP_VERSION = '3.3.9';
+const ASSET_VERSION = '3.3.9';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -553,7 +555,18 @@ function appShellCss() {
 // ==========================================
 // 页面外壳（含头部防闪烁的主题预载脚本）
 // ==========================================
-function buildPage({ title, extraHead = '', css, body, script }) {
+// 静态资源版本见顶部 ASSET_VERSION（改 public/ 文件后同步 bump）。
+function staticCssLink() {
+  return `    <link rel="stylesheet" href="/app.css?v=${ASSET_VERSION}">\n`;
+}
+// 页面脚本：公共 ui.js（主题/Toast/注销/格式化/关于） + 按需的二维码库；
+// 旧版页内 `css` 参数保留兼容（错误页等仍可传额外样式），但主体样式走静态文件。
+// 注意：静态脚本不用 defer——body 末尾的内联业务脚本在解析期就调用
+// showToastClosable/numberFormat/getLinks 等（定义在 ui.js），必须保证按文档顺序先执行。
+function buildPage({ title, extraHead = '', css = '', body, script, scripts = [] }) {
+  const links = staticCssLink();
+  const inlineCss = css ? `    <style>\n${css}    </style>\n` : '';
+  const scriptTags = scripts.map((s) => `    <script src="${s}"></script>\n`).join('');
   return `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -565,9 +578,7 @@ function buildPage({ title, extraHead = '', css, body, script }) {
     <meta name="theme-color" content="#eef4fe">
     <title>${title}</title>
     <script>(function(){try{var mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;var t=null;try{t=localStorage.getItem('theme')}catch(e){}if(t){var mm=null;try{mm=localStorage.getItem('theme_manual')}catch(e){}if(mm!=='1'){try{localStorage.removeItem('theme')}catch(e){}t=null}}if(t!=='light'&&t!=='dark'){t=(mq&&mq.matches)?'dark':'light'}document.documentElement.setAttribute('data-theme',t);var mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.content=t==='dark'?'#0a1026':'#eef4fe';if(mq){var follow=function(e){var s=null;try{s=localStorage.getItem('theme')}catch(err){}if(s!=='light'&&s!=='dark'){var nt=e.matches?'dark':'light';document.documentElement.setAttribute('data-theme',nt);if(mc)mc.content=nt==='dark'?'#0a1026':'#eef4fe'}};mq.addEventListener?mq.addEventListener('change',follow):mq.addListener&&mq.addListener(follow)}}catch(e){document.documentElement.setAttribute('data-theme','light')}})();</script>
-${extraHead}    <style>
-${css}    </style>
-</head>
+${extraHead}${links}${inlineCss}${scriptTags}</head>
 <body>
 ${body}<script>
 ${script}</script>
@@ -821,7 +832,7 @@ const aboutJs = `
 export const loginHtml = buildPage({
   title: '访问验证',
   extraHead: `    <meta name="description" content="短链接在线生成，支持长链接缩短，免费开源，提供API接口。" />\n`,
-  css: themeVarsCss + baseCss() + appShellCss(),
+  scripts: [`/ui.js?v=${ASSET_VERSION}`],
   body: decoHtml() + loginActionsHtml() + `
 <div class="auth-wrap">
     <div class="auth-card">
@@ -843,7 +854,7 @@ export const loginHtml = buildPage({
     ${appFooterHtml()}
 </div>
 ` + aboutDialogHtml(),
-  script: themeJs + toastJs + aboutJs + `
+  script: `
         // 口令可见性切换（显示/隐藏）
         (function () {
             const toggle = document.getElementById('pw-toggle');
@@ -897,7 +908,7 @@ export const loginHtml = buildPage({
 export const indexHtml = buildPage({
   title: '短链接生成服务',
   extraHead: `    <meta name="description" content="短链接在线生成，支持长链接缩短，免费开源，提供API接口。" />\n`,
-  css: themeVarsCss + baseCss() + appShellCss(),
+  scripts: [`/qr-lib.js?v=${ASSET_VERSION}`, `/qr-draw.js?v=${ASSET_VERSION}`, `/ui.js?v=${ASSET_VERSION}`],
   body: decoHtml() + `
 <div class="app">
     <header class="app-header">
@@ -992,7 +1003,12 @@ export const indexHtml = buildPage({
         ${appFooterHtml()}
 </div>
 `,
-  script: QR_LIB_SRC + '\n' + themeJs + toastJs + loginToastJs('登录成功，现在可以创建短链接了。') + adminLinkJs + logoutJs + `
+  script: adminLinkJs + `
+        // 二维码运行时配置：由服务端注入（__QR_SETTINGS__），挂到 window 供 qr-draw.js 读取；
+        // 登录欢迎语：ui.js 通过 body[data-login-toast] 读取展示。
+        window.__QR_CFG__ = __QR_SETTINGS__;
+        window.__QR_LOGO_SRC__ = '${QR_LOGO_DATA_URL}';
+        try { if (document.body) document.body.setAttribute('data-login-toast', '登录成功，现在可以创建短链接了。'); } catch (e) {}
         // 创建短链逻辑（与原实现一致：POST /api/create）
         (function () {
             const form = document.getElementById('link-form');
@@ -1023,9 +1039,7 @@ export const indexHtml = buildPage({
             const optNote = document.getElementById('opt-note');
             const resultList = document.getElementById('result-list');
             const resultSingle = document.getElementById('result-single');
-            // 二维码样式来自运行时设置（服务端注入）；占位符由 functions/[slug]/index.js 替换
-            const QR_CFG = __QR_SETTINGS__;
-            const QR_LOGO_SRC = '${QR_LOGO_DATA_URL}';
+            // 二维码样式来自运行时设置（服务端注入到 window.__QR_CFG__，见本脚本头部）
             const submitLabel = submitBtn.querySelector('span');
 
             // 恢复会话过期前未提交的内容（登录成功回到本页时触发）
@@ -1233,41 +1247,13 @@ export const indexHtml = buildPage({
                 errorMessage.style.display = 'block';
             }
 
-            // 将短链绘制为二维码（白底保证任何主题下都可扫描；
-            // 样式来自运行时设置：中心 Logo 时自动提升纠错等级为 H）
+            // 将短链绘制为二维码（qr-draw.js 的 drawQrResult，白底保证任何主题下都可扫描）
             function drawQr(text) {
                 try {
-                    if (typeof qrcode !== 'function') { qrBox.hidden = true; if (qrDownload) qrDownload.hidden = true; return; }
-                    if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
-                    const withLogo = !!(QR_CFG && QR_CFG.centerLogo);
-                    const qr = qrcode(0, withLogo ? 'H' : 'M');
-                    qr.addData(text);
-                    qr.make();
-                    const count = qr.getModuleCount();
-                    const quiet = 4, scale = 4;
-                    const size = (count + quiet * 2) * scale;
-                    const canvas = document.getElementById('qr-canvas');
-                    canvas.width = size; canvas.height = size;
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, size, size);
-                    ctx.fillStyle = (QR_CFG && QR_CFG.dark) || '#16181d';
-                    for (let r = 0; r < count; r++) {
-                        for (let c = 0; c < count; c++) {
-                            if (qr.isDark(r, c)) ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
-                        }
-                    }
-                    if (withLogo) {
-                        const logoSize = Math.round(size * 0.22);
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillRect((size - logoSize) / 2 - 4, (size - logoSize) / 2 - 4, logoSize + 8, logoSize + 8);
-                        const img = new Image();
-                        img.onload = function () { ctx.drawImage(img, (size - logoSize) / 2, (size - logoSize) / 2, logoSize, logoSize); };
-                        // 自定义 Logo 优先，未上传时使用网站品牌 Logo
-                        img.src = (QR_CFG && QR_CFG.logoDataUrl) || QR_LOGO_SRC;
-                    }
-                    qrBox.hidden = false;
-                    if (qrDownload) qrDownload.hidden = false;
+                    if (typeof window.drawQrResult !== 'function') { qrBox.hidden = true; if (qrDownload) qrDownload.hidden = true; return; }
+                    const ok = window.drawQrResult(document.getElementById('qr-canvas'), text);
+                    qrBox.hidden = !ok;
+                    if (qrDownload) qrDownload.hidden = !ok;
                 } catch (err) { qrBox.hidden = true; if (qrDownload) qrDownload.hidden = true; }
             }
 
@@ -1483,7 +1469,7 @@ export const indexHtml = buildPage({
 // ==========================================
 export const adminHtml = buildPage({
   title: '短链接生成服务 - 管理后台',
-  css: themeVarsCss + baseCss() + appShellCss(),
+  scripts: [`/qr-lib.js?v=${ASSET_VERSION}`, `/qr-draw.js?v=${ASSET_VERSION}`, `/ui.js?v=${ASSET_VERSION}`],
   body: decoHtml() + `
 <div class="app">
     <header class="app-header">
@@ -1689,11 +1675,17 @@ export const adminHtml = buildPage({
     </div>
 </dialog>
 ` + aboutDialogHtml(),
-  script: QR_LIB_SRC + '\n' + themeJs + toastJs + loginToastJs('登录成功。') + logoutJs + fmtUtilJs + aboutJs + `
+  script: `
+        // 二维码运行时配置：由服务端注入（__QR_SETTINGS__），挂到 window 供 qr-draw.js 读取；
+        // 登录欢迎语：ui.js 通过 body[data-login-toast] 读取展示。
+        window.__QR_CFG__ = __QR_SETTINGS__;
+        window.__QR_LOGO_SRC__ = '${QR_LOGO_DATA_URL}';
+        try { if (document.body) document.body.setAttribute('data-login-toast', '登录成功。'); } catch (e) {}
         // 管理后台逻辑（GET /api/links + POST /api/delete 等；二维码绘制与主页同源）
         (function () {
-            const QR_CFG = __QR_SETTINGS__;
-            const QR_LOGO_SRC = '${QR_LOGO_DATA_URL}';
+            // 二维码运行时配置（服务端注入到 window，上传/恢复 Logo 时同步更新，无需刷新）
+            const QR_CFG = window.__QR_CFG__ = window.__QR_CFG__ || {};
+            const QR_LOGO_SRC = window.__QR_LOGO_SRC__;
             const viewList = document.getElementById('view-list');
             const viewStats = document.getElementById('view-stats');
             const tbody = document.getElementById('links-table-body');
@@ -1738,6 +1730,8 @@ export const adminHtml = buildPage({
             // 客户端分页：一次渲染前 PAGE_SIZE 条，「加载更多」追加，避免大列表全量渲染卡顿
             const PAGE_SIZE = 50;
             let shownCount = PAGE_SIZE;
+            // 服务端截断标记：列表超过 2000 条时接口返回 { links, truncated }，据此提示用户
+            let listTruncated = false;
 
             function visibleLinks() {
                 let list = allLinks;
@@ -1768,7 +1762,7 @@ export const adminHtml = buildPage({
                     return;
                 }
                 const sortLabel = (sortKey === 'visits' ? '访问次数' : '创建时间') + (sortDir === 'asc' ? '升序' : '降序');
-                adminNote.textContent = '共 ' + allLinks.length + ' 条记录' + (filterText ? '，筛选出 ' + filtered.length + ' 条' : '') + '，按' + sortLabel + '排列' + (filtered.length > shown ? '，当前显示前 ' + shown + ' 条' : '') + '。';
+                adminNote.textContent = '共 ' + allLinks.length + ' 条记录' + (filterText ? '，筛选出 ' + filtered.length + ' 条' : '') + '，按' + sortLabel + '排列' + (filtered.length > shown ? '，当前显示前 ' + shown + ' 条' : '') + '。' + (listTruncated ? '（数据较多，仅显示前 2000 条）' : '');
             }
 
             function renderSkeleton() {
@@ -2001,6 +1995,12 @@ export const adminHtml = buildPage({
             async function getLinks() {
                 renderSkeleton();
                 adminNote.textContent = '加载中…';
+                // 兼容两种响应形态：旧数组 / 新 { links, truncated } 对象（超 2000 条截断时）
+                function adoptList(payload) {
+                    if (Array.isArray(payload)) { listTruncated = false; return payload; }
+                    listTruncated = !!(payload && payload.truncated);
+                    return (payload && payload.links) || [];
+                }
                 try {
                     const res = await fetch(viewMode === 'trash' ? '/api/links?trash=1' : '/api/links', { headers: authHeaders });
                     if (res.status === 401) {
@@ -2016,7 +2016,7 @@ export const adminHtml = buildPage({
                         throw new Error('auth');
                     }
                     if (!res.ok) throw new Error('获取链接列表失败。');
-                    allLinks = await res.json();
+                    allLinks = adoptList(await res.json());
                     shownCount = PAGE_SIZE;
                     if (viewMode === 'list') {
                         lastActive = allLinks;
@@ -2118,7 +2118,13 @@ export const adminHtml = buildPage({
                     if (link) {
                         if (actBtn.dataset.act === 'edit') openEdit(link);
                         else if (actBtn.dataset.act === 'qr') openQr(link);
-                        else openDetail(link);
+                        else {
+                            // 访问详情走按需精确查询（含 daily/ref/dev），失败时回退内存数据
+                            fetchDetail(link.slug).then(openDetail).catch(function (err) {
+                                if (err && err.message === 'auth') { showToast('会话已过期，请重新登录'); return; }
+                                openDetail(link);
+                            });
+                        }
                     }
                     return;
                 }
@@ -2133,12 +2139,17 @@ export const adminHtml = buildPage({
             dialog.addEventListener('click', function (e) { if (e.target === dialog) { pendingSlug = null; dialog.close(); } });
             dialog.addEventListener('close', function () { pendingSlug = null; });
 
-            // 搜索：按短链 / 原始链接实时过滤（纯客户端）
+            // 搜索：按短链 / 原始链接实时过滤（纯客户端，输入防抖 180ms，避免大列表每次按键全量重排）
+            let searchTimer = null;
             searchInput.addEventListener('input', function () {
-                filterText = this.value.trim().toLowerCase();
-                shownCount = PAGE_SIZE;
-                renderList();
-                updateNote();
+                clearTimeout(searchTimer);
+                const el = this;
+                searchTimer = setTimeout(function () {
+                    filterText = el.value.trim().toLowerCase();
+                    shownCount = PAGE_SIZE;
+                    renderList();
+                    updateNote();
+                }, 180);
             });
 
             // 排序：点击「访问次数 / 创建时间」表头切换升/降序
@@ -2204,8 +2215,20 @@ export const adminHtml = buildPage({
                 const s = String(v == null ? '' : v);
                 return /[",\\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
             }
-            exportCsvBtn.addEventListener('click', function () {
+            exportCsvBtn.addEventListener('click', async function () {
                 if (!allLinks.length) { showToast('暂无数据可导出'); return; }
+                const btn = this;
+                btn.disabled = true;
+                try {
+                    // 导出前带 detail=1 重新拉取，补齐聚合统计（列表默认不再携带 daily/ref/dev）
+                    const res = await fetch(viewMode === 'trash' ? '/api/links?trash=1&detail=1' : '/api/links?detail=1', { headers: authHeaders });
+                    if (res.ok) {
+                        const payload = await res.json();
+                        const rows = Array.isArray(payload) ? payload : (payload.links || []);
+                        if (rows.length) allLinks = rows;
+                    }
+                } catch (e) {}
+                finally { btn.disabled = false; }
                 const header = ['slug', 'original', 'visits', 'createdAt', 'note', 'expiresAt', 'maxVisits', 'hasPassword'];
                 const lines = [header.join(',')];
                 allLinks.forEach(function (l) {
@@ -2215,44 +2238,28 @@ export const adminHtml = buildPage({
                 downloadFile('shorturl-export-' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '.csv', '\\ufeff' + lines.join('\\n'), 'text/csv;charset=utf-8');
                 showToast('已导出 ' + allLinks.length + ' 条记录（CSV）');
             });
-            exportJsonBtn.addEventListener('click', function () {
+            exportJsonBtn.addEventListener('click', async function () {
                 if (!allLinks.length) { showToast('暂无数据可导出'); return; }
+                const btn = this;
+                btn.disabled = true;
+                try {
+                    const res = await fetch(viewMode === 'trash' ? '/api/links?trash=1&detail=1' : '/api/links?detail=1', { headers: authHeaders });
+                    if (res.ok) {
+                        const payload = await res.json();
+                        const rows = Array.isArray(payload) ? payload : (payload.links || []);
+                        if (rows.length) allLinks = rows;
+                    }
+                } catch (e) {}
+                finally { btn.disabled = false; }
                 downloadFile('shorturl-export.json', JSON.stringify(allLinks, null, 2), 'application/json');
                 showToast('已导出 ' + allLinks.length + ' 条记录（JSON）');
             });
 
-            // ---------- 二维码查看（样式来自运行时设置，与主页一致） ----------
+            // ---------- 二维码查看（qr-draw.js 的 drawQrDialog，大尺寸，与主页同源） ----------
             function drawQrCanvas(canvas, text) {
                 try {
-                    if (typeof qrcode !== 'function') return false;
-                    if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
-                    const withLogo = !!(QR_CFG && QR_CFG.centerLogo);
-                    const qr = qrcode(0, withLogo ? 'H' : 'M');
-                    qr.addData(text);
-                    qr.make();
-                    const count = qr.getModuleCount();
-                    const quiet = 4, scale = 8;
-                    const size = (count + quiet * 2) * scale;
-                    canvas.width = size; canvas.height = size;
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, size, size);
-                    ctx.fillStyle = (QR_CFG && QR_CFG.dark) || '#16181d';
-                    for (let r = 0; r < count; r++) {
-                        for (let c = 0; c < count; c++) {
-                            if (qr.isDark(r, c)) ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
-                        }
-                    }
-                    if (withLogo) {
-                        const logoSize = Math.round(size * 0.22);
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillRect((size - logoSize) / 2 - 8, (size - logoSize) / 2 - 8, logoSize + 16, logoSize + 16);
-                        const img = new Image();
-                        img.onload = function () { ctx.drawImage(img, (size - logoSize) / 2, (size - logoSize) / 2, logoSize, logoSize); };
-                        // 自定义 Logo 优先，未上传时使用网站品牌 Logo
-                        img.src = (QR_CFG && QR_CFG.logoDataUrl) || QR_LOGO_SRC;
-                    }
-                    return true;
+                    if (typeof window.drawQrDialog !== 'function') return false;
+                    return window.drawQrDialog(canvas, text);
                 } catch (err) { return false; }
             }
 
@@ -2334,6 +2341,13 @@ export const adminHtml = buildPage({
             });
 
             // ---------- 访问详情弹窗（横版：概览一行 + 趋势通栏 + 设备/来源双列） ----------
+            // 详情数据按需拉取：列表接口默认不再携带 daily/ref/dev，打开弹窗时精确查询单条
+            async function fetchDetail(slug) {
+                const res = await fetch('/api/links?slug=' + encodeURIComponent(slug), { headers: authHeaders });
+                if (res.status === 401) throw new Error('auth');
+                if (!res.ok) throw new Error('详情加载失败');
+                return res.json();
+            }
             function openDetail(link) {
                 document.getElementById('detail-slug').textContent = '访问详情 /' + link.slug + (link.note ? ' · ' + link.note : '');
                 const body = document.getElementById('detail-body');
@@ -2694,7 +2708,7 @@ export const adminHtml = buildPage({
 export function passwordHtml({ slug, error = '' } = {}) {
   return buildPage({
     title: '访问验证 · Edgeone-ShortURL',
-    css: themeVarsCss + baseCss() + appShellCss(),
+    scripts: [`/ui.js?v=${ASSET_VERSION}`],
     body: decoHtml() + `
 <div class="auth-wrap">
     <div class="auth-card">
@@ -2712,7 +2726,7 @@ export function passwordHtml({ slug, error = '' } = {}) {
     </div>
 </div>
 `,
-    script: themeJs
+    script: ''
   });
 }
 
@@ -2722,7 +2736,8 @@ export function passwordHtml({ slug, error = '' } = {}) {
 export function errorPageHtml({ code = '404', title = '链接不存在', message = '该短链接不存在或已被删除。' } = {}) {
   return buildPage({
     title: `${title} · Edgeone-ShortURL`,
-    css: themeVarsCss + baseCss() + appShellCss() + `
+    scripts: [`/ui.js?v=${ASSET_VERSION}`],
+    css: `
       a.btn-primary { text-decoration: none; }
       .nf-code { margin: 0 0 10px; font-size: 3rem; font-weight: 800; line-height: 1; letter-spacing: .06em; background: linear-gradient(135deg, var(--primary-2), var(--teal)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: var(--primary); }
     `,
@@ -2738,6 +2753,6 @@ export function errorPageHtml({ code = '404', title = '链接不存在', message
     </div>
 </div>
 `,
-    script: themeJs
+    script: ''
   });
 }

@@ -1,7 +1,7 @@
 // functions/api/settings/index.js
 // 运行时设置：管理后台「系统设置」页读写，保存在 KV 的 cfg:settings，即时生效。
 
-import { jsonResponse, getKV, getSettings, saveSettings, checkAdmin, isValidSlug } from '../../utils.js';
+import { jsonResponse, getKV, getSettings, saveSettings, checkAdmin, isValidSlug, sha256 } from '../../utils.js';
 
 function clampInt(value, min, max, fallback) {
   const n = Number(value);

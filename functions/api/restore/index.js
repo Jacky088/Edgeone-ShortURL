@@ -23,7 +23,9 @@ export async function onRequest({ request, env = {} }) {
   }
 
   const slug = typeof body.slug === 'string' ? body.slug.trim() : '';
-  if (!slug || !isValidSlug(slug) || isReservedSlug(slug, env.ADMIN_PATH)) {
+  // 自定义保留字同样生效（与创建路径一致，需先读运行时设置）
+  const restoreSettings = await getSettings(DB);
+  if (!slug || !isValidSlug(slug) || isReservedSlug(slug, env.ADMIN_PATH, restoreSettings.extraReserved)) {
     return jsonResponse({ error: 'Invalid slug' }, 400);
   }
 
@@ -44,8 +46,7 @@ export async function onRequest({ request, env = {} }) {
     await DB.put(slug, JSON.stringify(linkData));
 
     // 恢复去重映射：仅当映射空闲（不存在或指向已删除记录）时回填
-    const settings = await getSettings(DB);
-    if (settings.dedupHash) {
+    if (restoreSettings.dedupHash) {
       const hashKey = `hash:${await sha256(linkData.original)}`;
       const mappedSlug = await DB.get(hashKey).catch(() => null);
       if (!mappedSlug) {

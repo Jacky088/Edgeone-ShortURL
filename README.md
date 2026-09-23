@@ -2,7 +2,7 @@
 
 基于 **腾讯云 EdgeOne Pages** 构建的无服务器短链接服务（URL Shortener）。支持快速创建短链接、访问统计、运行时设置与简易管理后台；全新蓝色科技风 UI，原生适配**桌面端 / 移动端**与**日间 / 夜间模式**。
 
-> 当前版本 **v3.3.8**（变更记录见文末「更新日志」）
+> 当前版本 **v3.3.9**（变更记录见文末「更新日志」）
 
 ---
 
@@ -76,8 +76,8 @@
 
 | 接口 | 方法 | 鉴权 | 说明 |
 |------|------|------|------|
-| `/api/create` | POST | 会话或 Token | 创建短链，`{ "url", "slug": "可选", "ttlDays", "maxVisits", "password", "note" }`；批量传 `{ "urls": [...] }`（最多 20 条） |
-| `/api/links` | GET | Admin-Slug + 会话或 Token | 获取短链列表（含选项与聚合统计）；`?trash=1` 返回回收站 |
+| `/api/create` | POST | 会话或 Token | 创建短链，`{ "url", "slug": "可选", "ttlDays", "maxVisits", "password", "note" }`；批量传 `{ "urls": [...] }`（最多 20 条）；同一调用方 30 次/分钟写频限流 |
+| `/api/links` | GET | Admin-Slug + 会话或 Token | 获取短链列表（含选项；默认瘦身字段）；`?trash=1` 返回回收站；`?detail=1` 附带聚合统计；`?slug=xxx` 精确查询单条详情；`?limit=N&cursor=…` 单页分页（供外部脚本遍历）；超 2000 条返回 `{ links, truncated: true }` |
 | `/api/update` | POST | 同上 | 编辑短链：目标链接 / 备注 / 有效期 / 次数上限 / 访问密码 |
 | `/api/delete` | POST | 同上 | 删除短链（默认进入回收站）；`{ "slug", "purge": true }` 彻底删除 |
 | `/api/restore` | POST | 同上 | 从回收站恢复短链 `{ "slug" }` |
@@ -112,7 +112,8 @@ curl https://your.domain/api/links -H "X-API-Token: <your-token>"
 | `<slug>` | 短链数据 `{ "original", "visits", "createdAt", "note", "expiresAt", "maxVisits", "pwdHash", "deletedAt", "daily", "ref", "dev", "ipd" }` |
 | `hash:<sha256(url)>` | URL 去重映射（可在设置中关闭；相同长链接自动复用同一个短链） |
 | `sess:<token>` | 服务端登录会话（含过期时间与会话版本） |
-| `rl:<ip>` | 登录失败按 IP 的限流计数 |
+| `rl:<ip哈希>` | 登录失败按 IP 的限流计数（key 只存 IP 的 SHA-256 哈希，不存原始 IP） |
+| `crl:<调用方哈希>` | 创建接口分钟级写频限流（同一 Token/IP 30 次/分钟，key 只存哈希） |
 | `dc:<ip哈希>` | 每 IP 每日创建计数（设置每日上限后启用） |
 | `cfg:settings` | 运行时设置（管理后台「系统设置」页读写） |
 | `cfg:tokens` | API Token（仅存 SHA-256 哈希，明文不落盘） |
@@ -141,10 +142,22 @@ npm test    # 运行测试：utils 工具函数 + 页面模板冒烟测试（Nod
 functions/
 ├── index.js            # 路由入口
 ├── [slug]/index.js     # 页面路由 / 短链跳转（有效期、密码、统计）/ 鉴权
-├── pages.js            # 页面模板（登录 / 主页 / 管理后台 / 密码页 / 错误页）
-├── utils.js            # 公共工具与运行时设置
+├── pages.js            # 页面模板（登录 / 主页 / 管理后台 / 密码页 / 错误页，样式与公共脚本走 public 静态文件）
+├── utils.js            # 公共工具与运行时设置（含 settings 进程内短缓存）
 └── api/                # create / links / update / delete / restore / settings / token / auth / logout
 ```
+
+静态资源位于 `public/` 目录（EdgeOne Pages 直接托管，可被浏览器/边缘缓存）：
+
+```
+public/
+├── app.css      # 全站样式（主题变量 + 布局 + 组件）
+├── ui.js        # 公共脚本（主题/Toast/注销/格式化/关于弹窗）
+├── qr-lib.js    # 二维码库（qrcode-generator，仅主页/后台加载）
+└── qr-draw.js   # 二维码绘制（主页结果卡 + 后台弹窗共用）
+```
+
+> 改 `public/` 下文件后，同步 bump `functions/pages.js` 顶部 `ASSET_VERSION`，使引用 `?v=` 即时更新。
 
 ---
 
@@ -155,6 +168,15 @@ functions/
 ---
 
 ## 🕘 更新日志
+
+### v3.3.9
+
+- **性能**：样式与公共脚本拆为 `public/` 静态文件（`app.css` / `ui.js` / `qr-lib.js` / `qr-draw.js`），可被浏览器与边缘缓存；HTML 体积下降约 60%（主页 112KB→42KB、管理后台 159KB→90KB、登录页 60KB→12KB），登录页不再加载二维码库。
+- **性能**：`/api/links` 默认返回瘦身字段（不再携带 `daily` / `ref` / `dev`），访问详情改为 `?slug=` 按需精确查询，导出前带 `?detail=1` 补齐；超 2000 条返回 `{ links, truncated: true }` 并由前端提示（不再静默截断）；`list` 按每轮 500 key 分页拉取。
+- **性能**：运行时设置进程内短缓存（30 秒 TTL，`saveSettings` 后立即失效），跳转热路径每次节省 1 次 KV 读；后台搜索框输入防抖 180ms。
+- **安全**：修复修改口令崩溃（`settings/index.js` 缺 `sha256` 导入）；认证页 HTML 与管理 API 统一 `private, no-store` + `nosniff` + `Referrer-Policy: no-referrer` + `X-Frame-Options: DENY`。
+- **安全**：限流 key 只存哈希（`rl:<ip哈希>` / `crl:<调用方哈希>`，不存原始 IP/Token）；`/api/create` 新增分钟级写频限流（同一调用方 30 次/分钟）；管理接口会话改用滑动续期版（后台持续操作不再掉线）；`update` / `delete` / `restore` 补齐自定义保留字校验；`generateSlug` 改拒绝采样消除模偏差。
+- **工程**：新增 MIT `LICENSE` 文件；`package.json` 补 `type: module`（消除测试警告）；新增 `tests/security-perf.test.js` 回归测试（10 项）。
 
 ### v3.3.8
 

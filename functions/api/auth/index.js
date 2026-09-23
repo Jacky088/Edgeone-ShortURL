@@ -22,9 +22,9 @@ function timingSafeEqual(a, b) {
   return result === 0;
 }
 
-async function getRateLimit(DB, ip) {
+async function getRateLimit(DB, ipHash) {
   try {
-    const raw = await DB.get(`rl:${ip}`);
+    const raw = await DB.get(`rl:${ipHash}`);
     if (!raw) return { count: 0, firstAt: Date.now() };
     return JSON.parse(raw);
   } catch (e) {
@@ -53,8 +53,10 @@ export async function onRequest({ request, env = {} }) {
     }
 
     // 按 IP 限流：窗口期内失败次数过多则临时锁定
+    // 限流 key 存 IP 的 SHA-256 哈希（不存原始 IP；IPv6 含分隔符、'unknown' 共享桶问题一并消除）
     const ip = getClientIp(request);
-    const rl = await getRateLimit(DB, ip);
+    const ipHash = ip === 'unknown' ? 'unknown' : await sha256(ip);
+    const rl = await getRateLimit(DB, ipHash);
     const maxAttempts = Math.min(100, Math.max(1, Number(settings.rateLimit && settings.rateLimit.max) || 5));
     const lockoutMs = Math.min(1440, Math.max(1, Number(settings.rateLimit && settings.rateLimit.windowMin) || 10)) * 60000;
     if (rl.count >= maxAttempts && Date.now() - rl.firstAt < lockoutMs) {
@@ -73,12 +75,12 @@ export async function onRequest({ request, env = {} }) {
       const newRl = Date.now() - rl.firstAt >= lockoutMs
         ? { count: 1, firstAt: Date.now() }
         : { count: rl.count + 1, firstAt: rl.firstAt };
-      await DB.put(`rl:${ip}`, JSON.stringify(newRl));
+      await DB.put(`rl:${ipHash}`, JSON.stringify(newRl));
       return new Response(JSON.stringify({ error: '口令错误' }), { status: 401 });
     }
 
     // 登录成功：清除失败计数，创建服务端会话（记录会话版本，口令变更后旧会话立即失效）
-    await DB.delete(`rl:${ip}`).catch(() => {});
+    await DB.delete(`rl:${ipHash}`).catch(() => {});
 
     const token = randomToken();
     const session = {

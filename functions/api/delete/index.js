@@ -30,7 +30,9 @@ export async function onRequest({ request, env = {} }) {
     return jsonResponse({ error: 'Slug is required' }, 400);
   }
 
-  if (!isValidSlug(slug) || isReservedSlug(slug, env.ADMIN_PATH)) {
+  // 自定义保留字同样生效（与创建路径一致，需先读运行时设置）
+  const settings = await getSettings(DB);
+  if (!isValidSlug(slug) || isReservedSlug(slug, env.ADMIN_PATH, settings.extraReserved)) {
     return jsonResponse({ error: 'Invalid slug' }, 400);
   }
 

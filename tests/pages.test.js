@@ -4,6 +4,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { loginHtml, indexHtml, adminHtml, errorPageHtml } from '../functions/pages.js';
 
 // 提取页面内所有 <script> 内容（含 head 主题预载脚本与页面脚本）
@@ -86,6 +87,40 @@ test('管理后台：统计视图深链、客户端分页、列类名、完整�
   assert.ok(adminHtml.includes('运行在 EdgeOne Pages'), '应包含统一页脚');
 });
 
+test('静态资源：样式与公共脚本走 public 静态文件（可缓存），二维码库仅主页/后台加载', () => {
+  for (const [label, html] of [['登录页', loginHtml], ['主页', indexHtml], ['管理后台', adminHtml]]) {
+    assert.ok(html.includes('/app.css'), `${label} 样式应走静态 /app.css`);
+    assert.ok(html.includes('/ui.js'), `${label} 公共脚本应走静态 /ui.js`);
+  }
+  assert.ok(!loginHtml.includes('qrcode'), '登录页不应加载二维码库');
+  assert.ok(indexHtml.includes('/qr-lib.js') && indexHtml.includes('/qr-draw.js'), '主页应加载二维码库与绘制脚本');
+  assert.ok(adminHtml.includes('/qr-lib.js') && adminHtml.includes('/qr-draw.js'), '管理后台应加载二维码库与绘制脚本');
+  for (const f of ['../public/app.css', '../public/ui.js', '../public/qr-lib.js', '../public/qr-draw.js']) {
+    const stat = fs.statSync(new URL(f, import.meta.url));
+    assert.ok(stat.size > 1000, `${f} 应存在且非空`);
+  }
+  const ui = fs.readFileSync(new URL('../public/ui.js', import.meta.url), 'utf8');
+  assert.ok(ui.includes('showToast') && ui.includes('setStatDate'), 'ui.js 应包含 Toast 与格式化工具');
+  assert.doesNotThrow(() => new Function(ui), 'ui.js 应可编译');
+  const qrDraw = fs.readFileSync(new URL('../public/qr-draw.js', import.meta.url), 'utf8');
+  assert.ok(qrDraw.includes('drawQrResult') && qrDraw.includes('drawQrDialog'), 'qr-draw.js 应导出主页/后台两种绘制入口');
+  assert.doesNotThrow(() => new Function(qrDraw), 'qr-draw.js 应可编译');
+});
+
+test('脚本时序：静态脚本不用 defer，内联业务脚本解析期调用不报错', () => {
+  // body 末尾内联脚本在解析期就调用 showToastClosable/numberFormat/getLinks（定义在 ui.js），
+  // 静态 <script src> 必须按文档顺序先执行，defer 会把执行推迟到解析后，导致 ReferenceError。
+  for (const [label, html] of [['登录页', loginHtml], ['主页', indexHtml], ['管理后台', adminHtml]]) {
+    assert.ok(!html.includes(' defer'), `${label} 静态脚本不应使用 defer`);
+    const tags = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map((m) => m[1]);
+    assert.ok(tags.some((s) => s.includes('/ui.js')), `${label} 应在 head 同步加载 ui.js`);
+  }
+  // 静态脚本出现在 </head> 之前，内联业务脚本在 <body> 末尾：文档顺序保证依赖先就绪
+  for (const [label, html] of [['主页', indexHtml], ['管理后台', adminHtml]]) {
+    assert.ok(html.indexOf('/ui.js') < html.indexOf('<body>'), `${label} ui.js 应在 body 之前加载`);
+  }
+});
+
 test('错误页：品牌化 404，含返回主页入口', () => {
   const page = errorPageHtml({ code: '404', title: '链接不存在', message: '该短链接不存在或已被删除。' });
   assert.ok(page.includes('>404<'), '应展示状态码');
@@ -99,7 +134,10 @@ test('主题：默认跟随系统（自动检测不落盘），手动切换才�
   assert.ok(!head.includes('setItem'), '自动检测结果不应写入 localStorage，否则无法继续跟随系统');
   assert.ok(head.includes('theme_manual'), '应迁移清除旧版自动检测残留（无手动标记的 theme）');
   assert.ok(head.includes("addEventListener('change'"), '应监听系统主题变化实时跟随');
-  const body = extractScripts(loginHtml).slice(1).join('');
-  assert.ok(body.includes("localStorage.setItem('theme'"), '手动切换应记忆到 localStorage');
-  assert.ok(body.includes("setItem('theme_manual'"), '手动切换应写入标记，与旧版残留区分');
+  // 手动切换逻辑已移入静态 public/ui.js（可被浏览器缓存，不再内联）：校验静态文件语义
+  const ui = fs.readFileSync(new URL('../public/ui.js', import.meta.url), 'utf8');
+  assert.ok(ui.includes("localStorage.setItem('theme'"), '手动切换应记忆到 localStorage');
+  assert.ok(ui.includes("setItem('theme_manual'"), '手动切换应写入标记，与旧版残留区分');
+  // 页面仍需引用静态脚本
+  assert.ok(loginHtml.includes('/ui.js'), '登录页应引用静态 ui.js');
 });

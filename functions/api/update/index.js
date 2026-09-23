@@ -24,7 +24,8 @@ export async function onRequest({ request, env = {} }) {
   }
 
   const slug = typeof body.slug === 'string' ? body.slug.trim() : '';
-  if (!slug || !isValidSlug(slug) || isReservedSlug(slug, env.ADMIN_PATH)) {
+  // 自定义保留字同样生效（与创建路径一致；settings 已在下方读取，先做基础格式校验，保留字校验后置）
+  if (!slug || !isValidSlug(slug)) {
     return jsonResponse({ error: 'Invalid slug' }, 400);
   }
 
@@ -40,6 +41,9 @@ export async function onRequest({ request, env = {} }) {
   if (!linkData.original) return jsonResponse({ error: '数据异常，无法编辑' }, 500);
 
   const settings = await getSettings(DB);
+  if (isReservedSlug(slug, env.ADMIN_PATH, settings.extraReserved)) {
+    return jsonResponse({ error: 'Invalid slug' }, 400);
+  }
 
   // 目标链接
   if (body.original !== undefined) {

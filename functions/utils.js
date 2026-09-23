@@ -28,13 +28,29 @@ export const DEFAULT_SETTINGS = {
   dedupMin: 0
 };
 
+// 运行时设置进程内短缓存：同一函数实例的连续请求复用，跳转热路径每次跳转省 1 次 KV 读。
+// 以 DB 对象身份为作用域（不同 KV 命名空间/测试替身互不污染），TTL 30 秒；saveSettings 写入后立即失效。
+let settingsCache = { db: null, data: null, ts: 0 };
+const SETTINGS_CACHE_TTL_MS = 30 * 1000;
+
+export function clearSettingsCache() {
+  settingsCache = { db: null, data: null, ts: 0 };
+}
+
 // 读取运行时设置：与默认值按已知字段合并，读取失败时回退默认值
 export async function getSettings(DB) {
   const settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
   if (!DB) return settings;
+  const now = Date.now();
+  if (settingsCache.db === DB && settingsCache.data && now - settingsCache.ts < SETTINGS_CACHE_TTL_MS) {
+    return JSON.parse(JSON.stringify(settingsCache.data));
+  }
   try {
     const raw = await DB.get(SETTINGS_KEY);
-    if (!raw) return settings;
+    if (!raw) {
+      settingsCache = { db: DB, data: JSON.parse(JSON.stringify(settings)), ts: now };
+      return settings;
+    }
     const saved = JSON.parse(raw);
     if (!saved || typeof saved !== 'object') return settings;
     for (const key of Object.keys(DEFAULT_SETTINGS)) {
@@ -49,6 +65,7 @@ export async function getSettings(DB) {
         settings[key] = savedValue;
       }
     }
+    settingsCache = { db: DB, data: JSON.parse(JSON.stringify(settings)), ts: now };
     return settings;
   } catch (e) {
     return settings;
@@ -69,6 +86,7 @@ export async function saveSettings(DB, patch) {
     }
   }
   await DB.put(SETTINGS_KEY, JSON.stringify(next));
+  clearSettingsCache();
   return next;
 }
 
@@ -98,10 +116,18 @@ export function getCookie(request, name) {
   return null;
 }
 
-export function jsonResponse(body, status = 200) {
+export function jsonResponse(body, status = 200, extraHeaders) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' }
+    headers: Object.assign(
+      {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'no-referrer'
+      },
+      extraHeaders || {}
+    )
   });
 }
 
@@ -142,7 +168,7 @@ export function isValidSlug(slug) {
 
 // 内部键前缀与保留字，禁止被注册为短链接
 const RESERVED_SLUGS = ['api', 'favicon.ico'];
-const INTERNAL_PREFIXES = ['hash:', 'sess:', 'rl:', 'cfg:', 'dc:'];
+const INTERNAL_PREFIXES = ['hash:', 'sess:', 'rl:', 'crl:', 'cfg:', 'dc:'];
 
 export function isReservedSlug(slug, adminPath, extraReserved) {
   if (slug === adminPath) return true;
@@ -161,10 +187,16 @@ export function generateSlug(settings) {
   const config = (settings && settings.slug) || {};
   const length = Math.min(16, Math.max(4, Number(config.length) || 8));
   const charset = config.charset === 'full' ? FULL_CHARSET : SAFE_CHARSET;
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
+  // 拒绝采样：charset 长度（28/36）非 2 的幂，直接 `byte % len` 会有模偏差；丢弃越界字节
+  const limit = 256 - (256 % charset.length);
   let out = '';
-  for (let i = 0; i < length; i++) out += charset[bytes[i] % charset.length];
+  while (out.length < length) {
+    const bytes = new Uint8Array(length * 2);
+    crypto.getRandomValues(bytes);
+    for (let i = 0; i < bytes.length && out.length < length; i++) {
+      if (bytes[i] < limit) out += charset[bytes[i] % charset.length];
+    }
+  }
   return out;
 }
 
@@ -283,12 +315,13 @@ export async function verifyApiToken(request, env, DB) {
 }
 
 // 管理类接口统一鉴权：API Token 或「Admin-Slug 头 + 会话」
+// 会话校验使用滑动续期版：在后台持续操作时会话同样续期，避免「越用越掉线」
 // 语义与原 links/delete 一致：未设置 ADMIN_PATH 时仅 Token 可用
 export async function checkAdmin(request, env, DB) {
   if (await verifyApiToken(request, env, DB)) return true;
   const adminPath = env.ADMIN_PATH;
   if (!adminPath || request.headers.get('X-Admin-Slug') !== adminPath) return false;
-  return verifySession(request, env, DB);
+  return verifySessionWithRenewal(request, env, DB);
 }
 
 // 创建类接口鉴权：会话或 API Token（与原 /api/create 一致，不要求 Admin-Slug 头）

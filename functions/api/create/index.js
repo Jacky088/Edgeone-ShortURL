@@ -39,6 +39,21 @@ export async function onRequest({ request, env = {} }) {
     return jsonResponse({ error: 'Unauthorized: session expired or invalid password' }, 401);
   }
 
+  // 分钟级写频限流（防会话/Token 被盗刷：同一调用方 30 次/分钟；key 只存哈希，不存原始 IP/Token）
+  const rlSubject = request.headers.get('X-API-Token') || ('ip:' + getClientIp(request));
+  const rlKey = `crl:${await sha256(rlSubject)}`;
+  try {
+    const rlRaw = await DB.get(rlKey).catch(() => null);
+    let rlState = { ts: Date.now(), count: 0 };
+    try { if (rlRaw) rlState = JSON.parse(rlRaw); } catch (e) {}
+    if (Date.now() - rlState.ts >= 60000) rlState = { ts: Date.now(), count: 0 };
+    if (rlState.count >= 30) {
+      return jsonResponse({ error: '创建过于频繁，请稍后再试' }, 429);
+    }
+    rlState.count += 1;
+    await DB.put(rlKey, JSON.stringify(rlState)).catch(() => {});
+  } catch (e) {}
+
   let body;
   try {
     body = await request.json();
