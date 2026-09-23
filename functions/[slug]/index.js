@@ -107,12 +107,12 @@ export async function onRequest(context) {
   // B. 处理 Admin 路由 (受口令保护)
   if (adminPath && slug === adminPath) {
     if (!isAuthorized) {
-      const finalLoginHtml = loginHtml.replace('__ADMIN_PATH_STATUS__', JSON.stringify(adminPathStatus));
+      const finalLoginHtml = loginHtml.split('__ADMIN_PATH_STATUS__').join(JSON.stringify(adminPathStatus));
       return new Response(finalLoginHtml, { headers: HTML_HEADERS, status: 200 });
     }
     // 注入二维码样式设置（后台二维码弹窗与主页保持一致）
     const adminSettings = await getSettings(DB);
-    const finalAdminHtml = adminHtml.replace('__QR_SETTINGS__', JSON.stringify(adminSettings.qr || {}));
+    const finalAdminHtml = adminHtml.split('__QR_SETTINGS__').join(JSON.stringify(adminSettings.qr || {}));
     return new Response(finalAdminHtml, { headers: HTML_HEADERS });
   }
 
@@ -240,16 +240,17 @@ export async function onRequest(context) {
 
   // D. 处理主页 (生成器) - 需要鉴权
   if (!isAuthorized) {
-      const finalLoginHtml = loginHtml.replace('__ADMIN_PATH_STATUS__', JSON.stringify(adminPathStatus));
+      const finalLoginHtml = loginHtml.split('__ADMIN_PATH_STATUS__').join(JSON.stringify(adminPathStatus));
       return new Response(finalLoginHtml, { headers: HTML_HEADERS, status: 200 });
   }
 
   // 注入二维码样式设置（管理后台「系统设置」页可改）；管理入口按 ADMIN_PATH 是否配置条件渲染
+  // 注意用 split/join 全量替换：模板含两处 __QR_SETTINGS__（头部配置 + 后台脚本），单次 replace 会残留
   const settings = await getSettings(DB);
   const finalIndexHtml = indexHtml
-    .replace('__ADMIN_PATH_STATUS__', JSON.stringify(adminPathStatus))
-    .replace('__QR_SETTINGS__', JSON.stringify(settings.qr || {}))
-    .replace('__ADMIN_TOP_BUTTON__', adminPath ? ADMIN_BUTTON_HTML : '');
+    .split('__ADMIN_PATH_STATUS__').join(JSON.stringify(adminPathStatus))
+    .split('__QR_SETTINGS__').join(JSON.stringify(settings.qr || {}))
+    .split('__ADMIN_TOP_BUTTON__').join(adminPath ? ADMIN_BUTTON_HTML : '');
 
   return new Response(finalIndexHtml, {
       headers: HTML_HEADERS,

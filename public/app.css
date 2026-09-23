@@ -59,8 +59,6 @@ button, a, input, .nav-item { touch-action: manipulation; }
 .deco i:nth-child(3) { width: 260px; height: 260px; left: 30%; bottom: -90px; background: var(--bg-blob-3); animation: drift 38s ease-in-out infinite alternate; }
 @keyframes drift { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(40px, -30px, 0) scale(1.08); } }
 @media (prefers-reduced-motion: reduce) { .deco i { animation: none; } }
-`;
-}
 /* ---------- 顶栏 ---------- */
 .app { position: relative; z-index: 1; width: min(1160px, 100%); margin: 0 auto; padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(28px + env(safe-area-inset-bottom, 0px)); min-height: 100vh; display: flex; flex-direction: column; }
 /* 大屏宽版：桌面大显示器下显示更多内容（列表 / 统计 / 设置同步加宽） */
@@ -465,4 +463,3 @@ html.theme-anim * { transition: background-color .3s ease, color .3s ease, borde
   /* iOS 聚焦时禁止自动放大 */
   input, #url-input, #slug-input, .auth-form input { font-size: 16px; }
 }
-`;
