@@ -2,6 +2,7 @@
 // 路由处理：favicon、管理后台、短链接跳转（支持有效期/次数上限/密码保护/访问去重/来源统计）、主页。
 
 import { loginHtml, indexHtml, adminHtml, errorPageHtml, passwordHtml, ADMIN_BUTTON_HTML } from '../pages.js';
+import { APP_CSS, UI_JS, QR_LIB_JS, QR_DRAW_JS } from '../static-assets.js';
 import { getKV, isAllowedUrl, verifySessionWithRenewal, getSettings, getCookie, sha256 } from '../utils.js';
 
 // 浏览器标签页图标（与 public/favicon.svg 一致）。
@@ -30,6 +31,15 @@ const MOBILE_UA = /Mobi|Android|iPhone|iPad|iPod/i;
 const MAX_DAILY_KEYS = 30;   // 单条短链保留最近 30 天的按日访问计数
 const MAX_REFERRERS = 10;    // 单条短链保留 TOP 10 来路域名
 const MAX_IP_ENTRIES = 50;   // 访问去重的 IP 指纹表上限（超出淘汰最旧）
+
+// 静态资源兜底表：key 必须与 public/ 下文件名一致；?v= 版本查询串由平台忽略，无需处理。
+// 内容来自 functions/static-assets.js（scripts/gen-assets.mjs 生成），与 public/ 文件同源。
+const STATIC_ASSETS = {
+  'app.css': { body: APP_CSS, type: 'text/css; charset=utf-8' },
+  'ui.js': { body: UI_JS, type: 'application/javascript; charset=utf-8' },
+  'qr-lib.js': { body: QR_LIB_JS, type: 'application/javascript; charset=utf-8' },
+  'qr-draw.js': { body: QR_DRAW_JS, type: 'application/javascript; charset=utf-8' }
+};
 
 function dayKeyOf(ts) {
   return new Date(ts).toISOString().slice(0, 10);
@@ -64,6 +74,20 @@ export async function onRequest(context) {
   }
   if (slug === 'favicon.ico') {
     return new Response(null, { status: 301, headers: { Location: '/favicon.svg' } });
+  }
+
+  // A2. 静态资源兜底：EdgeOne Pages 可能先走 Function 再走静态文件，
+  // 带点号的路径（app.css / ui.js / qr-*.js）会落到本路由并被 slug 正则判 400。
+  // public/ 下的同名文件是浏览器缓存与版本管理的来源，本函数返回与其一致的内容。
+  const ASSET = STATIC_ASSETS[slug];
+  if (ASSET && request.method !== 'POST') {
+    return new Response(ASSET.body, {
+      headers: {
+        'Content-Type': ASSET.type,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'X-Content-Type-Options': 'nosniff'
+      }
+    });
   }
 
   // --- 安全获取 KV ---

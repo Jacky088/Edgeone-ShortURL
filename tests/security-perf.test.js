@@ -191,6 +191,32 @@ test('安全头：jsonResponse 携带 no-store 与 nosniff', async () => {
   assert.equal(res.headers.get('Referrer-Policy'), 'no-referrer');
 });
 
+// —— 静态资源兜底：带点路径被 Function 拦截时返回 200（线上曾出现 /app.css 400） ——
+test('静态兜底：app.css/ui.js/qr-*.js 被 [slug] 路由拦截时返回静态内容', async () => {
+  const fs = await import('node:fs');
+  const { onRequest } = await import('../functions/[slug]/index.js');
+  const cases = [
+    ['app.css', 'public/app.css', 'text/css'],
+    ['ui.js', 'public/ui.js', 'javascript'],
+    ['qr-lib.js', 'public/qr-lib.js', 'javascript'],
+    ['qr-draw.js', 'public/qr-draw.js', 'javascript']
+  ];
+  for (const [slug, file, typePart] of cases) {
+    const res = await onRequest({ request: new Request(`https://x/${slug}`), params: { slug }, env: {} });
+    assert.equal(res.status, 200, `/${slug} 应兜底 200`);
+    assert.ok(res.headers.get('Content-Type').includes(typePart), `/${slug} Content-Type 应为 ${typePart}`);
+    assert.ok(res.headers.get('Cache-Control').includes('immutable'), `/${slug} 应可长期缓存`);
+    assert.equal(await res.text(), fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8'), `/${slug} 内容应与 public 一致`);
+  }
+  // 非法 slug 不应被兜底误伤：仍走短链校验（400）而非返回静态内容
+  const bad = await onRequest({
+    request: new Request('https://x/badslug!!'),
+    params: { slug: 'badslug!!' },
+    env: { ADMIN_PATH: '', my_kv: mockKV({}) }
+  });
+  assert.equal(bad.status, 400, '非法 slug 应仍返回 400');
+});
+
 // —— generateSlug：拒绝采样下长度稳定、无易混淆字符 ——
 test('generateSlug：拒绝采样后长度稳定且字符集正确', () => {
   for (let i = 0; i < 50; i++) {

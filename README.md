@@ -157,7 +157,8 @@ public/
 └── qr-draw.js   # 二维码绘制（主页结果卡 + 后台弹窗共用）
 ```
 
-> 改 `public/` 下文件后，同步 bump `functions/pages.js` 顶部 `ASSET_VERSION`，使引用 `?v=` 即时更新。
+> 改 `public/` 下文件后，先跑 `node scripts/gen-assets.mjs` 同步 `functions/static-assets.js`，
+> 再同步 bump `functions/pages.js` 顶部 `ASSET_VERSION`，使引用 `?v=` 即时更新。
 
 ---
 
@@ -176,7 +177,8 @@ public/
 - **性能**：运行时设置进程内短缓存（30 秒 TTL，`saveSettings` 后立即失效），跳转热路径每次节省 1 次 KV 读；后台搜索框输入防抖 180ms。
 - **安全**：修复修改口令崩溃（`settings/index.js` 缺 `sha256` 导入）；认证页 HTML 与管理 API 统一 `private, no-store` + `nosniff` + `Referrer-Policy: no-referrer` + `X-Frame-Options: DENY`。
 - **安全**：限流 key 只存哈希（`rl:<ip哈希>` / `crl:<调用方哈希>`，不存原始 IP/Token）；`/api/create` 新增分钟级写频限流（同一调用方 30 次/分钟）；管理接口会话改用滑动续期版（后台持续操作不再掉线）；`update` / `delete` / `restore` 补齐自定义保留字校验；`generateSlug` 改拒绝采样消除模偏差。
-- **工程**：新增 MIT `LICENSE` 文件；`package.json` 补 `type: module`（消除测试警告）；新增 `tests/security-perf.test.js` 回归测试（10 项）。
+- **工程**：新增 MIT `LICENSE` 文件；`package.json` 补 `type: module`（消除测试警告）；新增 `tests/security-perf.test.js` 回归测试（11 项）。
+- **兼容**：`functions/[slug]` 内置静态资源兜底（`app.css` / `ui.js` / `qr-lib.js` / `qr-draw.js` 返回一年强缓存）——EdgeOne 先走 Function 时带点路径不再 400，与 `public/` 同源（`scripts/gen-assets.mjs` 生成）。
 
 ### v3.3.8
 
