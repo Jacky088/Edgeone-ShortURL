@@ -227,11 +227,17 @@ a.top-link-slug:hover { color: var(--primary); }
 .auth-error { display: none; margin-top: 12px; padding: 10px 14px; border-radius: 11px; font-size: .85rem; color: var(--error); background: var(--error-bg); border: 1px solid var(--error-border); }
 
 /* ---------- 页脚 / Toast ---------- */
-.app-footer { text-align: center; font-size: .78rem; color: var(--faint); }
+.app-footer { display: flex; justify-content: center; gap: 4px 8px; flex-wrap: nowrap; text-align: center; font-size: .78rem; color: var(--faint); }
+.app-footer .foot-links { white-space: nowrap; }
 /* 应用页页脚吸底；登录页页脚跟在卡片下方（不参与吸底，保证卡片居中） */
 .app > .app-footer { margin-top: auto; padding-top: 12px; }
 .auth-wrap .app-footer { margin-top: 14px; }
 .app-footer a { color: var(--muted); text-decoration: none; }
+/* 窄屏页脚自动换两行：版权一行，反馈链接一行 */
+@media (max-width: 620px) {
+  .app-footer { flex-wrap: wrap; }
+  .app-footer > span:first-child { flex-basis: 100%; }
+}
 .toast { position: fixed; left: 50%; top: calc(24px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -12px) scale(.98); opacity: 0; pointer-events: none; z-index: 50; background: var(--text); color: var(--surface); padding: 11px 18px; border-radius: 999px; font-size: .85rem; font-weight: 600; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .35); transition: opacity .2s, transform .2s; max-width: calc(100vw - 40px); text-align: center; }
 .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
 /* 可关闭提醒（登录成功等）：3 秒自动消失，点 × 或气泡立即关闭 */
@@ -435,9 +441,17 @@ html.theme-anim * { transition: background-color .3s ease, color .3s ease, borde
 /* ---------- 响应式 ---------- */
 @media (max-width: 860px) {
   .app-body { grid-template-columns: 1fr; }
-  .sidebar { position: static; flex-direction: row; overflow-x: auto; gap: 4px; padding: 8px; scroll-snap-type: x proximity; }
-  .nav-item { flex: 0 0 auto; min-height: 46px; min-width: max-content; width: auto; padding: 10px 14px; }
+  /* 小窗口/移动端菜单：横向滑动条（桌面可拖拽），点击项自动靠前；箭头仅在可滚动时由 JS 显示 */
+  .sidebar-wrap { position: relative; display: flex; align-items: stretch; gap: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-sm); overflow: hidden; }
+  .sidebar { position: static; flex: 1; min-width: 0; flex-direction: row; overflow-x: auto; gap: 4px; padding: 8px; border: 0; border-radius: 0; box-shadow: none; background: transparent; scroll-snap-type: x proximity; scrollbar-width: none; }
+  .sidebar::-webkit-scrollbar { display: none; }
+  .nav-item { flex: 0 0 auto; min-height: 46px; min-width: max-content; width: auto; padding: 10px 14px; scroll-snap-align: start; }
   .nav-item.active::before { display: none; }
+  .nav-sep { width: 1px; height: auto; margin: 10px 4px; }
+  .side-arrow { flex: none; width: 30px; border: 0; background: var(--surface-2); color: var(--muted); font-size: 1.1rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+  .side-arrow:hover { color: var(--primary); }
+  .side-arrow.left { border-right: 1px solid var(--border); border-radius: 0; }
+  .side-arrow.right { border-left: 1px solid var(--border); border-radius: 0; }
   .chart-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 620px) {
@@ -456,9 +470,7 @@ html.theme-anim * { transition: background-color .3s ease, color .3s ease, borde
   .col-orig { display: none; }
   .col-created { display: none; }
   .stat-value { font-size: 1.45rem; }
-  /* 后台菜单 2×2 网格完整显示，不横向滑动 */
-  .sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; overflow-x: visible; }
-  .nav-item { min-width: 0; }
+  /* ≤620px 同样横向滑动（不再切 2×2 网格，避免窄屏挤压换行） */
   .nav-sep { display: none; }
   /* iOS 聚焦时禁止自动放大 */
   input, #url-input, #slug-input, .auth-form input { font-size: 16px; }

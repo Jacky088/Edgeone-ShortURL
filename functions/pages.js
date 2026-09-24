@@ -5,8 +5,8 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
-const APP_VERSION = '3.3.9';
-const ASSET_VERSION = '3.3.9';
+const APP_VERSION = '3.4.0';
+const ASSET_VERSION = '3.4.0';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -616,10 +616,10 @@ function statsGridHtml(visitsLabel) {
                 </div>`;
 }
 
-// 统一页脚（主页 / 管理后台 / 登录页共用一份文案）
-// 版权与反馈链接分两行：首行运行平台与版本，次行开源项目与问题反馈（窄屏不再挤作一团）
+// 统一页脚（主页 / 管理后台 / 登录页共用一份文案，始终渲染在 .app 末尾吸底）
+// 版权与反馈链接自适应换行：大窗口一行（nowrap），窄屏自动两行（white-space 恢复），无需 <br> 硬切
 function appFooterHtml() {
-  return `<footer class="app-footer">运行在 EdgeOne Pages · v${APP_VERSION}<br><a href="${REPO_URL}" target="_blank" rel="noopener noreferrer">开源项目</a> · <a href="${ISSUES_URL}" target="_blank" rel="noopener noreferrer">问题反馈</a></footer>`;
+  return `<footer class="app-footer"><span>运行在 EdgeOne Pages · v${APP_VERSION}</span><span class="foot-links"><a href="${REPO_URL}" target="_blank" rel="noopener noreferrer">开源项目</a> · <a href="${ISSUES_URL}" target="_blank" rel="noopener noreferrer">问题反馈</a></span></footer>`;
 }
 
 // 前台顶栏「管理后台」入口：由服务端按 ADMIN_PATH 是否配置决定渲染（__ADMIN_TOP_BUTTON__ 占位符）
@@ -1478,13 +1478,17 @@ export const adminHtml = buildPage({
         ${authedActionsHtml({ backHome: true })}
     </header>
     <div class="app-body">
-        <nav class="sidebar" aria-label="主导航">
+        <div class="sidebar-wrap">
+        <button type="button" class="side-arrow left" id="side-arrow-left" aria-label="向左滚动菜单" hidden>‹</button>
+        <nav class="sidebar" id="sidebar-nav" aria-label="主导航">
             <button type="button" class="nav-item active" aria-current="page" data-view="list">${ICON_LIST}<span>短链列表</span></button>
             <button type="button" class="nav-item" data-view="stats">${ICON_CHART}<span>访问统计</span></button>
             <button type="button" class="nav-item" data-view="settings">${ICON_SLIDERS}<span>系统设置</span></button>
             <div class="nav-sep" aria-hidden="true"></div>
             <button type="button" class="nav-item open-about">${ICON_INFO}<span>关于项目</span></button>
         </nav>
+        <button type="button" class="side-arrow right" id="side-arrow-right" aria-label="向右滚动菜单" hidden>›</button>
+        </div>
         <main class="content">
             <section class="view" id="view-list">
                 <div class="card">
@@ -2505,8 +2509,45 @@ export const adminHtml = buildPage({
                 }
             }
             document.querySelectorAll('.nav-item[data-view]').forEach(function (b) {
-                b.addEventListener('click', function () { setView(b.dataset.view); });
+                b.addEventListener('click', function () { setView(b.dataset.view); scrollNavItemIntoView(b); });
             });
+            // 小窗口横向菜单：点击项自动靠前显示；箭头按可滚动方向显隐（桌面拖拽/触屏滑动同步更新）
+            function scrollNavItemIntoView(el) {
+                try {
+                    var nav = document.getElementById('sidebar-nav');
+                    if (!nav || nav.scrollWidth <= nav.clientWidth + 1) return;
+                    nav.scrollTo({ left: Math.max(0, el.offsetLeft - 8), behavior: 'smooth' });
+                } catch (e) {}
+            }
+            function updateSideArrows() {
+                try {
+                    var nav = document.getElementById('sidebar-nav');
+                    var left = document.getElementById('side-arrow-left');
+                    var right = document.getElementById('side-arrow-right');
+                    if (!nav || !left || !right) return;
+                    var canScroll = nav.scrollWidth > nav.clientWidth + 1;
+                    var showLeft = canScroll && nav.scrollLeft > 4;
+                    var showRight = canScroll && nav.scrollLeft < nav.scrollWidth - nav.clientWidth - 4;
+                    left.hidden = !showLeft;
+                    right.hidden = !showRight;
+                } catch (e) {}
+            }
+            (function initSideScroll() {
+                var nav = document.getElementById('sidebar-nav');
+                if (!nav) return;
+                nav.addEventListener('scroll', updateSideArrows, { passive: true });
+                window.addEventListener('resize', updateSideArrows);
+                var left = document.getElementById('side-arrow-left');
+                var right = document.getElementById('side-arrow-right');
+                if (left) left.addEventListener('click', function () {
+                    nav.scrollBy({ left: -Math.max(120, nav.clientWidth * 0.7), behavior: 'smooth' });
+                });
+                if (right) right.addEventListener('click', function () {
+                    nav.scrollBy({ left: Math.max(120, nav.clientWidth * 0.7), behavior: 'smooth' });
+                });
+                updateSideArrows();
+                setTimeout(updateSideArrows, 300);
+            })();
             let initialView = 'list';
             try {
                 const requested = new URLSearchParams(window.location.search).get('view');
