@@ -617,8 +617,9 @@ function statsGridHtml(visitsLabel) {
 }
 
 // 统一页脚（主页 / 管理后台 / 登录页共用一份文案）
+// 版权与反馈链接分两行：首行运行平台与版本，次行开源项目与问题反馈（窄屏不再挤作一团）
 function appFooterHtml() {
-  return `<footer class="app-footer">运行在 EdgeOne Pages · v${APP_VERSION} · <a href="${REPO_URL}" target="_blank" rel="noopener noreferrer">开源项目</a> · <a href="${ISSUES_URL}" target="_blank" rel="noopener noreferrer">问题反馈</a></footer>`;
+  return `<footer class="app-footer">运行在 EdgeOne Pages · v${APP_VERSION}<br><a href="${REPO_URL}" target="_blank" rel="noopener noreferrer">开源项目</a> · <a href="${ISSUES_URL}" target="_blank" rel="noopener noreferrer">问题反馈</a></footer>`;
 }
 
 // 前台顶栏「管理后台」入口：由服务端按 ADMIN_PATH 是否配置决定渲染（__ADMIN_TOP_BUTTON__ 占位符）
@@ -2016,7 +2017,14 @@ export const adminHtml = buildPage({
                         throw new Error('auth');
                     }
                     if (!res.ok) throw new Error('获取链接列表失败。');
-                    allLinks = adoptList(await res.json());
+                    const payload = await res.json();
+                    // 截断形态 { links, truncated } 同样是有效数据：照常渲染并提示，而非报错
+                    if (payload && !Array.isArray(payload) && Array.isArray(payload.links)) {
+                        listTruncated = !!payload.truncated;
+                        allLinks = payload.links;
+                    } else {
+                        allLinks = adoptList(payload);
+                    }
                     shownCount = PAGE_SIZE;
                     if (viewMode === 'list') {
                         lastActive = allLinks;
@@ -2189,12 +2197,13 @@ export const adminHtml = buildPage({
                 await getLinks();
             });
 
-            // 启动时后台获取回收站数量（徽标提示）
+            // 启动时后台获取回收站数量（徽标提示；数组/截断对象两种形态兼容）
             (async function () {
                 try {
                     const res = await fetch('/api/links?trash=1', { headers: authHeaders });
                     if (res.ok) {
-                        trashTotal = (await res.json()).length;
+                        const payload = await res.json();
+                        trashTotal = Array.isArray(payload) ? payload.length : ((payload && payload.links) || []).length;
                         updateTrashBadge();
                     }
                 } catch (e) {}

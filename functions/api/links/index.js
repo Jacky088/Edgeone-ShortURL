@@ -57,19 +57,19 @@ export async function onRequest({ request, env = {} }) {
       return jsonResponse({ error: '数据损坏' }, 500);
     }
   }
-  // 分页参数（供外部调用按页拉取；管理后台默认拉全量）：?limit=N（最大 500/页）+ ?cursor=…
+  // 分页参数（供外部调用按页拉取；管理后台默认拉全量）：?limit=N + ?cursor=…
+  // 注意：EdgeOne KV 的 list 仅接受 cursor 参数，不接受 limit；单页模式同样按 cursor 翻页，
+  // 在函数侧按 limit 截断返回（cursor 照常透传，供外部脚本逐页遍历）。
   const pageParam = params.get('limit');
   const pageLimit = pageParam == null ? 0 : Math.min(500, Math.max(1, Number(pageParam) || 0));
   const pageCursor = params.get('cursor') || undefined;
 
-  // 单页模式：只取一页 key，用于外部脚本分页遍历
+  // 单页模式：按 cursor 翻页取一批 key，在函数侧按 limit 截断，用于外部脚本分页遍历
   if (pageLimit > 0) {
-    const listOptions = { limit: pageLimit };
-    if (pageCursor) listOptions.cursor = pageCursor;
-    const result = await DB.list(listOptions).catch(() => null);
+    const result = await DB.list(pageCursor ? { cursor: pageCursor } : {}).catch(() => null);
     if (!result) return jsonResponse({ error: 'Failed to fetch links' }, 500);
     const items = [];
-    for (const { key } of result.keys || []) {
+    for (const { key } of (result.keys || []).slice(0, pageLimit)) {
       if (isInternalKey(key, adminPath)) continue;
       const value = await DB.get(key).catch(() => null);
       if (!value) continue;
@@ -100,7 +100,9 @@ export async function onRequest({ request, env = {} }) {
   }
 
   try {
-    // 全量模式（管理后台）：分页拉取全部 key（每轮 500 个，避免单次 list 过大）；超 MAX_KEYS 上限时报告截断
+    // 全量模式（管理后台）：按 cursor 翻页拉取全部 key；超 MAX_KEYS 上限时报告截断
+    // 注意：list 参数保持旧形态（仅 cursor），EdgeOne KV 不接受多余的 limit 参数；
+    // 单次 DB.list 抛错只重试一次（KV 偶发抖动），仍失败才报「获取链接列表失败」
     let allKeys = [];
     let cursor = undefined;
     let complete = false;
@@ -108,7 +110,13 @@ export async function onRequest({ request, env = {} }) {
     let truncated = false;
 
     do {
-      const result = await DB.list(cursor ? { cursor, limit: 500 } : { limit: 500 });
+      let result = null;
+      try {
+        result = await DB.list(cursor ? { cursor } : {});
+      } catch (e) {
+        result = await DB.list(cursor ? { cursor } : {}).catch(() => null);
+      }
+      if (!result) throw new Error('list failed');
 
       if (result.keys) {
         allKeys = allKeys.concat(result.keys);

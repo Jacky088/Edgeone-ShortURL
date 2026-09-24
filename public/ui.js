@@ -1,11 +1,19 @@
 // 公共前端脚本：主题切换 / Toast / 关于弹窗 / 注销 / 登录欢迎语 / 日期格式化。
-// 由 pages.js 内联到各页面（保持单文件部署：EdgeOne Pages 无构建步骤，内联无额外请求）。
+// 静态文件 public/ui.js，由各页面 <head> 同步引用（保证 body 末尾内联业务脚本的解析期调用先就绪）。
 // 注意：adminLink（管理后台入口）含服务端占位符 __ADMIN_PATH_STATUS__，仍保留在 pages.js 内联脚本中。
 (function () {
   'use strict';
 
+  /* ---------- DOM 就绪后执行 ---------- */
+  // ui.js 在 <head> 同步加载，此时 body 尚未解析；直接碰 DOM 的初始化必须等 DOM 就绪，
+  // 否则 getElementById 拿到 null 导致绑定被跳过（主题切换/注销/关于弹窗/登录欢迎语全灭）。
+  function ready(fn) {
+    if (document.readyState !== 'loading') fn();
+    else document.addEventListener('DOMContentLoaded', fn);
+  }
+
   /* ---------- 主题切换（默认跟随系统，手动切换后记忆到 localStorage） ---------- */
-  (function () {
+  ready(function () {
     var htmlEl = document.documentElement;
     var moon = document.getElementById('icon-moon');
     var sun = document.getElementById('icon-sun');
@@ -48,7 +56,7 @@
         else if (mq.addListener) mq.addListener(follow);
       }
     } catch (e) {}
-  })();
+  });
 
   /* ---------- Toast ---------- */
   function showToast(text) {
@@ -91,7 +99,7 @@
   // 登录页在 reload 前写入 sessionStorage 标记，落地页读取后展示可关闭提醒；
   // 有待恢复的未完成创建时，改由「已恢复内容」提示代替，避免两条提示重叠。
   // 各页面通过 <body data-login-toast="..."> 传入文案（无属性则不展示）。
-  (function () {
+  ready(function () {
     try {
       if (sessionStorage.getItem('login_success') !== '1') return;
       sessionStorage.removeItem('login_success');
@@ -99,10 +107,10 @@
       var text = document.body ? document.body.getAttribute('data-login-toast') : null;
       if (text) showToastClosable(text, 3000);
     } catch (e) {}
-  })();
+  });
 
   /* ---------- 注销 ---------- */
-  (function () {
+  ready(function () {
     var btn = document.getElementById('logout-btn');
     if (!btn) return;
     btn.addEventListener('click', function () {
@@ -118,7 +126,7 @@
         showToast('注销失败，请稍后重试');
       });
     });
-  })();
+  });
 
   /* ---------- 通用格式化工具 ---------- */
   function pad2(n) { return String(n).padStart(2, '0'); }
@@ -154,7 +162,7 @@
 
   /* ---------- 「关于项目」弹窗 ---------- */
   // 所有 .open-about 入口（侧边栏栏目 / 登录页入口）共用
-  (function () {
+  ready(function () {
     var dlg = document.getElementById('about-dialog');
     if (!dlg) return;
     function openAbout() { if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', ''); }
@@ -164,5 +172,5 @@
     dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
     var closeBtn = dlg.querySelector('.about-close');
     if (closeBtn) closeBtn.addEventListener('click', function () { dlg.close(); });
-  })();
+  });
 })();

@@ -119,6 +119,15 @@ test('脚本时序：静态脚本不用 defer，内联业务脚本解析期调�
   for (const [label, html] of [['主页', indexHtml], ['管理后台', adminHtml]]) {
     assert.ok(html.indexOf('/ui.js') < html.indexOf('<body>'), `${label} ui.js 应在 body 之前加载`);
   }
+  // ui.js 在 head 执行时 body 尚未解析：碰 DOM 的初始化必须包 ready() 等 DOMContentLoaded，
+  // 否则 getElementById 拿到 null 导致主题/注销/关于弹窗绑定被跳过（线上「关于项目点不开」根因）
+  const ui = fs.readFileSync(new URL('../public/ui.js', import.meta.url), 'utf8');
+  assert.ok(ui.includes('DOMContentLoaded'), 'ui.js 应有 DOM 就绪机制');
+  for (const anchor of ['/* ---------- 主题切换', '/* ---------- 注销', '/* ---------- 「关于项目」弹窗']) {
+    const i = ui.indexOf(anchor);
+    assert.ok(i > -1, `ui.js 应含 ${anchor}`);
+    assert.ok(ui.slice(i, i + 400).includes('ready('), `${anchor} 初始化应包在 ready() 内`);
+  }
 });
 
 test('错误页：品牌化 404，含返回主页入口', () => {
