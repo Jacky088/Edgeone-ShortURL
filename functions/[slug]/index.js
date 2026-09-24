@@ -141,7 +141,56 @@ export async function onRequest(context) {
           return new Response(errorPageHtml({ code: '410', title: '链接已失效', message: '该短链接的目标地址无效或已被禁用。' }), { status: 410, headers: HTML_HEADERS });
         }
 
-        // 回收站（软删除）/ 有效期 / 次数上限
+        const settings = await getSettings(DB);
+
+        // 无限制的公开短链快速通道：无密码/删除/过期/次数上限时，
+        // 跳转前只做计数内存计算 + waitUntil 后写，延迟只有短链 KV 读 + settings 缓存命中。
+        if (!linkData.pwdHash && !linkData.deletedAt && !linkData.expiresAt && !linkData.maxVisits) {
+          const redirectCode = settings.redirectCode === 301 ? 301 : 302;
+          const now = Date.now();
+          let counted = true;
+          let ipHash = '';
+          if (settings.dedupMin > 0) {
+            ipHash = await sha256(`${await getClientIpHash(request)}|${cleanSlug}`);
+            if (linkData.ipd && linkData.ipd[ipHash] && now - linkData.ipd[ipHash] < settings.dedupMin * 60000) {
+              counted = false;
+            }
+          }
+          if (counted) {
+            linkData.visits = (linkData.visits || 0) + 1;
+            const dk = dayKeyOf(now);
+            linkData.daily = linkData.daily || {};
+            linkData.daily[dk] = (linkData.daily[dk] || 0) + 1;
+            pruneByTime(linkData.daily, MAX_DAILY_KEYS);
+            const referer = request.headers.get('Referer');
+            if (referer) {
+              try {
+                const host = new URL(referer).hostname;
+                if (host) {
+                  linkData.ref = linkData.ref || {};
+                  linkData.ref[host] = (linkData.ref[host] || 0) + 1;
+                  pruneByCount(linkData.ref, MAX_REFERRERS);
+                }
+              } catch (e) {}
+            }
+            const ua = request.headers.get('User-Agent') || '';
+            linkData.dev = linkData.dev || { m: 0, d: 0 };
+            if (MOBILE_UA.test(ua)) linkData.dev.m += 1; else linkData.dev.d += 1;
+          }
+          if (settings.dedupMin > 0 && ipHash) {
+            linkData.ipd = linkData.ipd || {};
+            linkData.ipd[ipHash] = now;
+            pruneByTime(linkData.ipd, MAX_IP_ENTRIES);
+          }
+          const visitUpdate = DB.put(cleanSlug, JSON.stringify(linkData)).catch(err => {
+            console.error(`Visit count update failed for ${cleanSlug}: ${err && err.message}`);
+          });
+          if (typeof context.waitUntil === 'function') context.waitUntil(visitUpdate);
+          else await visitUpdate;
+          return Response.redirect(linkData.original, redirectCode);
+        }
+
+        // 受限短链（软删除 / 有效期 / 次数上限 / 密码保护）走完整校验
         if (linkData.deletedAt) {
           return new Response(errorPageHtml({ code: '410', title: '链接已删除', message: '该短链接已被管理员删除，可联系分享者获取新链接。' }), { status: 410, headers: HTML_HEADERS });
         }
@@ -151,10 +200,6 @@ export async function onRequest(context) {
         if (linkData.maxVisits && (linkData.visits || 0) >= linkData.maxVisits) {
           return new Response(errorPageHtml({ code: '410', title: '链接已达访问上限', message: '该短链接的访问次数已达上限。' }), { status: 410, headers: HTML_HEADERS });
         }
-
-        const settings = await getSettings(DB);
-
-        // 密码保护：验证通过前展示密码页；通过后写路径级 Cookie（24 小时内免输）
         if (linkData.pwdHash) {
           const cookieName = `pv_${cleanSlug}`;
           if (getCookie(request, cookieName) !== linkData.pwdHash) {

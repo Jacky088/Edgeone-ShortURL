@@ -1,25 +1,20 @@
 # 📦 Edgeone-ShortURL
 
-基于 **腾讯云 EdgeOne Pages** 构建的无服务器短链接服务（URL Shortener）。支持快速创建短链接、访问统计、运行时设置与简易管理后台；全新蓝色科技风 UI，原生适配**桌面端 / 移动端**与**日间 / 夜间模式**。
+基于 **腾讯云 EdgeOne Pages** 的无服务器短链接服务：创建 / 统计 / 管理后台 / 日间夜间主题，桌面与移动端自适应。
 
-> 当前版本 **v3.4.0**（变更记录见文末「更新日志」）
+> 当前版本 **v3.4.0**（变更见文末「更新日志」）
 
 ---
 
 ## ✨ 特性
 
-- 🔗 **短链生成**：自动生成随机短链接，也支持自定义短链标识（slug）与**批量创建**（一次最多 20 条）。
-- ⏱ **链接控制**：单条短链可设置**有效期**、**访问次数上限**与**访问密码**（密码页验证通过后 24 小时免输）。
-- 📱 **二维码**：生成结果自带二维码，可一键下载 PNG；支持中心 Logo（**网站默认 Logo 或上传自定义图片**）与前景色自定义。
-- 📊 **访问统计**：总览统计、近 7 天新增柱状图、访问量 TOP 排行；单条短链支持**访问详情**（近 14 天趋势 / 设备占比 / 来源 TOP5），并可开启**访问去重**防误刷。
-- 🧠 **管理后台**：搜索、排序、分页加载、**行内编辑**、软删除**回收站**（可恢复 / 彻底删除）、CSV / JSON **数据导出**。
-- ⚙️ **运行时设置**：口令在线修改、会话有效期、限流阈值、slug 策略、URL 去重开关、跳转方式（301/302）、域名白名单、每 IP 每日创建限额、自定义保留字——保存即时生效，无需重新部署。
-- 🔑 **API Token**：长期令牌（`X-API-Token`）供脚本 / 第三方调用管理接口，仅创建时显示一次，可随时吊销。
-- 🧭 **品牌化错误页**：短链不存在 / 已删除 / 已过期 / 达上限均有统一风格的引导页。
-- 🎨 **现代 UI**：深科技蓝 + 青绿主题，日间 / 夜间模式（默认跟随系统、可手动切换），桌面 / 移动端响应式布局。
-- 🔐 **安全设计**：口令登录 + 服务端会话、登录失败限流、保留字与协议校验、口令哈希存储与会话版本失效。
-- 🚀 **无服务器架构**：基于 EdgeOne Pages Functions + KV，低延迟、零运维。
-- ⚙️ **简单部署**：一键部署，无需额外服务器。
+- 🔗 **短链生成**：随机或自定义 slug，**批量一次 20 条**（逐行编辑 / 文本导入 / 一键复制）。
+- ⏱ **链接控制**：有效期、访问次数上限、访问密码（验证后 24 小时免输）。
+- 📱 **二维码**：结果自带二维码，可下载 PNG；支持中心 Logo（默认或自定义）与前景色。
+- 📊 **访问统计**：总量 / 近 7 天新增 / TOP 排行；单链近 14 天趋势、设备占比、来源 TOP5，可选去重防刷。
+- 🧠 **管理后台**：搜索、排序、分页、行内编辑、回收站、CSV / JSON 导出。
+- ⚙️ **运行时设置**：口令、会话时长、限流、slug 策略、去重、跳转 301/302、白名单、每日限额、保留字，保存即生效。
+- 🔑 **API Token**：`X-API-Token` 调用全部管理接口，仅创建时显示一次，可吊销。
 
 ---
 
@@ -31,140 +26,97 @@
 
 ## 🧩 安装与部署
 
-### 1. Fork 并部署到 EdgeOne Pages
+1. Fork 本仓库，在 EdgeOne Pages 控制台绑定该仓库（或点下方一键部署）。
 
-1. Fork 本仓库到你的 GitHub 帐号。
-2. 在 EdgeOne Pages 控制台中绑定该仓库，或点击下方按钮一键部署。
-3. 完成自动构建与部署。
+   [![使用国内版 EdgeOne Pages 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://console.cloud.tencent.com/edgeone/pages/new?repository-url=https%3A%2F%2Fgithub.com%2FJacky088%2FEdgeone-ShortURL)（国内版）
 
-[![使用国内版 EdgeOne Pages 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://console.cloud.tencent.com/edgeone/pages/new?repository-url=https%3A%2F%2Fgithub.com%2FJacky088%2FEdgeone-ShortURL)（国内版）
+   [![使用国际版 EdgeOne Pages 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2FJacky088%2FEdgeone-ShortURL)（国际版）
+1. Pages 项目 → **设置 → KV 存储**新建命名空间，绑定变量名 `my_kv`（兼容 `MY_KV`），重新部署。
+1. 可选环境变量：`ADMIN_PATH`（后台路径，未设则无后台入口）、`PASSWORD`（访问口令，可在后台在线修改覆盖）。
 
-[![使用国际版 EdgeOne Pages 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2FJacky088%2FEdgeone-ShortURL)（国际版）
-
-### 2. 绑定 KV 存储
-
-1. 打开 Pages 项目 → **设置 → KV 存储**，新建一个命名空间（namespace）。
-2. 将绑定变量名设置为：`my_kv`（代码同时兼容 `MY_KV`，或自动扫描其它 KV 绑定）。
-3. 重新部署项目。
-
-> ⚠️ 不绑定 KV 时服务将不可用 —— 短链数据、登录会话与限流状态都存储在 KV 中。
-
-### 3. 配置环境变量（可选）
-
-| 变量名 | 必填 | 作用说明 |
-|--------|------|----------|
-| `ADMIN_PATH` | 视需要 | 管理后台路径（如 `admin123`）。未设置则无法进入管理后台 |
-| `PASSWORD` | 视需要 | 访问口令（初始值）。设置后访问主页与后台均需口令；可在后台「系统设置」中在线修改覆盖 |
+> ⚠️ 不绑定 KV 服务不可用（短链 / 会话 / 限流都存在 KV）。
 
 ---
 
 ## 🗺️ 使用方法
 
-1. 打开部署后的网站地址即进入**前台**：页面只保留「创建短链」——输入长链接生成；「自定义短链」默认展开（留空则随机生成）；「更多选项」设置有效期、次数上限、访问密码与备注；页脚固定显示版本与合作入口。
-2. 若配置了 `ADMIN_PATH`，前台顶栏会出现**「管理后台」**入口，点击进入管理中心；未配置时前台不显示该入口（纯生成器形态）。
-3. **批量创建**提供逐行编辑器：每行填写目标链接，可选自定义短链与备注；支持「添加一行」「从文本导入」（每行 `链接 [自定义短链] [备注]`，空格分隔）与「清空」，生成后成功行可逐条或一键全部复制，失败行就地标红并给出原因。
-4. **管理后台**集中全部管理能力，侧边栏切换：
-   - **短链列表**：搜索、排序、分页加载、行内编辑、回收站（恢复 / 彻底删除），并可导出 CSV / JSON。
-   - **访问统计**：总访问量 / 短链总数 / 最近创建，近 7 天新增与访问量 TOP 排行；每条短链可查看近 14 天趋势、设备占比与来源 TOP5。
-   - **系统设置**：在线修改访问口令、会话有效期、限流阈值、slug 策略、URL 去重、跳转方式、域名白名单、每 IP 每日创建上限、自定义保留字与二维码样式（含自定义中心 Logo），保存即时生效。
+- **前台**：输长链接生成；自定义短链留空则随机；「更多选项」设有效期、次数上限、访问密码、备注。
+- **批量**：每行 `链接 [自定义短链] [备注]`，空格分隔；支持添加行、文本 / .txt / .csv 导入。
+- **后台**（需 `ADMIN_PATH`）：短链列表、访问统计、系统设置；`?view=list|stats|settings` 可直达视图。
 
 ---
 
 ## 📡 API 接口说明
 
-除会话 Cookie 外，管理类接口均支持请求头 `X-API-Token: <在后台生成的 Token>` 调用。
+管理接口支持请求头 `X-API-Token: <后台生成的 Token>` 调用。
 
 | 接口 | 方法 | 鉴权 | 说明 |
 |------|------|------|------|
-| `/api/create` | POST | 会话或 Token | 创建短链，`{ "url", "slug": "可选", "ttlDays", "maxVisits", "password", "note" }`；批量传 `{ "urls": [...] }`（最多 20 条）；同一调用方 30 次/分钟写频限流 |
-| `/api/links` | GET | Admin-Slug + 会话或 Token | 获取短链列表（含选项；默认瘦身字段）；`?trash=1` 返回回收站；`?detail=1` 附带聚合统计；`?slug=xxx` 精确查询单条详情；`?limit=N&cursor=…` 单页分页（供外部脚本遍历）；超 2000 条返回 `{ links, truncated: true }` |
-| `/api/update` | POST | 同上 | 编辑短链：目标链接 / 备注 / 有效期 / 次数上限 / 访问密码 |
-| `/api/delete` | POST | 同上 | 删除短链（默认进入回收站）；`{ "slug", "purge": true }` 彻底删除 |
-| `/api/restore` | POST | 同上 | 从回收站恢复短链 `{ "slug" }` |
-| `/api/settings` | GET/POST | 同上 | 读取 / 保存运行时设置（口令修改会使所有旧会话失效） |
-| `/api/token` | GET/POST/DELETE | 同上 | API Token 管理：列表 / 生成（明文仅返回一次）/ 吊销 |
-| `/api/auth` | POST | - | 口令登录，请求体 `{ "password": "..." }` |
+| `/api/create` | POST | 会话或 Token | 建链 `{ "url", "slug", "ttlDays", "maxVisits", "password", "note" }`；批量 `{ "urls": [...] }`（≤20 条）；30 次/分钟限流 |
+| `/api/links` | GET | Admin-Slug + 会话或 Token | 列表（瘦身字段）；`?trash=1` 回收站；`?detail=1` 统计；`?slug=xxx` 单条详情；`?limit&cursor` 分页；超 2000 条 `{ links, truncated: true }` |
+| `/api/update` | POST | 同上 | 编辑目标链接 / 备注 / 有效期 / 次数上限 / 访问密码 |
+| `/api/delete` | POST | 同上 | 软删除；`{ "slug", "purge": true }` 彻底删除 |
+| `/api/restore` | POST | 同上 | 从回收站恢复 `{ "slug" }` |
+| `/api/settings` | GET/POST | 同上 | 读写运行时设置（改口令致旧会话失效） |
+| `/api/token` | GET/POST/DELETE | 同上 | Token 列表 / 生成（明文仅一次）/ 吊销 |
+| `/api/auth` | POST | - | 口令登录 `{ "password" }` |
 | `/api/logout` | POST | 会话 | 注销当前会话 |
 
-示例：
-
 ```bash
-# 创建短链（带有效期与次数上限）
+# 创建短链
 curl -X POST https://your.domain/api/create \
-  -H "Content-Type: application/json" \
-  -H "X-API-Token: <your-token>" \
+  -H "Content-Type: application/json" -H "X-API-Token: <token>" \
   -d '{"url": "https://example.com/very-long-url", "ttlDays": 7, "maxVisits": 100}'
 
-# 批量创建
-curl -X POST https://your.domain/api/create \
-  -H "Content-Type: application/json" \
-  -H "X-API-Token: <your-token>" \
-  -d '{"urls": ["https://a.example/1", "https://b.example/2"], "note": "活动物料"}'
-
-# 获取短链列表
-curl https://your.domain/api/links -H "X-API-Token: <your-token>"
+# 获取列表
+curl https://your.domain/api/links -H "X-API-Token: <token>"
 ```
 
 ### KV 数据结构
 
 | Key | 说明 |
 |-----|------|
-| `<slug>` | 短链数据 `{ "original", "visits", "createdAt", "note", "expiresAt", "maxVisits", "pwdHash", "deletedAt", "daily", "ref", "dev", "ipd" }` |
-| `hash:<sha256(url)>` | URL 去重映射（可在设置中关闭；相同长链接自动复用同一个短链） |
-| `sess:<token>` | 服务端登录会话（含过期时间与会话版本） |
-| `rl:<ip哈希>` | 登录失败按 IP 的限流计数（key 只存 IP 的 SHA-256 哈希，不存原始 IP） |
-| `crl:<调用方哈希>` | 创建接口分钟级写频限流（同一 Token/IP 30 次/分钟，key 只存哈希） |
-| `dc:<ip哈希>` | 每 IP 每日创建计数（设置每日上限后启用） |
-| `cfg:settings` | 运行时设置（管理后台「系统设置」页读写） |
-| `cfg:tokens` | API Token（仅存 SHA-256 哈希，明文不落盘） |
+| `<slug>` | 短链 `{ "original", "visits", "createdAt", "note", "expiresAt", "maxVisits", "pwdHash", "deletedAt", "daily", "ref", "dev", "ipd" }` |
+| `hash:<sha256(url)>` | URL 去重映射（可关闭） |
+| `sess:<token>` | 登录会话（含过期时间与会话版本） |
+| `rl:<ip哈希>` | 登录失败限流计数 |
+| `crl:<调用方哈希>` | 创建接口分钟级限流（30 次/分钟） |
+| `dc:<ip哈希>` | 每 IP 每日创建计数（设上限后启用） |
+| `cfg:settings` | 运行时设置 |
+| `cfg:tokens` | API Token（仅存哈希） |
 
 ---
 
 ## 🔒 安全说明
 
-- 口令使用**常量时间比较**；登录失败按 IP 限流（5 次失败锁定 10 分钟）。
-- 会话采用随机 token，`HttpOnly` + `Secure` 会话级 Cookie（**关闭浏览器标签后自动失效**），服务端存储并按活跃度滑动续期兜底。
-- `api`、`favicon.ico`、`hash:` / `sess:` / `rl:` 前缀及管理员路径均为保留字，不可注册为短链。
-- 短链跳转仅允许 `http/https` 协议，防御 `javascript:` 等协议注入。
-- 自定义短链仅允许字母、数字、短横线、下划线，防御路径遍历。
+- 口令**常量时间比较**；登录失败按 IP 限流（默认 5 次锁定 10 分钟）。
+- 会话为随机 token，`HttpOnly` + `Secure` 会话级 Cookie，服务端存储 + 滑动续期；改口令致旧会话失效。
+- 跳转仅 `http/https`；slug 仅字母数字、`-`、`_`；`api` / `favicon.ico` / `hash:` / `sess:` / `rl:` / `crl:` / `cfg:` / `dc:` 及管理路径为保留字。
 
 ---
 
 ## 🧪 本地开发与测试
 
 ```bash
-npm test    # 运行测试：utils 工具函数 + 页面模板冒烟测试（Node 18+，无第三方依赖）
+npm test    # Node 18+，无第三方依赖
 ```
 
-核心代码位于 `functions/` 目录：
-
 ```
-functions/
-├── index.js            # 路由入口
-├── [slug]/index.js     # 页面路由 / 短链跳转（有效期、密码、统计）/ 鉴权
-├── pages.js            # 页面模板（登录 / 主页 / 管理后台 / 密码页 / 错误页，样式与公共脚本走 public 静态文件）
-├── utils.js            # 公共工具与运行时设置（含 settings 进程内短缓存）
-└── api/                # create / links / update / delete / restore / settings / token / auth / logout
+functions/           # 页面路由 / 短链跳转 / 鉴权（[slug]/index.js）
+├── pages.js         # 页面模板（样式与公共脚本走 public/ 静态文件）
+├── utils.js         # 公共工具与运行时设置（含 settings 短缓存）
+└── api/             # create / links / update / delete / restore / settings / token / auth / logout
+public/              # app.css / ui.js / qr-lib.js / qr-draw.js（可缓存静态资源）
+scripts/             # gen-assets.mjs（同步兜底）/ local-serve.mjs / verify-local.mjs
 ```
 
-静态资源位于 `public/` 目录（EdgeOne Pages 直接托管，可被浏览器/边缘缓存）：
-
-```
-public/
-├── app.css      # 全站样式（主题变量 + 布局 + 组件）
-├── ui.js        # 公共脚本（主题/Toast/注销/格式化/关于弹窗）
-├── qr-lib.js    # 二维码库（qrcode-generator，仅主页/后台加载）
-└── qr-draw.js   # 二维码绘制（主页结果卡 + 后台弹窗共用）
-```
-
-> 改 `public/` 下文件后，先跑 `node scripts/gen-assets.mjs` 同步 `functions/static-assets.js`，
-> 再同步 bump `functions/pages.js` 顶部 `ASSET_VERSION`，使引用 `?v=` 即时更新。
+> 改 `public/` 后：`node scripts/gen-assets.mjs` 同步 `functions/static-assets.js`，再 bump `pages.js` 顶部 `ASSET_VERSION`。
 
 ---
 
 ## 🛡️ 致谢
 
-项目灵感来自 [**hobk 的 eo-short**](https://github.com/hobk/eo-short)，感谢其开源贡献。
+灵感来自 [**hobk 的 eo-short**](https://github.com/hobk/eo-short)，感谢开源贡献。
 
 ---
 
@@ -172,108 +124,17 @@ public/
 
 ### v3.4.0
 
-- **页脚**：统一吸底页脚，主页 / 后台 / 登录页文案一致；大窗口一行显示，小窗口与移动端自动换两行（版权一行、反馈链接一行）。
-- **后台菜单**：小窗口与移动端改为横向滑动显示（桌面可拖拽），仅在内容溢出时显示左右箭头；点击菜单项自动靠前显示；≤620px 不再切 2×2 网格。
-- **修复**：`/api/links` 去掉 EdgeOne KV 不支持的 `list({ limit })` 参数（只传 `cursor`，单页模式函数侧截断），后台列表不再「获取失败」；`list` 单次失败重试一次；回收站徽标兼容数组 / 截断对象两种形态。
-- **修复**：`ui.js` 碰 DOM 的初始化包 `ready()` 等 `DOMContentLoaded`（主题 / 注销 / 关于弹窗 / 欢迎语），解决外链提前执行导致的「关于项目点不开」。
+- **页脚**：三页统一吸底；大窗口一行，小窗口 / 移动端自动两行。
+- **后台菜单**：小窗口 / 移动端横向滑动（可拖拽），溢出显示左右箭头，点击自动靠前；≤620px 不再切网格。
+- **修复**：`/api/links` 去掉 KV 不支持的 `list({ limit })`（只传 `cursor`），失败重试一次；回收站徽标兼容两种形态。
+- **修复**：`ui.js` 初始化等 `DOMContentLoaded`，解决「关于项目点不开」。
 
 ### v3.3.9
 
-- **性能**：样式与公共脚本拆为 `public/` 静态文件（`app.css` / `ui.js` / `qr-lib.js` / `qr-draw.js`），可被浏览器与边缘缓存；HTML 体积下降约 60%（主页 112KB→42KB、管理后台 159KB→90KB、登录页 60KB→12KB），登录页不再加载二维码库。
-- **性能**：`/api/links` 默认返回瘦身字段（不再携带 `daily` / `ref` / `dev`），访问详情改为 `?slug=` 按需精确查询，导出前带 `?detail=1` 补齐；超 2000 条返回 `{ links, truncated: true }` 并由前端提示（不再静默截断）；`list` 按每轮 500 key 分页拉取。
-- **性能**：运行时设置进程内短缓存（30 秒 TTL，`saveSettings` 后立即失效），跳转热路径每次节省 1 次 KV 读；后台搜索框输入防抖 180ms。
-- **安全**：修复修改口令崩溃（`settings/index.js` 缺 `sha256` 导入）；认证页 HTML 与管理 API 统一 `private, no-store` + `nosniff` + `Referrer-Policy: no-referrer` + `X-Frame-Options: DENY`。
-- **安全**：限流 key 只存哈希（`rl:<ip哈希>` / `crl:<调用方哈希>`，不存原始 IP/Token）；`/api/create` 新增分钟级写频限流（同一调用方 30 次/分钟）；管理接口会话改用滑动续期版（后台持续操作不再掉线）；`update` / `delete` / `restore` 补齐自定义保留字校验；`generateSlug` 改拒绝采样消除模偏差。
-- **工程**：新增 MIT `LICENSE` 文件；`package.json` 补 `type: module`（消除测试警告）；新增 `tests/security-perf.test.js` 回归测试（11 项）。
-- **兼容**：`functions/[slug]` 内置静态资源兜底（`app.css` / `ui.js` / `qr-lib.js` / `qr-draw.js` 返回一年强缓存）——EdgeOne 先走 Function 时带点路径不再 400，与 `public/` 同源（`scripts/gen-assets.mjs` 生成）。
-
-### v3.3.8
-
-- 修复**移动端主题跟随系统不生效**：老版本会把首次检测的主题写入 localStorage 且无标记，升级后被误当作用户手动选择。现引入 `theme_manual` 标记区分——检测到无标记的旧残留时自动清除并恢复跟随系统（一次性自愈迁移）；用户手动切换会写入标记。
-
-### v3.3.7
-
-- 所有 toast 提示统一调整到页面顶部居中显示。
-
-### v3.3.6
-
-- 所有 toast 提示统一调整到**页面顶部**居中显示（原底部），出现时自上滑入。
-
-### v3.3.5
-
-- 登录页移除特性卡片，回归简洁；卡片在窗口居中（修复页脚吸底规则导致的偏移）。
-- 批量逐行编辑器改为**确定性网格布局**：≥820px 一行排开（序号 + 三个输入框 + 红色删除按钮）；<820px 序号左栏贯穿、右侧三行铺满——任何窗口宽度下布局整齐、不再出现按钮孤行 / 错位。
-
-### v3.3.4
-
-- 批量行内布局优化与「生成短链」按钮铺满容器。
-
-### v3.3.3
-
-- 批量面板留白与导入提示优化、Logo 按钮统一、边界校验完善（导入行数上限、逐行缺链接报错等）。
-
-### v3.3.2
-
-- 修复移动端输入框尺寸异常 / 与标题重叠：补全标准 `text-size-adjust` 禁用安卓浏览器文字自动放大，全部输入框固定高度改为 `min-height` 自适应。
-- 后台移动端菜单改为 **2×2 网格**完整显示，不再横向滑动。
-- 批量创建模式下隐藏「自定义短链」行（仅适用于单条创建），并在批量面板内提供独立的「生成短链」按钮。
-- 「从文本导入」写明支持格式：可粘贴 txt / csv 等任意文本，或直接选择 .txt / .csv 文件导入（每行一条，空格分隔）。
-
-### v3.3.1
-
-- 短链列表自适应优化：短链接完整显示、原始链接随窗口宽度折叠展示。
-
-### v3.3.0
-
-- **批量创建重构为逐行编辑器**：每行独立填写目标链接、自定义短链与备注；支持添加一行、从文本导入（`链接 [自定义短链] [备注]`，空格分隔）、清空与逐行删除；失败行就地标红并在结果卡给出原因；成功行支持逐条复制与**一键全部复制**。
-- `/api/create` 新增 `items` 批量形态（逐条 `slug` / `note`，响应带 `index` 便于按行定位），原有 `url` / `urls` 形态保持兼容。
-- 「自定义短链」默认展开，留空自动随机生成。
-- 页脚固定吸底（内容不足一屏时也贴底显示）；前台布局与后台一致改为宽屏自适应。
-
-### v3.2.0
-
-- **前台 / 后台职责重构**：前台专注「创建短链」——移除侧边栏导航与迷你统计卡，内容窄栏居中，移动端更干净；列表、统计、设置、关于全部集中于管理后台。
-- 前台顶栏新增「管理后台」入口，由服务端按 `ADMIN_PATH` 是否配置**条件渲染**（未配置时不渲染，纯生成器形态无任何多余元素）。
-- 主页统计拉取、深链导航与关于弹窗等冗余代码随结构移除。
-
-### v3.1.1
-
-- 短链列表自适应优化：**短链接完整显示**不再截断；**原始链接随窗口宽度折叠展示**（默认 240px、≥1440px 480px、≥1800px 640px，备注同步加宽），悬停始终可见完整内容。
-
-### v3.1.0
-
-- 二维码支持**上传自定义中心 Logo**（PNG/JPG/WebP/SVG ≤110KB，正方形推荐），一键「恢复默认 Logo」（网站图标）；上传 / 恢复即时生效，主页与后台二维码同步更新。
-- **桌面大屏宽版布局**：≥1440px 显示器自动加宽内容区（最高 1760px），短链列表 / 统计 / 设置显示更多内容。
-- 新增设置接口 Logo 校验测试。
-
-### v3.0.2
-
-- 修复弹窗内按钮被拉伸时文字不居中的问题（统一 `justify-content`）。
-- 全部弹窗默认宽屏化：确认 / 编辑 / 二维码弹窗 520px，访问详情 760px；修复编辑弹窗日期控件溢出出现的横向滚动条。
-- 移动端 / 桌面端弹窗适配复查。
-
-### v3.0.1
-
-- 修复「访问统计」视图卡片与图表区贴边重叠的布局问题。
-- 管理后台新增**二维码查看**：列表行内入口，弹窗展示并可下载 PNG（样式跟随运行时设置）。
-- 「访问详情」弹窗改为**横版宽布局**：概览三卡一行、14 天趋势通栏、设备与来源双列；移动端自动收窄并优化图表标签。
-- 全面复查移动端 / 桌面端适配（弹窗宽度、图表标签、设置页与表格布局）。
-
-### v3.0.0
-
-- 新增 **运行时设置**：口令在线修改（旧会话立即失效）、会话有效期、限流阈值、slug 长度 / 字符集、URL 去重开关、默认跳转方式（301/302）、目标域名白名单、每 IP 每日创建上限、自定义保留字、二维码样式，保存即时生效。
-- 新增 **链接控制**：单条短链有效期、访问次数上限、访问密码保护。
-- 新增 **批量创建**：一次最多 20 条，统一套用创建选项。
-- 新增 **访问详情**：单条短链近 14 天访问趋势、设备占比、来源 TOP5；可选访问去重防误刷。
-- 新增 **回收站**：删除先进回收站，可恢复或彻底删除。
-- 新增 **行内编辑**：目标链接、备注、有效期、次数上限、访问密码。
-- 新增 **API Token**：长期令牌调用管理接口，可随时吊销。
-- 新增 **数据导出**：CSV / JSON。
-- 品牌化错误页细化：已删除 / 已过期 / 达上限各有明确提示。
-
-### v2.1.0
-
-- 「关于项目」栏目、登录口令可见性切换、访问统计迁移、深链直达、列表分页与搜索、二维码下载、日间 / 夜间模式。
+- **性能**：样式与脚本拆为 `public/` 静态文件，HTML 缩小约 60%，登录页不再加载二维码库。
+- **性能**：`/api/links` 默认瘦身字段，详情 `?slug=` 按需查，导出 `?detail=1` 补齐；超 2000 条 `{ links, truncated: true }`；settings 30 秒短缓存；搜索防抖。
+- **安全**：修复改口令崩溃；统一安全头；限流 key 只存哈希；创建 30 次/分钟限流；管理接口滑动续期；保留字校验对齐；slug 拒绝采样。
+- **兼容**：`[slug]` 内置静态资源兜底，带点路径不再 400（与 `public/` 同源）。
 
 ---
 
