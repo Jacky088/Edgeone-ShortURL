@@ -59,10 +59,12 @@
   });
 
   /* ---------- Toast ---------- */
-  function showToast(text) {
+  // type 传 'error' 时显示红色警示样式，区别于默认的中性提示
+  function showToast(text, type) {
     var t = document.getElementById('toast');
     if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
     t.textContent = text;
+    t.classList.toggle('error', type === 'error');
     t.classList.add('show');
     clearTimeout(t._timer);
     t._timer = setTimeout(function () { t.classList.remove('show'); }, 2400);

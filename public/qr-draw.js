@@ -60,6 +60,25 @@
     }
   }
 
+  // 高清导出（后台「高清下载」用）：按目标最小像素自动选择 scale 绘制，返回是否成功
+  function drawSized(canvas, text, minPx) {
+    try {
+      if (typeof qrcode !== 'function' || !(minPx > 0)) return false;
+      if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) {
+        qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+      }
+      var withLogo = !!qrCfg().centerLogo;
+      var qr = qrcode(0, withLogo ? 'H' : 'M');
+      qr.addData(text);
+      qr.make();
+      var scale = Math.max(8, Math.ceil(minPx / (qr.getModuleCount() + 8)));
+      return drawOnto(canvas, text, scale, 8);
+    } catch (err) {
+      return false;
+    }
+  }
+
   window.drawQrResult = drawResult;
   window.drawQrDialog = drawDialog;
+  window.drawQrSized = drawSized;
 })();

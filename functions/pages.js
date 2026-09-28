@@ -5,8 +5,8 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
-const APP_VERSION = '3.5.0';
-const ASSET_VERSION = '3.4.0';
+const APP_VERSION = '3.6.0';
+const ASSET_VERSION = '3.6.0';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -1316,7 +1316,7 @@ export const indexHtml = buildPage({
                             allBtn.classList.add('copied');
                             allBtn.querySelector('span').textContent = '已全部复制';
                             setTimeout(function () { allBtn.classList.remove('copied'); allBtn.querySelector('span').textContent = '全部复制'; }, 1800);
-                        } catch (e) { showToast('复制失败，请手动复制'); }
+                        } catch (e) { showToast('复制失败，请手动复制', 'error'); }
                     });
                     allRow.appendChild(allBtn);
                     resultList.appendChild(allRow);
@@ -1497,16 +1497,25 @@ export const adminHtml = buildPage({
                         <span class="badge" id="link-count">…</span>
                     </div>
                     <div class="table-toolbar">
-                        <div class="search-wrap">${ICON_SEARCH}<input type="search" id="link-search" placeholder="搜索短链或原始链接…" autocomplete="off" aria-label="搜索短链或原始链接"></div>
-                        <button type="button" class="btn-ghost tb-btn" id="refresh-btn">${ICON_REFRESH}<span>刷新</span></button>
+                        <div class="search-wrap">${ICON_SEARCH}<input type="search" id="link-search" placeholder="搜索短链、原始链接或备注…" autocomplete="off" aria-label="搜索短链、原始链接或备注" title="快捷键 / 聚焦搜索"></div>
+                        <select class="tb-select" id="status-filter" aria-label="按状态筛选">
+                            <option value="all">全部状态</option>
+                            <option value="ok">正常</option>
+                            <option value="expired">已过期</option>
+                            <option value="maxed">已达上限</option>
+                            <option value="pwd">密码保护</option>
+                        </select>
+                        <button type="button" class="btn-ghost tb-btn" id="refresh-btn" title="快捷键 R">${ICON_REFRESH}<span>刷新</span></button>
                         <button type="button" class="btn-ghost tb-btn trash-toggle" id="trash-toggle" aria-pressed="false">${ICON_TRASH}<span>回收站</span><span class="badge" id="trash-count" hidden>0</span></button>
+                        <button type="button" class="btn-ghost tb-btn trash-only" id="restore-all-btn" hidden>恢复全部</button>
+                        <button type="button" class="btn-ghost tb-btn trash-only" id="purge-all-btn" hidden>清空回收站</button>
                         <button type="button" class="btn-ghost tb-btn" id="export-csv">${ICON_DOWNLOAD}<span>CSV</span></button>
                         <button type="button" class="btn-ghost tb-btn" id="export-json">${ICON_DOWNLOAD}<span>JSON</span></button>
                     </div>
                     <div class="table-wrap">
                         <table>
                             <thead><tr>
-                                <th>短链接</th><th class="col-orig">原始链接</th><th class="th-sort" data-key="visits" title="点击排序">访问次数<span class="arrow" data-arrow="visits"></span></th><th class="th-sort col-created" data-key="createdAt" title="点击排序">创建时间<span class="arrow" data-arrow="createdAt"></span></th><th>操作</th>
+                                <th>短链接</th><th class="col-orig">原始链接</th><th class="th-sort col-visits" data-key="visits" title="点击排序">访问次数<span class="arrow" data-arrow="visits"></span></th><th class="th-sort col-created" data-key="createdAt" title="点击排序">创建时间<span class="arrow" data-arrow="createdAt"></span></th><th>操作</th>
                             </tr></thead>
                             <tbody id="links-table-body"></tbody>
                         </table>
@@ -1519,6 +1528,7 @@ export const adminHtml = buildPage({
                 <div class="card">
                     <h2 class="card-title">${ICON_CHART}<span>访问统计</span></h2>
                     ${statsGridHtml('总访问次数')}
+                    <p class="hint-line" id="stats-note" hidden></p>
                 </div>
                 <div class="chart-grid">
                     <div class="chart-card"><h3>近 7 天新增短链</h3><div class="bar-chart" id="created-chart"></div></div>
@@ -1529,7 +1539,7 @@ export const adminHtml = buildPage({
                 <div class="card">
                     <div class="card-title-row">
                         <h2 class="card-title">${ICON_SLIDERS}<span>系统设置</span></h2>
-                        <button type="button" class="btn-primary" id="settings-save" style="height:40px; padding: 0 18px;">保存设置</button>
+                        <button type="button" class="btn-primary settings-save-btn" id="settings-save" style="height:40px; padding: 0 18px;">保存设置</button>
                     </div>
                     <p class="card-desc">设置保存在 KV 中，保存后即时生效，无需重新部署。留空或关闭的项使用默认值。</p>
                     <div class="settings-grid">
@@ -1606,7 +1616,7 @@ export const adminHtml = buildPage({
                                 <input type="color" id="set-qr-dark" value="#16181d">
                             </label>
                         </fieldset>
-                        <fieldset class="settings-card">
+                        <fieldset class="settings-card settings-card-wide">
                             <legend>API Token</legend>
                             <p class="settings-hint">用于脚本 / 第三方调用管理接口：请求头携带 <b>X-API-Token</b>，可访问创建 / 列表 / 编辑 / 删除 / 设置等全部管理接口。Token 仅在创建时完整显示一次。</p>
                             <div class="token-create">
@@ -1620,6 +1630,10 @@ export const adminHtml = buildPage({
                             <div class="token-list" id="token-list"></div>
                         </fieldset>
                     </div>
+                    <div class="settings-foot">
+                        <button type="button" class="btn-primary settings-save-btn">保存设置</button>
+                        <span class="settings-foot-hint">保存后即时生效，无需重新部署；留空或关闭的项使用默认值</span>
+                    </div>
                 </div>
             </section>
         </main>
@@ -1627,11 +1641,11 @@ export const adminHtml = buildPage({
     </div>
 </div>
 <dialog id="confirm-dialog">
-    <h2>${ICON_TRASH}<span>删除短链</span></h2>
+    <h2>${ICON_TRASH}<span id="confirm-title">删除短链</span></h2>
     <p class="dialog-text" id="confirm-text"></p>
     <div class="row-btns">
-        <button type="button" class="btn-danger" id="confirm-del">删除</button>
-        <button type="button" class="btn-ghost" id="cancel-del">取消</button>
+        <button type="button" class="btn-danger" id="confirm-ok">删除</button>
+        <button type="button" class="btn-ghost" id="confirm-cancel">取消</button>
     </div>
 </dialog>
 <dialog id="edit-dialog">
@@ -1645,9 +1659,17 @@ export const adminHtml = buildPage({
             <input type="text" id="edit-note" maxlength="100" placeholder="仅管理后台可见">
         </label>
         <div class="opt-pair">
-            <label for="edit-exp">有效期（留空 = 永久）
-                <input type="datetime-local" id="edit-exp">
-            </label>
+            <div class="exp-wrap">
+                <label for="edit-exp">有效期（留空 = 永久）
+                    <input type="datetime-local" id="edit-exp">
+                </label>
+                <div class="exp-presets">
+                    <button type="button" class="chip" data-days="7">7 天</button>
+                    <button type="button" class="chip" data-days="30">30 天</button>
+                    <button type="button" class="chip" data-days="90">90 天</button>
+                    <button type="button" class="chip" data-days="0">永久</button>
+                </div>
+            </div>
             <label for="edit-max">次数上限（留空 = 不限）
                 <input type="number" id="edit-max" min="1" step="1">
             </label>
@@ -1666,8 +1688,10 @@ export const adminHtml = buildPage({
     <h2 style="color: var(--primary)">${ICON_CHART}<span>访问详情</span></h2>
     <p class="dialog-text" id="detail-slug"></p>
     <div id="detail-body"></div>
-    <div class="row-btns" style="margin-top: 16px">
-        <button type="button" class="btn-ghost" id="detail-close" style="grid-column: 1 / -1">关闭</button>
+    <div class="row-btns detail-actions">
+        <button type="button" class="btn-ghost" id="detail-copy">复制短链</button>
+        <button type="button" class="btn-ghost" id="detail-qr">二维码</button>
+        <button type="button" class="btn-ghost" id="detail-close">关闭</button>
     </div>
 </dialog>
 <dialog id="qr-dialog">
@@ -1676,6 +1700,8 @@ export const adminHtml = buildPage({
     <div class="qr-view"><canvas id="qr-dialog-canvas" aria-label="短链二维码"></canvas></div>
     <div class="row-btns">
         <button type="button" class="btn-primary" id="qr-dlg-download">${ICON_DOWNLOAD}<span>下载 PNG</span></button>
+        <button type="button" class="btn-ghost" id="qr-dlg-copy">复制链接</button>
+        <button type="button" class="btn-ghost" id="qr-dlg-hd">高清下载</button>
         <button type="button" class="btn-ghost" id="qr-dlg-close">关闭</button>
     </div>
 </dialog>
@@ -1702,10 +1728,24 @@ export const adminHtml = buildPage({
             const loadMoreBtn = document.getElementById('load-more-btn');
             const dialog = document.getElementById('confirm-dialog');
             const confirmText = document.getElementById('confirm-text');
-            const confirmDel = document.getElementById('confirm-del');
-            const cancelDel = document.getElementById('cancel-del');
+            const confirmTitle = document.getElementById('confirm-title');
+            const confirmOk = document.getElementById('confirm-ok');
+            const confirmCancel = document.getElementById('confirm-cancel');
             const adminSlug = window.location.pathname.split('/').pop();
             const authHeaders = { 'Content-Type': 'application/json', 'X-Admin-Slug': adminSlug };
+            // 统一请求封装：会话过期（401）时所有操作都有明确反馈并自动回到登录页，
+            // 而不是各自弹一句「删除失败」；一次性触发，避免并发请求重复提示。
+            let authRedirecting = false;
+            function authedFetch(url, opts) {
+                return fetch(url, opts).then(function (res) {
+                    if (res.status === 401 && !authRedirecting) {
+                        authRedirecting = true;
+                        showToastClosable('登录已过期，请重新登录', 2600);
+                        setTimeout(function () { window.location.reload(); }, 1400);
+                    }
+                    return res;
+                });
+            }
             const ICON_COPY_SVG = '${ICON_COPY}';
             const ICON_CHECK_SVG = '${ICON_CHECK}';
             const ICON_PENCIL_SVG = '${ICON_PENCIL}';
@@ -1714,19 +1754,19 @@ export const adminHtml = buildPage({
             const ICON_QR_SVG = '${ICON_QR}';
             const trashToggle = document.getElementById('trash-toggle');
             const trashCount = document.getElementById('trash-count');
+            const statusFilterEl = document.getElementById('status-filter');
             const exportCsvBtn = document.getElementById('export-csv');
             const exportJsonBtn = document.getElementById('export-json');
             const editDialog = document.getElementById('edit-dialog');
             const detailDialog = document.getElementById('detail-dialog');
             const qrDialog = document.getElementById('qr-dialog');
 
-            // 列表状态：全量数据 + 搜索过滤 + 排序（默认与原版一致：按访问次数降序）
+            // 列表状态：全量数据 + 搜索过滤 + 状态筛选 + 排序（默认与原版一致：按访问次数降序）
             let allLinks = [];
             let filterText = '';
+            let filterStatus = 'all';
             let sortKey = 'visits';
             let sortDir = 'desc';
-            let pendingSlug = null;
-            let pendingPurge = false;
             // 视图状态：list（有效短链）| trash（回收站）；lastActive 供统计视图聚合使用
             let viewMode = 'list';
             let lastActive = [];
@@ -1738,13 +1778,26 @@ export const adminHtml = buildPage({
             // 服务端截断标记：列表超过 2000 条时接口返回 { links, truncated }，据此提示用户
             let listTruncated = false;
 
+            function linkStatus(l) {
+                const nowTs = Date.now();
+                if (l.expiresAt && nowTs > l.expiresAt) return 'expired';
+                if (l.maxVisits && (l.visits || 0) >= l.maxVisits) return 'maxed';
+                if (l.hasPassword) return 'pwd';
+                return 'ok';
+            }
+
             function visibleLinks() {
                 let list = allLinks;
                 if (filterText) {
+                    // 搜索覆盖短链 / 原始链接 / 备注（备注在列表中展示，理应可搜）
                     list = list.filter(function (l) {
                         return ('/' + String(l.slug || '')).toLowerCase().indexOf(filterText) > -1 ||
-                               String(l.original || '').toLowerCase().indexOf(filterText) > -1;
+                               String(l.original || '').toLowerCase().indexOf(filterText) > -1 ||
+                               String(l.note || '').toLowerCase().indexOf(filterText) > -1;
                     });
+                }
+                if (filterStatus !== 'all') {
+                    list = list.filter(function (l) { return linkStatus(l) === filterStatus; });
                 }
                 return list.slice().sort(function (a, b) {
                     const va = a[sortKey] || 0, vb = b[sortKey] || 0;
@@ -1755,6 +1808,10 @@ export const adminHtml = buildPage({
             function updateSortArrows() {
                 document.querySelectorAll('.arrow[data-arrow]').forEach(function (s) {
                     s.textContent = s.dataset.arrow === sortKey ? (sortDir === 'asc' ? '↑' : '↓') : '';
+                });
+                document.querySelectorAll('th.th-sort').forEach(function (th) {
+                    if (th.dataset.key === sortKey) th.setAttribute('aria-sort', sortDir === 'asc' ? 'ascending' : 'descending');
+                    else th.removeAttribute('aria-sort');
                 });
             }
 
@@ -1767,7 +1824,8 @@ export const adminHtml = buildPage({
                     return;
                 }
                 const sortLabel = (sortKey === 'visits' ? '访问次数' : '创建时间') + (sortDir === 'asc' ? '升序' : '降序');
-                adminNote.textContent = '共 ' + allLinks.length + ' 条记录' + (filterText ? '，筛选出 ' + filtered.length + ' 条' : '') + '，按' + sortLabel + '排列' + (filtered.length > shown ? '，当前显示前 ' + shown + ' 条' : '') + '。' + (listTruncated ? '（数据较多，仅显示前 2000 条）' : '');
+                const statusLabels = { ok: '正常', expired: '已过期', maxed: '已达上限', pwd: '密码保护' };
+                adminNote.textContent = '共 ' + allLinks.length + ' 条记录' + (filterText ? '，筛选出 ' + filtered.length + ' 条' : '') + (filterStatus !== 'all' ? '，状态「' + (statusLabels[filterStatus] || filterStatus) + '」' : '') + '，按' + sortLabel + '排列' + (filtered.length > shown ? '，当前显示前 ' + shown + ' 条' : '') + '。' + (listTruncated ? '（数据较多，仅显示前 2000 条）' : '');
             }
 
             function renderSkeleton() {
@@ -1806,7 +1864,16 @@ export const adminHtml = buildPage({
                     const tr = document.createElement('tr');
                     const td = document.createElement('td');
                     td.colSpan = 5; td.className = 'empty';
-                    td.textContent = viewMode === 'trash' ? '回收站是空的。' : '暂无短链接，回到前台「创建短链」生成一个吧。';
+                    if (viewMode === 'trash') {
+                        td.textContent = '回收站是空的。';
+                    } else {
+                        // 空态给一条直达前台的链接，方便首次使用
+                        td.append('暂无短链接，');
+                        const goCreate = document.createElement('a');
+                        goCreate.href = '/';
+                        goCreate.textContent = '去前台创建一个';
+                        td.append(goCreate, '吧。');
+                    }
                     tr.appendChild(td); tbody.appendChild(tr);
                     linkCount.textContent = '0';
                     return;
@@ -1830,8 +1897,9 @@ export const adminHtml = buildPage({
                     const shortAnchor = document.createElement('a');
                     shortAnchor.className = 'slug-link';
                     shortAnchor.href = shortUrl; shortAnchor.target = '_blank'; shortAnchor.rel = 'noopener noreferrer';
+                    // 只显示 /slug：域名所有行相同且较长，完整地址悬停可见（复制按钮复制的仍是完整链接）
                     shortAnchor.title = shortUrl;
-                    shortAnchor.textContent = shortUrl.replace(/^https?:\\/\\//, '');
+                    shortAnchor.textContent = '/' + link.slug;
                     shortCell.appendChild(shortAnchor);
 
                     // 行内复制：不打开短链即可取用，避免跳转计数污染访问统计
@@ -1863,6 +1931,14 @@ export const adminHtml = buildPage({
                         noteDiv.title = link.note;
                         shortCell.appendChild(noteDiv);
                     }
+                    // 回收站：显示删除时间（软删除在 KV 中永久保留，时间能帮助判断清理）
+                    if (viewMode === 'trash' && link.deletedAt) {
+                        const delDiv = document.createElement('div');
+                        delDiv.className = 'cell-note';
+                        delDiv.textContent = '删除于 ' + fmtDateTime(link.deletedAt);
+                        delDiv.title = fmtFullDateTime(link.deletedAt);
+                        shortCell.appendChild(delDiv);
+                    }
 
                     const originalCell = document.createElement('td');
                     originalCell.className = 'td-orig col-orig';
@@ -1873,6 +1949,7 @@ export const adminHtml = buildPage({
                     originalCell.appendChild(originalAnchor);
 
                     const visitsCell = document.createElement('td');
+                    visitsCell.className = 'col-visits';
                     visitsCell.textContent = numberFormat(link.visits);
 
                     const createdCell = document.createElement('td');
@@ -2007,7 +2084,7 @@ export const adminHtml = buildPage({
                     return (payload && payload.links) || [];
                 }
                 try {
-                    const res = await fetch(viewMode === 'trash' ? '/api/links?trash=1' : '/api/links', { headers: authHeaders });
+                    const res = await authedFetch(viewMode === 'trash' ? '/api/links?trash=1' : '/api/links', { headers: authHeaders });
                     if (res.status === 401) {
                         adminNote.textContent = '';
                         const card = document.querySelector('#view-list .card');
@@ -2032,6 +2109,12 @@ export const adminHtml = buildPage({
                     shownCount = PAGE_SIZE;
                     if (viewMode === 'list') {
                         lastActive = allLinks;
+                        // 统计视图基于列表数据聚合：接口截断时给出近似口径提示
+                        const statsNote = document.getElementById('stats-note');
+                        if (statsNote) {
+                            statsNote.hidden = !listTruncated;
+                            if (listTruncated) statsNote.textContent = '短链超过 2000 条，以上统计为前 2000 条的汇总近似。';
+                        }
                     } else {
                         trashTotal = allLinks.length;
                         updateTrashBadge();
@@ -2043,31 +2126,46 @@ export const adminHtml = buildPage({
                 } catch (err) { if (err.message !== 'auth') { adminNote.textContent = err.message; console.error(err); } }
             }
 
+            // 通用确认弹窗：删除 / 彻底删除 / 清空回收站 / 恢复全部共用一份样式；
+            // 危险操作红色确认键，安全操作蓝色；无 <dialog> 支持时回退原生 confirm。
+            let confirmAction = null;
+            function requestConfirm(opts) {
+                confirmTitle.textContent = opts.title;
+                confirmText.textContent = '';
+                opts.buildText(confirmText);
+                confirmOk.textContent = opts.okLabel;
+                confirmOk.className = opts.danger ? 'btn-danger' : 'btn-primary';
+                confirmAction = opts.onOk || null;
+                dialog.showModal();
+            }
+            function nativeConfirmFallback(message, onOk) {
+                if (window.confirm(message)) onOk();
+            }
+
             // 删除确认：自定义弹窗替代原生 confirm()，风格与整体一致
             function requestDelete(slug, purge) {
-                pendingSlug = slug;
-                pendingPurge = purge === true;
-                if (pendingPurge) {
-                    confirmText.textContent = '彻底删除 ';
-                    const b = document.createElement('b');
-                    b.textContent = '/' + slug;
-                    confirmText.append(b, document.createTextNode(' 吗？该操作不可恢复。'));
-                } else {
-                    confirmText.textContent = '确定要删除短链接 ';
-                    const b = document.createElement('b');
-                    b.textContent = '/' + slug;
-                    confirmText.append(b, document.createTextNode(' 吗？删除后将进入回收站，可随时恢复。'));
-                }
+                const run = function () { doDelete(slug, purge === true); };
                 if (typeof dialog.showModal !== 'function') {
-                    if (window.confirm('您确定要删除短链接 "' + slug + '" 吗？')) doDelete(slug, pendingPurge);
+                    nativeConfirmFallback('您确定要删除短链接 "' + slug + '" 吗？', run);
                     return;
                 }
-                dialog.showModal();
+                requestConfirm({
+                    title: purge ? '彻底删除' : '删除短链',
+                    buildText: function (el) {
+                        el.textContent = purge ? '彻底删除 ' : '确定要删除短链接 ';
+                        const b = document.createElement('b');
+                        b.textContent = '/' + slug;
+                        el.append(b, document.createTextNode(purge ? ' 吗？该操作不可恢复。' : ' 吗？删除后将进入回收站，可随时恢复。'));
+                    },
+                    okLabel: purge ? '彻底删除' : '删除',
+                    danger: true,
+                    onOk: run
+                });
             }
 
             async function doDelete(slug, purge) {
                 try {
-                    const res = await fetch('/api/delete', { method: 'POST', headers: authHeaders, body: JSON.stringify({ slug: slug, purge: purge === true }) });
+                    const res = await authedFetch('/api/delete', { method: 'POST', headers: authHeaders, body: JSON.stringify({ slug: slug, purge: purge === true }) });
                     if (!res.ok) {
                         const data = await res.json().catch(() => ({}));
                         throw new Error(data.error || '删除失败。');
@@ -2086,13 +2184,13 @@ export const adminHtml = buildPage({
                     renderStats(lastActive);
                     updateNote();
                     showToast(wasPurge ? '已彻底删除 ' + slug : '已移入回收站：/' + slug);
-                } catch (err) { showToast(err.message); }
+                } catch (err) { showToast(err.message, 'error'); }
             }
 
             // 从回收站恢复短链
             async function doRestore(slug) {
                 try {
-                    const res = await fetch('/api/restore', { method: 'POST', headers: authHeaders, body: JSON.stringify({ slug: slug }) });
+                    const res = await authedFetch('/api/restore', { method: 'POST', headers: authHeaders, body: JSON.stringify({ slug: slug }) });
                     if (!res.ok) {
                         const data = await res.json().catch(() => ({}));
                         throw new Error(data.error || '恢复失败。');
@@ -2103,7 +2201,7 @@ export const adminHtml = buildPage({
                     renderList();
                     updateNote();
                     showToast('已恢复 /' + slug);
-                } catch (err) { showToast(err.message); }
+                } catch (err) { showToast(err.message, 'error'); }
             }
 
             function updateTrashBadge() {
@@ -2113,6 +2211,53 @@ export const adminHtml = buildPage({
                 trashCount.textContent = String(trashTotal);
             }
 
+            // ---------- 回收站批量操作（恢复全部 / 清空回收站） ----------
+            // 管理接口无批量端点，逐条调用；回收站量级一般很小，顺序执行可控。
+            const restoreAllBtn = document.getElementById('restore-all-btn');
+            const purgeAllBtn = document.getElementById('purge-all-btn');
+            async function runBatchTrash(purge) {
+                const items = allLinks.slice();
+                if (!items.length) return;
+                restoreAllBtn.disabled = true;
+                purgeAllBtn.disabled = true;
+                let done = 0;
+                for (let i = 0; i < items.length; i++) {
+                    try {
+                        const body = purge ? { slug: items[i].slug, purge: true } : { slug: items[i].slug };
+                        const res = await authedFetch(purge ? '/api/delete' : '/api/restore', { method: 'POST', headers: authHeaders, body: JSON.stringify(body) });
+                        if (res.ok) done++;
+                    } catch (e) {}
+                }
+                restoreAllBtn.disabled = false;
+                purgeAllBtn.disabled = false;
+                if (done === items.length) showToast(purge ? '已彻底删除 ' + done + ' 条' : '已恢复 ' + done + ' 条');
+                else showToast('完成 ' + done + '/' + items.length + ' 条，其余失败，可重试', 'error');
+                await getLinks();
+            }
+            function requestBatchTrash(purge) {
+                const total = allLinks.length;
+                if (!total) return;
+                const run = function () { runBatchTrash(purge); };
+                if (typeof dialog.showModal !== 'function') {
+                    nativeConfirmFallback(purge ? '将彻底删除回收站中的 ' + total + ' 条短链，不可恢复。确定吗？' : '将恢复回收站中的 ' + total + ' 条短链。确定吗？', run);
+                    return;
+                }
+                requestConfirm({
+                    title: purge ? '清空回收站' : '全部恢复',
+                    buildText: function (el) {
+                        el.textContent = purge ? '将彻底删除回收站中的 ' : '将恢复回收站中的 ';
+                        const b = document.createElement('b');
+                        b.textContent = String(total);
+                        el.append(b, document.createTextNode(purge ? ' 条短链，该操作不可恢复。' : ' 条短链。'));
+                    },
+                    okLabel: purge ? '全部删除' : '全部恢复',
+                    danger: purge,
+                    onOk: run
+                });
+            }
+            restoreAllBtn.addEventListener('click', function () { requestBatchTrash(false); });
+            purgeAllBtn.addEventListener('click', function () { requestBatchTrash(true); });
+
             tbody.addEventListener('click', function (e) {
                 const copyBtnEl = e.target.closest('.row-copy');
                 if (copyBtnEl) {
@@ -2121,7 +2266,7 @@ export const adminHtml = buildPage({
                         copyBtnEl.classList.add('copied');
                         copyBtnEl.innerHTML = ICON_CHECK_SVG;
                         setTimeout(function () { copyBtnEl.classList.remove('copied'); copyBtnEl.innerHTML = ICON_COPY_SVG; }, 1500);
-                    }).catch(function () { showToast('复制失败，请手动复制'); });
+                    }).catch(function () { showToast('复制失败，请手动复制', 'error'); });
                     return;
                 }
                 const actBtn = e.target.closest('.row-edit');
@@ -2133,7 +2278,7 @@ export const adminHtml = buildPage({
                         else {
                             // 访问详情走按需精确查询（含 daily/ref/dev），失败时回退内存数据
                             fetchDetail(link.slug).then(openDetail).catch(function (err) {
-                                if (err && err.message === 'auth') { showToast('会话已过期，请重新登录'); return; }
+                                if (err && err.message === 'auth') { showToast('会话已过期，请重新登录', 'error'); return; }
                                 openDetail(link);
                             });
                         }
@@ -2146,10 +2291,10 @@ export const adminHtml = buildPage({
                 if (btn) requestDelete(btn.dataset.slug, btn.dataset.purge === '1');
             });
 
-            confirmDel.addEventListener('click', function () { const s = pendingSlug; const p = pendingPurge; pendingSlug = null; pendingPurge = false; dialog.close(); if (s) doDelete(s, p); });
-            cancelDel.addEventListener('click', function () { pendingSlug = null; dialog.close(); });
-            dialog.addEventListener('click', function (e) { if (e.target === dialog) { pendingSlug = null; dialog.close(); } });
-            dialog.addEventListener('close', function () { pendingSlug = null; });
+            confirmOk.addEventListener('click', function () { const fn = confirmAction; confirmAction = null; dialog.close(); if (fn) fn(); });
+            confirmCancel.addEventListener('click', function () { confirmAction = null; dialog.close(); });
+            dialog.addEventListener('click', function (e) { if (e.target === dialog) { confirmAction = null; dialog.close(); } });
+            dialog.addEventListener('close', function () { confirmAction = null; });
 
             // 搜索：按短链 / 原始链接实时过滤（纯客户端，输入防抖 180ms，避免大列表每次按键全量重排）
             let searchTimer = null;
@@ -2164,8 +2309,9 @@ export const adminHtml = buildPage({
                 }, 180);
             });
 
-            // 排序：点击「访问次数 / 创建时间」表头切换升/降序
+            // 排序：点击「访问次数 / 创建时间」表头切换升/降序；表头可 Tab 聚焦、回车/空格触发
             document.querySelectorAll('th.th-sort').forEach(function (th) {
+                th.tabIndex = 0;
                 th.addEventListener('click', function () {
                     const key = th.dataset.key;
                     if (sortKey === key) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
@@ -2175,6 +2321,19 @@ export const adminHtml = buildPage({
                     renderList();
                     updateNote();
                 });
+                th.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); th.click(); }
+                });
+            });
+
+            // 快捷键：/ 聚焦搜索，R 刷新列表（输入框聚焦或弹窗打开时不触发）
+            document.addEventListener('keydown', function (e) {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                const tag = ((e.target && e.target.tagName) || '').toLowerCase();
+                if (tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable)) return;
+                if (document.querySelector('dialog[open]')) return;
+                if (e.key === '/') { e.preventDefault(); searchInput.focus(); searchInput.select(); }
+                else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); refreshBtn.click(); }
             });
 
             // 刷新：重新拉取列表（加载期间按钮转圈）
@@ -2189,6 +2348,14 @@ export const adminHtml = buildPage({
                 if (label) label.textContent = '刷新';
             });
 
+            // ---------- 状态筛选（正常 / 已过期 / 达上限 / 密码保护） ----------
+            statusFilterEl.addEventListener('change', function () {
+                filterStatus = statusFilterEl.value;
+                shownCount = PAGE_SIZE;
+                renderList();
+                updateNote();
+            });
+
             // ---------- 回收站切换 ----------
             trashToggle.addEventListener('click', async function () {
                 viewMode = viewMode === 'list' ? 'trash' : 'list';
@@ -2198,13 +2365,17 @@ export const adminHtml = buildPage({
                 trashToggle.setAttribute('aria-pressed', viewMode === 'trash' ? 'true' : 'false');
                 searchInput.value = '';
                 filterText = '';
+                filterStatus = 'all';
+                statusFilterEl.value = 'all';
+                // 批量按钮仅回收站视图有意义
+                document.querySelectorAll('.trash-only').forEach(function (b) { b.hidden = viewMode !== 'trash'; });
                 await getLinks();
             });
 
             // 启动时后台获取回收站数量（徽标提示；数组/截断对象两种形态兼容）
             (async function () {
                 try {
-                    const res = await fetch('/api/links?trash=1', { headers: authHeaders });
+                    const res = await authedFetch('/api/links?trash=1', { headers: authHeaders });
                     if (res.ok) {
                         const payload = await res.json();
                         trashTotal = Array.isArray(payload) ? payload.length : ((payload && payload.links) || []).length;
@@ -2234,7 +2405,7 @@ export const adminHtml = buildPage({
                 btn.disabled = true;
                 try {
                     // 导出前带 detail=1 重新拉取，补齐聚合统计（列表默认不再携带 daily/ref/dev）
-                    const res = await fetch(viewMode === 'trash' ? '/api/links?trash=1&detail=1' : '/api/links?detail=1', { headers: authHeaders });
+                    const res = await authedFetch(viewMode === 'trash' ? '/api/links?trash=1&detail=1' : '/api/links?detail=1', { headers: authHeaders });
                     if (res.ok) {
                         const payload = await res.json();
                         const rows = Array.isArray(payload) ? payload : (payload.links || []);
@@ -2248,15 +2419,17 @@ export const adminHtml = buildPage({
                     lines.push([l.slug, l.original, l.visits, new Date(l.createdAt).toISOString(), l.note, l.expiresAt || '', l.maxVisits || '', l.hasPassword ? 'yes' : 'no'].map(csvCell).join(','));
                 });
                 const d = new Date();
-                downloadFile('shorturl-export-' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '.csv', '\\ufeff' + lines.join('\\n'), 'text/csv;charset=utf-8');
-                showToast('已导出 ' + allLinks.length + ' 条记录（CSV）');
+                const stamp = d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate());
+                const kind = viewMode === 'trash' ? '-trash' : '';
+                downloadFile('shorturl-export' + kind + '-' + stamp + '.csv', '\\ufeff' + lines.join('\\n'), 'text/csv;charset=utf-8');
+                showToast(viewMode === 'trash' ? '已导出回收站 ' + allLinks.length + ' 条记录（CSV）' : '已导出 ' + allLinks.length + ' 条记录（CSV）');
             });
             exportJsonBtn.addEventListener('click', async function () {
                 if (!allLinks.length) { showToast('暂无数据可导出'); return; }
                 const btn = this;
                 btn.disabled = true;
                 try {
-                    const res = await fetch(viewMode === 'trash' ? '/api/links?trash=1&detail=1' : '/api/links?detail=1', { headers: authHeaders });
+                    const res = await authedFetch(viewMode === 'trash' ? '/api/links?trash=1&detail=1' : '/api/links?detail=1', { headers: authHeaders });
                     if (res.ok) {
                         const payload = await res.json();
                         const rows = Array.isArray(payload) ? payload : (payload.links || []);
@@ -2264,8 +2437,11 @@ export const adminHtml = buildPage({
                     }
                 } catch (e) {}
                 finally { btn.disabled = false; }
-                downloadFile('shorturl-export.json', JSON.stringify(allLinks, null, 2), 'application/json');
-                showToast('已导出 ' + allLinks.length + ' 条记录（JSON）');
+                const d = new Date();
+                const stamp = d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate());
+                const kind = viewMode === 'trash' ? '-trash' : '';
+                downloadFile('shorturl-export' + kind + '-' + stamp + '.json', JSON.stringify(allLinks, null, 2), 'application/json');
+                showToast(viewMode === 'trash' ? '已导出回收站 ' + allLinks.length + ' 条记录（JSON）' : '已导出 ' + allLinks.length + ' 条记录（JSON）');
             });
 
             // ---------- 二维码查看（qr-draw.js 的 drawQrDialog，大尺寸，与主页同源） ----------
@@ -2297,7 +2473,33 @@ export const adminHtml = buildPage({
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
-                } catch (err) { showToast('二维码下载失败，请截图保存'); }
+                } catch (err) { showToast('二维码下载失败，请截图保存', 'error'); }
+            });
+            document.getElementById('qr-dlg-copy').addEventListener('click', async function () {
+                const btn = this;
+                try {
+                    await navigator.clipboard.writeText(qrDialog.dataset.url || '');
+                    btn.textContent = '已复制';
+                    setTimeout(function () { btn.textContent = '复制链接'; }, 1500);
+                } catch (e) { showToast('复制失败，请手动复制', 'error'); }
+            });
+            // 高清下载：按 ≥1024px 重绘离屏画布再导出（打印 / 海报场景）
+            document.getElementById('qr-dlg-hd').addEventListener('click', function () {
+                const url = qrDialog.dataset.url || '';
+                if (!url || typeof window.drawQrSized !== 'function') { showToast('高清二维码不可用', 'error'); return; }
+                const canvas = document.createElement('canvas');
+                let drawn = false;
+                try { drawn = window.drawQrSized(canvas, url, 1024); } catch (err) { drawn = false; }
+                if (!drawn || !canvas.width) { showToast('高清二维码生成失败', 'error'); return; }
+                try {
+                    const slugPart = url.split('/').pop() || 'code';
+                    const a = document.createElement('a');
+                    a.href = canvas.toDataURL('image/png');
+                    a.download = 'shorturl-qr-' + slugPart + '-hd.png';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                } catch (err) { showToast('二维码下载失败，请截图保存', 'error'); }
             });
 
             // ---------- 编辑短链 ----------
@@ -2318,6 +2520,13 @@ export const adminHtml = buildPage({
             }
             document.getElementById('edit-cancel').addEventListener('click', function () { editDialog.close(); });
             editDialog.addEventListener('click', function (e) { if (e.target === editDialog) editDialog.close(); });
+            // 有效期快捷预设：一键填 7/30/90 天，「永久」清空输入框
+            document.querySelectorAll('.exp-presets .chip').forEach(function (chip) {
+                chip.addEventListener('click', function () {
+                    const days = Number(chip.dataset.days) || 0;
+                    document.getElementById('edit-exp').value = days ? toLocalInputValue(Date.now() + days * 86400000) : '';
+                });
+            });
             document.getElementById('edit-save').addEventListener('click', async function () {
                 const slug = editDialog.dataset.slug;
                 const payload = {
@@ -2330,13 +2539,19 @@ export const adminHtml = buildPage({
                 payload.maxVisits = document.getElementById('edit-max').value ? Number(document.getElementById('edit-max').value) : null;
                 if (document.getElementById('edit-pwd').value) payload.password = document.getElementById('edit-pwd').value;
                 payload.clearPassword = document.getElementById('edit-clearpwd').checked;
+                // 与服务端 400 行为对齐：两者互斥，提交前先拦下
+                if (payload.password && payload.clearPassword) {
+                    showToast('新密码与「清除访问密码」不能同时设置', 'error');
+                    return;
+                }
                 if (payload.original && !/^https?:\\/\\//.test(payload.original)) {
-                    showToast('目标链接需以 http/https 开头'); return;
+                    showToast('目标链接需以 http/https 开头', 'error');
+                    return;
                 }
                 const btn = this;
                 btn.disabled = true;
                 try {
-                    const res = await fetch('/api/update', { method: 'POST', headers: authHeaders, body: JSON.stringify(payload) });
+                    const res = await authedFetch('/api/update', { method: 'POST', headers: authHeaders, body: JSON.stringify(payload) });
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok) throw new Error(data.error || '保存失败');
                     // 就地更新内存数据，保持列表与详情一致
@@ -2349,20 +2564,21 @@ export const adminHtml = buildPage({
                     updateNote();
                     editDialog.close();
                     showToast('已保存 /' + slug);
-                } catch (err) { showToast(err.message); }
+                } catch (err) { showToast(err.message, 'error'); }
                 finally { btn.disabled = false; }
             });
 
             // ---------- 访问详情弹窗（横版：概览一行 + 趋势通栏 + 设备/来源双列） ----------
             // 详情数据按需拉取：列表接口默认不再携带 daily/ref/dev，打开弹窗时精确查询单条
             async function fetchDetail(slug) {
-                const res = await fetch('/api/links?slug=' + encodeURIComponent(slug), { headers: authHeaders });
+                const res = await authedFetch('/api/links?slug=' + encodeURIComponent(slug), { headers: authHeaders });
                 if (res.status === 401) throw new Error('auth');
                 if (!res.ok) throw new Error('详情加载失败');
                 return res.json();
             }
             function openDetail(link) {
                 document.getElementById('detail-slug').textContent = '访问详情 /' + link.slug + (link.note ? ' · ' + link.note : '');
+                detailDialog.dataset.slug = link.slug;
                 const body = document.getElementById('detail-body');
                 body.textContent = '';
 
@@ -2484,6 +2700,19 @@ export const adminHtml = buildPage({
             }
             document.getElementById('detail-close').addEventListener('click', function () { detailDialog.close(); });
             detailDialog.addEventListener('click', function (e) { if (e.target === detailDialog) detailDialog.close(); });
+            // 详情弹窗直达复制 / 二维码，不用关掉弹窗再找行内按钮
+            document.getElementById('detail-copy').addEventListener('click', async function () {
+                const btn = this;
+                try {
+                    await navigator.clipboard.writeText(window.location.origin + '/' + (detailDialog.dataset.slug || ''));
+                    btn.textContent = '已复制';
+                    setTimeout(function () { btn.textContent = '复制短链'; }, 1500);
+                } catch (e) { showToast('复制失败，请手动复制', 'error'); }
+            });
+            document.getElementById('detail-qr').addEventListener('click', function () {
+                // <dialog> 支持叠层：二维码弹窗盖在详情弹窗之上，关闭后详情保留
+                openQr({ slug: detailDialog.dataset.slug });
+            });
 
             // 加载更多：追加下一页数据（纯客户端分页）
             if (loadMoreBtn) loadMoreBtn.addEventListener('click', function () {
@@ -2563,7 +2792,7 @@ export const adminHtml = buildPage({
             }
             async function loadSettings() {
                 try {
-                    const res = await fetch('/api/settings', { headers: authHeaders });
+                    const res = await authedFetch('/api/settings', { headers: authHeaders });
                     if (!res.ok) throw new Error('x');
                     const s = await res.json();
                     document.getElementById('set-session').value = s.sessionHours || 24;
@@ -2584,7 +2813,7 @@ export const adminHtml = buildPage({
                     document.getElementById('set-pwd-hint').textContent = s.hasCustomPassword
                         ? '当前使用自定义口令（保存在 KV，修改后所有旧会话立即失效）'
                         : '当前使用环境变量口令（未配置则无需登录）';
-                } catch (e) { showToast('设置加载失败'); }
+                } catch (e) { showToast('设置加载失败', 'error'); }
             }
 
             // 上传自定义 Logo（立即保存生效；自动勾选「中心放置 Logo」）
@@ -2601,7 +2830,7 @@ export const adminHtml = buildPage({
                 });
                 if (!/^data:image\\/(png|jpe?g|webp|svg\\+xml);base64,/.test(dataUrl)) { showToast('仅支持 PNG / JPG / WebP / SVG 图片'); return; }
                 try {
-                    const res = await fetch('/api/settings', { method: 'POST', headers: authHeaders, body: JSON.stringify({ qr: { centerLogo: true, logoDataUrl: dataUrl } }) });
+                    const res = await authedFetch('/api/settings', { method: 'POST', headers: authHeaders, body: JSON.stringify({ qr: { centerLogo: true, logoDataUrl: dataUrl } }) });
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok) throw new Error(data.error || 'Logo 上传失败');
                     qrLogoCustom = dataUrl;
@@ -2611,7 +2840,7 @@ export const adminHtml = buildPage({
                     document.getElementById('set-qr-logo').checked = true;
                     updateQrLogoPreview();
                     showToast('自定义 Logo 已启用，二维码即时生效');
-                } catch (err) { showToast(err.message); }
+                } catch (err) { showToast(err.message, 'error'); }
             });
 
             // 恢复默认 Logo（网站图标），同样立即生效
@@ -2619,66 +2848,73 @@ export const adminHtml = buildPage({
                 const btn = this;
                 btn.disabled = true;
                 try {
-                    const res = await fetch('/api/settings', { method: 'POST', headers: authHeaders, body: JSON.stringify({ qr: { logoDataUrl: '' } }) });
+                    const res = await authedFetch('/api/settings', { method: 'POST', headers: authHeaders, body: JSON.stringify({ qr: { logoDataUrl: '' } }) });
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok) throw new Error(data.error || '操作失败');
                     qrLogoCustom = '';
                     QR_CFG.logoDataUrl = '';
                     updateQrLogoPreview();
                     showToast('已恢复默认 Logo（网站图标）');
-                } catch (err) { showToast(err.message); }
+                } catch (err) { showToast(err.message, 'error'); }
                 finally { btn.disabled = false; }
             });
 
-            document.getElementById('settings-save').addEventListener('click', async function () {
-                const btn = this;
-                btn.disabled = true;
-                const payload = {
-                    sessionHours: Number(document.getElementById('set-session').value) || 24,
-                    rateLimit: {
-                        max: Number(document.getElementById('set-rl-max').value) || 5,
-                        windowMin: Number(document.getElementById('set-rl-win').value) || 10
-                    },
-                    slug: {
-                        length: Number(document.getElementById('set-slug-len').value) || 8,
-                        charset: document.getElementById('set-slug-charset').value
-                    },
-                    dedupHash: document.getElementById('set-dedup').checked,
-                    redirectCode: document.getElementById('set-redirect').value === '301' ? 301 : 302,
-                    dailyCreateLimit: Number(document.getElementById('set-daily-limit').value) || 0,
-                    domainWhitelist: document.getElementById('set-whitelist').value.split('\\n').map(s => s.trim()).filter(Boolean),
-                    extraReserved: document.getElementById('set-reserved').value.split('\\n').map(s => s.trim()).filter(Boolean),
-                    dedupMin: Number(document.getElementById('set-dedup-min').value) || 0,
-                    qr: {
-                        centerLogo: document.getElementById('set-qr-logo').checked,
-                        dark: document.getElementById('set-qr-dark').value
+            // 顶部与底部两个保存按钮共用同一处理；保存期间同时禁用
+            document.querySelectorAll('.settings-save-btn').forEach(function (b) {
+                b.addEventListener('click', async function () {
+                    const pwdVal = document.getElementById('set-password').value;
+                    // 与服务端 400 行为对齐：新口令与恢复环境变量口令互斥，提交前先拦下
+                    if (pwdVal && document.getElementById('set-clearpwd').checked) {
+                        showToast('新口令与「恢复为环境变量口令」不能同时设置', 'error');
+                        return;
                     }
-                };
-                const newPwd = document.getElementById('set-password').value;
-                if (newPwd) payload.password = newPwd;
-                if (document.getElementById('set-clearpwd').checked) payload.clearPassword = true;
-                try {
-                    const res = await fetch('/api/settings', { method: 'POST', headers: authHeaders, body: JSON.stringify(payload) });
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok) throw new Error(data.error || '保存失败');
-                    document.getElementById('set-password').value = '';
-                    document.getElementById('set-clearpwd').checked = false;
-                    loadSettings();
-                    if (data.sessionInvalidated) {
-                        showToastClosable('口令已更新，所有旧会话已失效，即将重新登录…', 2600);
-                        setTimeout(function () { window.location.href = '/'; }, 1600);
-                    } else {
-                        showToast('设置已保存，即时生效');
-                    }
-                } catch (err) { showToast(err.message || '保存失败'); }
-                finally { btn.disabled = false; }
+                    document.querySelectorAll('.settings-save-btn').forEach(function (x) { x.disabled = true; });
+                    const payload = {
+                        sessionHours: Number(document.getElementById('set-session').value) || 24,
+                        rateLimit: {
+                            max: Number(document.getElementById('set-rl-max').value) || 5,
+                            windowMin: Number(document.getElementById('set-rl-win').value) || 10
+                        },
+                        slug: {
+                            length: Number(document.getElementById('set-slug-len').value) || 8,
+                            charset: document.getElementById('set-slug-charset').value
+                        },
+                        dedupHash: document.getElementById('set-dedup').checked,
+                        redirectCode: document.getElementById('set-redirect').value === '301' ? 301 : 302,
+                        dailyCreateLimit: Number(document.getElementById('set-daily-limit').value) || 0,
+                        domainWhitelist: document.getElementById('set-whitelist').value.split('\\n').map(s => s.trim()).filter(Boolean),
+                        extraReserved: document.getElementById('set-reserved').value.split('\\n').map(s => s.trim()).filter(Boolean),
+                        dedupMin: Number(document.getElementById('set-dedup-min').value) || 0,
+                        qr: {
+                            centerLogo: document.getElementById('set-qr-logo').checked,
+                            dark: document.getElementById('set-qr-dark').value
+                        }
+                    };
+                    if (pwdVal) payload.password = pwdVal;
+                    if (document.getElementById('set-clearpwd').checked) payload.clearPassword = true;
+                    try {
+                        const res = await authedFetch('/api/settings', { method: 'POST', headers: authHeaders, body: JSON.stringify(payload) });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(data.error || '保存失败');
+                        document.getElementById('set-password').value = '';
+                        document.getElementById('set-clearpwd').checked = false;
+                        loadSettings();
+                        if (data.sessionInvalidated) {
+                            showToastClosable('口令已更新，所有旧会话已失效，即将重新登录…', 2600);
+                            setTimeout(function () { window.location.href = '/'; }, 1600);
+                        } else {
+                            showToast('设置已保存，即时生效');
+                        }
+                    } catch (err) { showToast(err.message || '保存失败', 'error'); }
+                    finally { document.querySelectorAll('.settings-save-btn').forEach(function (x) { x.disabled = false; }); }
+                });
             });
 
             // ---------- API Token ----------
             async function loadTokens() {
                 const list = document.getElementById('token-list');
                 try {
-                    const res = await fetch('/api/token', { headers: authHeaders });
+                    const res = await authedFetch('/api/token', { headers: authHeaders });
                     if (!res.ok) throw new Error('x');
                     const tokens = await res.json();
                     list.textContent = '';
@@ -2706,11 +2942,11 @@ export const adminHtml = buildPage({
                         revoke.addEventListener('click', async function () {
                             revoke.disabled = true;
                             try {
-                                const res2 = await fetch('/api/token', { method: 'DELETE', headers: authHeaders, body: JSON.stringify({ id: t.id }) });
+                                const res2 = await authedFetch('/api/token', { method: 'DELETE', headers: authHeaders, body: JSON.stringify({ id: t.id }) });
                                 if (!res2.ok) throw new Error();
                                 showToast('已吊销 ' + t.name);
                                 loadTokens();
-                            } catch (e) { showToast('吊销失败'); revoke.disabled = false; }
+                            } catch (e) { showToast('吊销失败', 'error'); revoke.disabled = false; }
                         });
                         item.append(name, time, revoke);
                         list.appendChild(item);
@@ -2728,14 +2964,14 @@ export const adminHtml = buildPage({
                 const btn = this;
                 btn.disabled = true;
                 try {
-                    const res = await fetch('/api/token', { method: 'POST', headers: authHeaders, body: JSON.stringify({ name: document.getElementById('token-name').value }) });
+                    const res = await authedFetch('/api/token', { method: 'POST', headers: authHeaders, body: JSON.stringify({ name: document.getElementById('token-name').value }) });
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok) throw new Error(data.error || '创建失败');
                     document.getElementById('token-new').hidden = false;
                     document.getElementById('token-new-value').textContent = data.token;
                     document.getElementById('token-name').value = '';
                     loadTokens();
-                } catch (err) { showToast(err.message || '创建失败'); }
+                } catch (err) { showToast(err.message || '创建失败', 'error'); }
                 finally { btn.disabled = false; }
             });
             document.getElementById('token-copy').addEventListener('click', async function () {
@@ -2744,7 +2980,9 @@ export const adminHtml = buildPage({
                     await navigator.clipboard.writeText(document.getElementById('token-new-value').textContent);
                     btn.textContent = '已复制';
                     setTimeout(function () { btn.textContent = '复制'; }, 1500);
-                } catch (e) { showToast('复制失败，请手动复制'); }
+                    // 明文不常驻页面：复制成功后自动收起，与「仅显示一次」的安全口径一致
+                    setTimeout(function () { const box = document.getElementById('token-new'); if (box) box.hidden = true; }, 1600);
+                } catch (e) { showToast('复制失败，请手动复制', 'error'); }
             });
 
             getLinks();

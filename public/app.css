@@ -187,6 +187,8 @@ td.td-actions { white-space: nowrap; }
 .delete-btn:hover { background: var(--error-bg); border-color: var(--error); }
 .delete-btn svg { width: 14px; height: 14px; display: block; }
 .delete-btn:active { transform: scale(.96); }
+/* 操作列：删除是破坏性动作，与前面的图标按钮拉开间距 */
+.td-actions .delete-btn { margin-left: 10px; }
 .badge { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; background: var(--primary-soft); color: var(--nav-active-text); font-size: .76rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .empty { text-align: center; color: var(--muted); padding: 26px 0; }
 /* 长列表分页：一次渲染前 N 条，「加载更多」追加 */
@@ -240,6 +242,8 @@ a.top-link-slug:hover { color: var(--primary); }
 }
 .toast { position: fixed; left: 50%; top: calc(24px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -12px) scale(.98); opacity: 0; pointer-events: none; z-index: 50; background: var(--text); color: var(--surface); padding: 11px 18px; border-radius: 999px; font-size: .85rem; font-weight: 600; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .35); transition: opacity .2s, transform .2s; max-width: calc(100vw - 40px); text-align: center; }
 .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+/* 错误类提示：红色底区分于中性提示 */
+.toast.error { background: var(--error); color: #fff; }
 /* 可关闭提醒（登录成功等）：3 秒自动消失，点 × 或气泡立即关闭 */
 .toast-closable { display: inline-flex; align-items: center; gap: 10px; }
 .toast-text { min-width: 0; }
@@ -258,10 +262,17 @@ a.top-link-slug:hover { color: var(--primary); }
 .tb-btn.spinning svg { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .tb-btn.spinning svg { animation: none; } }
+/* 工具栏状态筛选下拉：与搜索框 / 按钮同高同风格 */
+.tb-select { height: 42px; padding: 0 10px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .85rem; font-weight: 600; font-family: inherit; cursor: pointer; -webkit-appearance: none; appearance: none; transition: border-color .18s, box-shadow .18s; }
+.tb-select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
+/* 回收站专属按钮（恢复全部 / 清空回收站）：危险色弱化呈现 */
+.tb-btn.trash-only { color: var(--error); border-color: var(--error-border); }
+.tb-btn.trash-only:hover { background: var(--error-bg); border-color: var(--error); }
 
-/* 可排序表头（访问次数 / 创建时间） */
+/* 可排序表头（访问次数 / 创建时间）：鼠标点击 + 键盘 Tab/回车 */
 th.th-sort { cursor: pointer; user-select: none; -webkit-user-select: none; }
 th.th-sort:hover { color: var(--text); }
+th.th-sort:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: 6px; }
 th.th-sort .arrow { display: inline-block; margin-left: 3px; color: var(--primary); }
 
 /* 行内复制按钮（表格短链列） */
@@ -284,6 +295,8 @@ dialog::backdrop { background: var(--scrim); }
 .dialog-text { margin: 0 0 18px; font-size: .9rem; color: var(--muted); line-height: 1.6; word-break: break-all; }
 .dialog-text b { color: var(--text); font-family: var(--mono); }
 .row-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* 详情弹窗底部三键（复制短链 / 二维码 / 关闭） */
+.row-btns.detail-actions { margin-top: 16px; grid-template-columns: repeat(3, 1fr); }
 .btn-danger { height: 44px; border: 0; border-radius: 12px; background: var(--error); color: #fff; font-weight: 700; font-size: .9rem; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: filter .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
 .btn-danger:hover { filter: brightness(1.08); }
 .btn-danger:active { transform: scale(.98); }
@@ -402,6 +415,12 @@ dialog::backdrop { background: var(--scrim); }
 .settings-card input[type="color"] { padding: 2px; height: 38px; width: 64px; }
 .settings-card input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
 .settings-hint { margin: 0; font-size: .76rem; color: var(--faint); line-height: 1.6; }
+/* API Token 卡片内容横向较长，占满设置网格整行 */
+.settings-card-wide { grid-column: 1 / -1; }
+/* 设置页底部保存条：长表单滚动到底部时也有保存入口 */
+.settings-foot { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.settings-foot .settings-save-btn { height: 40px; padding: 0 18px; }
+.settings-foot-hint { font-size: .76rem; color: var(--faint); }
 .opt-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .qr-logo-row { display: flex; gap: 14px; align-items: center; }
 .qr-logo-preview { width: 56px; height: 56px; border-radius: 12px; background: #fff; border: 1px solid var(--border); object-fit: contain; padding: 5px; box-sizing: border-box; flex: none; }
@@ -425,6 +444,11 @@ dialog::backdrop { background: var(--scrim); }
 .edit-form input, .edit-form select { width: 100%; min-width: 0; height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .9rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
 .edit-form input:focus, .edit-form select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
 .edit-form input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
+/* 有效期快捷预设（7/30/90 天、永久） */
+.exp-wrap { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.exp-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { height: 28px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--muted); font-size: .74rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: color .15s, border-color .15s, background-color .15s; -webkit-tap-highlight-color: transparent; }
+.chip:hover { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
 .detail-section { margin-top: 14px; }
 
 /* 主题切换过渡：仅在切换瞬间由 JS 挂上 theme-anim 类，避免首屏闪烁与日常动画冲突 */
@@ -463,12 +487,20 @@ html.theme-anim * { transition: background-color .3s ease, color .3s ease, borde
   .result-flex { flex-direction: column; }
   .result-qr { flex-direction: row; align-self: center; }
   .copy-btn { justify-content: center; height: 42px; }
-  .table-wrap table { min-width: 480px; }
-  .table-toolbar { flex-direction: column; align-items: stretch; }
-  .tb-btn { justify-content: center; }
-  /* 移动端隐藏「原始链接」「创建时间」列（按列类名隐藏，列序调整时不会错位） */
+  /* 移动端隐藏「原始链接」「创建时间」「访问次数」列（按列类名隐藏，列序调整时不会错位），
+     换取「操作」列完整进入首屏；访问次数可在访问详情弹窗查看 */
   .col-orig { display: none; }
   .col-created { display: none; }
+  .col-visits { display: none; }
+  .table-wrap table { min-width: 320px; }
+  /* 操作列在窄屏收紧内边距，确保 4 个动作完整可见 */
+  .td-actions .row-edit { padding: 0 6px; }
+  .td-actions .delete-btn { padding: 0 8px; margin-left: 6px; }
+  /* 移动端工具栏不再整列堆叠：两列自动换行，压缩纵向占用 */
+  .table-toolbar { flex-direction: row; }
+  .search-wrap { flex: 1 1 100%; min-width: 0; }
+  .tb-select { flex: 1 1 44%; min-width: 0; font-size: 16px; }
+  .tb-btn { flex: 1 1 44%; justify-content: center; }
   .stat-value { font-size: 1.45rem; }
   /* ≤620px 同样横向滑动（不再切 2×2 网格，避免窄屏挤压换行） */
   .nav-sep { display: none; }
