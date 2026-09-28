@@ -180,8 +180,8 @@ table td a { color: var(--primary); text-decoration: none; font-weight: 600; }
 table td a:hover { text-decoration: underline; }
 .slug-link { font-family: var(--mono); }
 /* 短链列：单行布局，长链省略号截断（悬停见完整 URL），复制按钮不换行 */
-.slug-cell { white-space: nowrap; }
-.slug-cell .slug-link { display: inline-block; overflow: hidden; white-space: normal; word-break: break-all; vertical-align: middle; }
+.slug-cell { white-space: normal; }
+.slug-cell .slug-link { display: inline-block; max-width: 100%; overflow: hidden; white-space: normal; word-break: break-all; vertical-align: middle; }
 .td-nowrap { white-space: nowrap; }
 td.td-actions { white-space: nowrap; }
 .td-orig a { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; max-width: 240px; text-align: left; }
@@ -498,7 +498,7 @@ html.theme-anim * { transition: background-color .3s ease, color .3s ease, borde
   .app.has-footer-nav { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
   .footer-nav .nav-item { flex: 1 1 0; min-width: 0; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 4px; border-radius: 10px; text-align: center; font-size: .72rem; }
   .footer-nav .nav-item svg { width: 20px; height: 20px; }
-  .footer-nav .nav-item.active::before { left: 25%; right: 25%; top: 0; bottom: auto; width: auto; height: 3px; border-radius: 0 0 3px 3px; }
+  .footer-nav .nav-item.active::before { left: 0; top: 20%; bottom: 20%; width: 3px; height: auto; border-radius: 3px; }
   .chart-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 620px) {

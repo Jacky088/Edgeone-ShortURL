@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.7.3';
+const ASSET_VERSION = '3.7.4';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -266,9 +266,9 @@ function appShellCss() {
       table td a { color: var(--primary); text-decoration: none; font-weight: 600; }
       table td a:hover { text-decoration: underline; }
       .slug-link { font-family: var(--mono); }
-      /* 短链列：单行布局，长链省略号截断（悬停见完整 URL），复制按钮不换行 */
-      .slug-cell { white-space: nowrap; }
-      .slug-cell .slug-link { display: inline-block; overflow: hidden; white-space: normal; word-break: break-all; vertical-align: middle; }
+      /* 短链列：空间不足时复制按钮可换行、锚点收缩，避免溢出到「原始链接」列造成重叠 */
+      .slug-cell { white-space: normal; }
+      .slug-cell .slug-link { display: inline-block; max-width: 100%; overflow: hidden; white-space: normal; word-break: break-all; vertical-align: middle; }
       .td-nowrap { white-space: nowrap; }
       td.td-actions { white-space: nowrap; }
       .td-orig a { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; max-width: 240px; text-align: left; }
@@ -532,7 +532,7 @@ function appShellCss() {
         .app.has-footer-nav { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
         .footer-nav .nav-item { flex: 1 1 0; min-width: 0; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 4px; border-radius: 10px; text-align: center; font-size: .72rem; }
         .footer-nav .nav-item svg { width: 20px; height: 20px; }
-        .footer-nav .nav-item.active::before { left: 25%; right: 25%; top: 0; bottom: auto; width: auto; height: 3px; border-radius: 0 0 3px 3px; }
+        .footer-nav .nav-item.active::before { left: 0; top: 20%; bottom: 20%; width: 3px; height: auto; border-radius: 3px; }
         .chart-grid { grid-template-columns: 1fr; }
       }
       @media (max-width: 620px) {
@@ -553,7 +553,7 @@ function appShellCss() {
         .stat-value { font-size: 1.45rem; }
         /* 极窄屏幕：底部导航文字再缩一档，保证四个菜单完整显示不溢出 */
         .footer-nav { padding-left: 4px; padding-right: 4px; }
-        .nav-item { font-size: .66rem; padding: 6px 2px; }
+        .footer-nav .nav-item { font-size: .66rem; padding: 6px 2px; }
         /* iOS 聚焦时禁止自动放大 */
         input, #url-input, #slug-input, .auth-form input { font-size: 16px; }
       }
