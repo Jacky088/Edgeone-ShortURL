@@ -1,10 +1,10 @@
 // functions/utils.js
 // 各 API 与页面处理函数共用的工具函数，统一维护
-
-// WebCrypto：Node 18 默认不暴露全局 crypto（19+ 才默认开启），显式从 node:crypto 取用；
-// EdgeOne Pages 等边缘运行时原生提供全局 crypto，两者接口一致，优先用全局。
-import { webcrypto as nodeWebCrypto } from 'node:crypto';
-const cryptoObj = typeof crypto !== 'undefined' ? crypto : nodeWebCrypto;
+//
+// ⚠️ 本文件（及其依赖方）不得 import 任何 node: 内置模块：
+// EdgeOne Pages Functions 为边缘运行时，静态引入 node:crypto 会导致函数包加载失败、
+// 全站 404（2026-09 生产事故）。全局 crypto（WebCrypto）在 EdgeOne 与 Node 19+ 均可用；
+// Node 18 跑测试的兼容由 tests/setup.cjs 预加载垫片解决，与生产代码无关。
 
 // 服务端会话兜底有效期：24 小时，活跃访问自动续期
 // （登录 Cookie 为会话级，关闭浏览器标签即失效；服务端 exp 仅作安全兜底）
@@ -104,7 +104,7 @@ export function buildAuthCookie(token, maxAgeSec) {
 }
 
 export async function sha256(str) {
-  const buffer = await cryptoObj.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   const hashArray = Array.from(new Uint8Array(buffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
@@ -206,7 +206,7 @@ export function generateSlug(settings) {
   let out = '';
   while (out.length < length) {
     const bytes = new Uint8Array(length * 2);
-    cryptoObj.getRandomValues(bytes);
+    crypto.getRandomValues(bytes);
     for (let i = 0; i < bytes.length && out.length < length; i++) {
       if (bytes[i] < limit) out += charset[bytes[i] % charset.length];
     }
