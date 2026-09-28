@@ -3,7 +3,7 @@
 
 import { loginHtml, indexHtml, adminHtml, errorPageHtml, passwordHtml, ADMIN_BUTTON_HTML } from '../pages.js';
 import { APP_CSS, UI_JS, QR_LIB_JS, QR_DRAW_JS } from '../static-assets.js';
-import { getKV, isAllowedUrl, verifySessionWithRenewal, getSettings, getCookie, sha256 } from '../utils.js';
+import { getKV, isAllowedUrl, verifySessionWithRenewal, getSettings, getCookie, sha256, getClientIp } from '../utils.js';
 
 // 浏览器标签页图标（与 public/favicon.svg 一致）。
 // 固定返回内联 SVG：本函数会拦截 /favicon.svg 等路径（部署时静态资源优先级不保证），
@@ -19,12 +19,15 @@ const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="
 
 // 统一的 HTML 响应头（错误页 / 密码页与正常页面共用）
 // private, no-store：认证相关页面绝不允许边缘/CDN 缓存，避免已登录 HTML 被吐给未登录用户
+// CSP：页面脚本均为内联，无法用 nonce 白名单；退而禁止 object/embed、独立文档基址与被框嵌，
+// 这三条不影响内联脚本与外链静态资源（app.css / ui.js / qr-*.js），属纯增益。
 const HTML_HEADERS = {
   'Content-Type': 'text/html; charset=utf-8',
   'Cache-Control': 'private, no-store',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
-  'X-Frame-Options': 'DENY'
+  'X-Frame-Options': 'DENY',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
 };
 
 const MOBILE_UA = /Mobi|Android|iPhone|iPad|iPod/i;
@@ -45,7 +48,9 @@ function dayKeyOf(ts) {
   return new Date(ts).toISOString().slice(0, 10);
 }
 
-// 按数量上限裁剪对象：删除 value 最小的若干项（用于 ref 表）
+// 按数量上限裁剪对象：删除 value 最小的若干项。
+// daily / ipd 表的 value 是时间戳、ref 表的 value 是次数，「按 value 升序淘汰最旧」
+// 对两者语义一致，因此只需这一个实现。
 function pruneByCount(obj, max) {
   const keys = Object.keys(obj);
   if (keys.length <= max) return;
@@ -53,12 +58,40 @@ function pruneByCount(obj, max) {
   for (let i = 0; i < keys.length - max; i++) delete obj[keys[i]];
 }
 
-// 按时间戳裁剪对象：删除最旧的若干项（用于 daily / ipd 表）
-function pruneByTime(obj, max) {
-  const keys = Object.keys(obj);
-  if (keys.length <= max) return;
-  keys.sort((a, b) => obj[a] - obj[b]);
-  for (let i = 0; i < keys.length - max; i++) delete obj[keys[i]];
+// 访问统计的单一实现：visits / daily / ref / dev / ipd 的内存计算与裁剪。
+// 快速通道与完整校验通道共用；原地修改 linkData，调用方统一落库。
+// ipHash 由调用方预先算好（settings.dedupMin > 0 时），为空表示不去重。
+function trackVisit(linkData, request, now, ipHash, settings) {
+  let counted = true;
+  if (ipHash && linkData.ipd && linkData.ipd[ipHash] && now - linkData.ipd[ipHash] < settings.dedupMin * 60000) {
+    counted = false;
+  }
+  if (counted) {
+    linkData.visits = (linkData.visits || 0) + 1;
+    const dk = dayKeyOf(now);
+    linkData.daily = linkData.daily || {};
+    linkData.daily[dk] = (linkData.daily[dk] || 0) + 1;
+    pruneByCount(linkData.daily, MAX_DAILY_KEYS);
+    const referer = request.headers.get('Referer');
+    if (referer) {
+      try {
+        const host = new URL(referer).hostname;
+        if (host) {
+          linkData.ref = linkData.ref || {};
+          linkData.ref[host] = (linkData.ref[host] || 0) + 1;
+          pruneByCount(linkData.ref, MAX_REFERRERS);
+        }
+      } catch (e) {}
+    }
+    const ua = request.headers.get('User-Agent') || '';
+    linkData.dev = linkData.dev || { m: 0, d: 0 };
+    if (MOBILE_UA.test(ua)) linkData.dev.m += 1; else linkData.dev.d += 1;
+  }
+  if (ipHash) {
+    linkData.ipd = linkData.ipd || {};
+    linkData.ipd[ipHash] = now;
+    pruneByCount(linkData.ipd, MAX_IP_ENTRIES);
+  }
 }
 
 export async function onRequest(context) {
@@ -97,15 +130,15 @@ export async function onRequest(context) {
     return new Response('Internal Server Error', { status: 500, headers: { 'Content-Type': 'text/plain' } });
   }
 
-  // --- 鉴权状态检查（服务端会话，含滑动续期；口令与会话时长来自运行时设置）---
-  const isAuthorized = await verifySessionWithRenewal(request, env, DB);
-
   // --- 注入变量准备 ---
   // 核心逻辑：如果没设置 adminPath，status 传空字符串，前端 JS 捕获后会弹窗
   const adminPathStatus = adminPath || '';
 
   // B. 处理 Admin 路由 (受口令保护)
+  // 鉴权检查只在这里与主页路径做：公开短链跳转（热路径）不再预检会话，
+  // 延迟只剩短链 KV 读 + settings 缓存。
   if (adminPath && slug === adminPath) {
+    const isAuthorized = await verifySessionWithRenewal(request, env, DB);
     if (!isAuthorized) {
       const finalLoginHtml = loginHtml.split('__ADMIN_PATH_STATUS__').join(JSON.stringify(adminPathStatus));
       return new Response(finalLoginHtml, { headers: HTML_HEADERS, status: 200 });
@@ -148,40 +181,10 @@ export async function onRequest(context) {
         if (!linkData.pwdHash && !linkData.deletedAt && !linkData.expiresAt && !linkData.maxVisits) {
           const redirectCode = settings.redirectCode === 301 ? 301 : 302;
           const now = Date.now();
-          let counted = true;
-          let ipHash = '';
-          if (settings.dedupMin > 0) {
-            ipHash = await sha256(`${await getClientIpHash(request)}|${cleanSlug}`);
-            if (linkData.ipd && linkData.ipd[ipHash] && now - linkData.ipd[ipHash] < settings.dedupMin * 60000) {
-              counted = false;
-            }
-          }
-          if (counted) {
-            linkData.visits = (linkData.visits || 0) + 1;
-            const dk = dayKeyOf(now);
-            linkData.daily = linkData.daily || {};
-            linkData.daily[dk] = (linkData.daily[dk] || 0) + 1;
-            pruneByTime(linkData.daily, MAX_DAILY_KEYS);
-            const referer = request.headers.get('Referer');
-            if (referer) {
-              try {
-                const host = new URL(referer).hostname;
-                if (host) {
-                  linkData.ref = linkData.ref || {};
-                  linkData.ref[host] = (linkData.ref[host] || 0) + 1;
-                  pruneByCount(linkData.ref, MAX_REFERRERS);
-                }
-              } catch (e) {}
-            }
-            const ua = request.headers.get('User-Agent') || '';
-            linkData.dev = linkData.dev || { m: 0, d: 0 };
-            if (MOBILE_UA.test(ua)) linkData.dev.m += 1; else linkData.dev.d += 1;
-          }
-          if (settings.dedupMin > 0 && ipHash) {
-            linkData.ipd = linkData.ipd || {};
-            linkData.ipd[ipHash] = now;
-            pruneByTime(linkData.ipd, MAX_IP_ENTRIES);
-          }
+          const ipHash = settings.dedupMin > 0
+            ? await sha256(`${await getClientIpHash(request)}|${cleanSlug}`)
+            : '';
+          trackVisit(linkData, request, now, ipHash, settings);
           const visitUpdate = DB.put(cleanSlug, JSON.stringify(linkData)).catch(err => {
             console.error(`Visit count update failed for ${cleanSlug}: ${err && err.message}`);
           });
@@ -224,45 +227,12 @@ export async function onRequest(context) {
           }
         }
 
-        // 访问统计：按日计数、来路域名、设备类型；可选按 IP 指纹去重（运行时设置）
+        // 访问统计：与快速通道共用 trackVisit；可选按 IP 指纹去重（运行时设置）
         const now = Date.now();
-        let counted = true;
-        const ipHash = settings.dedupMin > 0 ? await sha256(`${await getClientIpHash(request)}|${cleanSlug}`) : '';
-        if (settings.dedupMin > 0 && linkData.ipd && linkData.ipd[ipHash] && now - linkData.ipd[ipHash] < settings.dedupMin * 60000) {
-          counted = false;
-        }
-
-        if (counted) {
-          linkData.visits = (linkData.visits || 0) + 1;
-
-          const dk = dayKeyOf(now);
-          linkData.daily = linkData.daily || {};
-          linkData.daily[dk] = (linkData.daily[dk] || 0) + 1;
-          pruneByTime(linkData.daily, MAX_DAILY_KEYS);
-
-          const referer = request.headers.get('Referer');
-          if (referer) {
-            try {
-              const host = new URL(referer).hostname;
-              if (host) {
-                linkData.ref = linkData.ref || {};
-                linkData.ref[host] = (linkData.ref[host] || 0) + 1;
-                pruneByCount(linkData.ref, MAX_REFERRERS);
-              }
-            } catch (e) {}
-          }
-
-          const ua = request.headers.get('User-Agent') || '';
-          linkData.dev = linkData.dev || { m: 0, d: 0 };
-          if (MOBILE_UA.test(ua)) linkData.dev.m += 1; else linkData.dev.d += 1;
-        }
-
-        // 去重指纹表：命中与否都刷新时间戳；超出上限淘汰最旧
-        if (settings.dedupMin > 0 && ipHash) {
-          linkData.ipd = linkData.ipd || {};
-          linkData.ipd[ipHash] = now;
-          pruneByTime(linkData.ipd, MAX_IP_ENTRIES);
-        }
+        const ipHash = settings.dedupMin > 0
+          ? await sha256(`${await getClientIpHash(request)}|${cleanSlug}`)
+          : '';
+        trackVisit(linkData, request, now, ipHash, settings);
 
         // 计数写入不阻塞跳转；运行时不支持 waitUntil 时回退为同步等待
         const visitUpdate = DB.put(cleanSlug, JSON.stringify(linkData)).catch(err => {
@@ -283,7 +253,8 @@ export async function onRequest(context) {
     }
   }
 
-  // D. 处理主页 (生成器) - 需要鉴权
+  // D. 处理主页 (生成器) - 需要鉴权（鉴权下移至此：跳转热路径不预检会话）
+  const isAuthorized = await verifySessionWithRenewal(request, env, DB);
   if (!isAuthorized) {
       const finalLoginHtml = loginHtml.split('__ADMIN_PATH_STATUS__').join(JSON.stringify(adminPathStatus));
       return new Response(finalLoginHtml, { headers: HTML_HEADERS, status: 200 });
@@ -305,7 +276,6 @@ export async function onRequest(context) {
 
 // IP 指纹：哈希后落库，不存原始 IP
 async function getClientIpHash(request) {
-  const xf = request.headers.get('x-forwarded-for');
-  const ip = (xf && xf.split(',')[0].trim()) || request.headers.get('EO-Client-IP') || 'unknown';
+  const ip = getClientIp(request);
   return sha256(ip).then(h => h.slice(0, 16));
 }

@@ -1,0 +1,9 @@
+# 统一换行符：仓库存 LF，检出也保持 LF。
+# 否则 Windows 下 core.autocrlf=true 会把 public/*.js 检出成 CRLF，
+# 而 functions/static-assets.js 内嵌的是同一份内容的 LF 版本，
+# tests/security-perf.test.js 逐字节比较就会失败（npm test 红）。
+* text=auto eol=lf
+
+# 二进制资产不做任何转换
+*.png binary
+*.ico binary

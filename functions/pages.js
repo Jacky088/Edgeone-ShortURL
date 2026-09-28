@@ -5,7 +5,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 项目版本号：唯一来源，与 package.json 的 version 保持同步；
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
-const APP_VERSION = '3.4.0';
+const APP_VERSION = '3.5.0';
 const ASSET_VERSION = '3.4.0';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）

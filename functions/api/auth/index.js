@@ -1,6 +1,6 @@
 // functions/api/auth/index.js
 
-import { getKV, buildAuthCookie, getSettings, sessionTtlMs, sha256, getClientIp } from '../../utils.js';
+import { getKV, buildAuthCookie, getSettings, sessionTtlMs, sha256, getClientIp, windowedKey } from '../../utils.js';
 
 // 会话安全设计：
 // - Cookie 只存随机 token，服务端在 KV 中维护 sess:<token>（含过期时间与会话版本）
@@ -22,14 +22,26 @@ function timingSafeEqual(a, b) {
   return result === 0;
 }
 
-async function getRateLimit(DB, ipHash) {
+async function getRateLimit(DB, ipHash, now) {
   try {
-    const raw = await DB.get(`rl:${ipHash}`);
-    if (!raw) return { count: 0, firstAt: Date.now() };
-    return JSON.parse(raw);
+    // 键名带分钟桶：锁定窗口改变后旧键自然离开当前窗口，登录成功时顺手清理历史键
+    const key = windowedKey('rl:', ipHash, 60000, now);
+    const raw = await DB.get(key);
+    if (raw) return JSON.parse(raw);
+    return { count: 0, firstAt: now };
   } catch (e) {
     return { count: 0, firstAt: Date.now() };
   }
+}
+
+// 清理该 IP 历史分钟桶的限流键（超出当前窗口的桶都属历史，最多回看 2 个桶）
+async function cleanupOldRateLimit(DB, ipHash, now) {
+  try {
+    for (const delta of [1, 2]) {
+      const oldKey = `rl:${Math.floor(now / 60000) - delta}:${ipHash}`;
+      await DB.delete(oldKey).catch(() => {});
+    }
+  } catch (e) {}
 }
 
 export async function onRequest({ request, env = {} }) {
@@ -56,11 +68,16 @@ export async function onRequest({ request, env = {} }) {
     // 限流 key 存 IP 的 SHA-256 哈希（不存原始 IP；IPv6 含分隔符、'unknown' 共享桶问题一并消除）
     const ip = getClientIp(request);
     const ipHash = ip === 'unknown' ? 'unknown' : await sha256(ip);
-    const rl = await getRateLimit(DB, ipHash);
+    const nowMs = Date.now();
+    const rl = await getRateLimit(DB, ipHash, nowMs);
     const maxAttempts = Math.min(100, Math.max(1, Number(settings.rateLimit && settings.rateLimit.max) || 5));
     const lockoutMs = Math.min(1440, Math.max(1, Number(settings.rateLimit && settings.rateLimit.windowMin) || 10)) * 60000;
-    if (rl.count >= maxAttempts && Date.now() - rl.firstAt < lockoutMs) {
-      return new Response(JSON.stringify({ error: '尝试次数过多，请稍后再试' }), { status: 429 });
+    if (rl.count >= maxAttempts && nowMs - rl.firstAt < lockoutMs) {
+      const retryAfterSec = Math.max(1, Math.ceil((lockoutMs - (nowMs - rl.firstAt)) / 1000));
+      return new Response(JSON.stringify({ error: '尝试次数过多，请稍后再试' }), {
+        status: 429,
+        headers: { 'Retry-After': String(retryAfterSec), 'Content-Type': 'application/json' }
+      });
     }
 
     // 自定义口令按哈希比对；环境变量口令按明文比对，均使用常量时间比较
@@ -72,15 +89,16 @@ export async function onRequest({ request, env = {} }) {
     }
 
     if (!ok) {
-      const newRl = Date.now() - rl.firstAt >= lockoutMs
-        ? { count: 1, firstAt: Date.now() }
+      const newRl = nowMs - rl.firstAt >= lockoutMs
+        ? { count: 1, firstAt: nowMs }
         : { count: rl.count + 1, firstAt: rl.firstAt };
-      await DB.put(`rl:${ipHash}`, JSON.stringify(newRl));
+      await DB.put(windowedKey('rl:', ipHash, 60000, nowMs), JSON.stringify(newRl));
       return new Response(JSON.stringify({ error: '口令错误' }), { status: 401 });
     }
 
-    // 登录成功：清除失败计数，创建服务端会话（记录会话版本，口令变更后旧会话立即失效）
-    await DB.delete(`rl:${ipHash}`).catch(() => {});
+    // 登录成功：清除失败计数（含历史分钟桶），创建服务端会话（记录会话版本，口令变更后旧会话立即失效）
+    await cleanupOldRateLimit(DB, ipHash, nowMs);
+    await DB.delete(windowedKey('rl:', ipHash, 60000, nowMs)).catch(() => {});
 
     const token = randomToken();
     const session = {

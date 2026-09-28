@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    name: node ${{ matrix.node }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      # Windows 检出换行符由 .gitattributes 固定为 LF；此处再钉一次 autocrlf
+      # 确保 CRLF 环境下静态资源逐字节比较的回归不会复活
+      - name: Pin autocrlf off
+        run: git config core.autocrlf false
+      - name: Run tests
+        run: npm test

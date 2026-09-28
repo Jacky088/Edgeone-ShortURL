@@ -103,7 +103,11 @@ export async function onRequest({ request, env = {} }) {
     }
   }
 
-  // 访问密码（password 设置新密码；clearPassword = 清除）
+  // 访问密码（password 设置新密码；clearPassword = 清除）。
+  // 两个参数互斥：同时携带时直接拒绝，避免语义歧义（旧行为是 clear 静默获胜）。
+  if (body.password && body.clearPassword === true) {
+    return jsonResponse({ error: 'password 与 clearPassword 不能同时提交' }, 400);
+  }
   if (body.password) {
     const pwd = String(body.password);
     if (pwd.length < 4 || pwd.length > 64) {

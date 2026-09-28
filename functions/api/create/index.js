@@ -6,10 +6,12 @@
 import {
   jsonResponse, getKV, isAllowedUrl, isValidSlug, isReservedSlug,
   getSettings, generateSlug, isHostAllowed, getClientIp,
-  sha256, checkCreateAuth
+  sha256, checkCreateAuth, windowedKey
 } from '../../utils.js';
 
 const MAX_BATCH = 20;
+const RATE_LIMIT_PER_MIN = 30;
+const RATE_LIMIT_WINDOW_MS = 60000;
 
 function parsePositiveInt(value, max) {
   if (value === undefined || value === null || value === '') return null;
@@ -40,15 +42,23 @@ export async function onRequest({ request, env = {} }) {
   }
 
   // 分钟级写频限流（防会话/Token 被盗刷：同一调用方 30 次/分钟；key 只存哈希，不存原始 IP/Token）
+  // 键名带分钟桶，历史桶键在写当前键前被顺手清理，键空间不随时间累积
   const rlSubject = request.headers.get('X-API-Token') || ('ip:' + getClientIp(request));
-  const rlKey = `crl:${await sha256(rlSubject)}`;
+  const rlHash = await sha256(rlSubject);
+  const nowMs = Date.now();
+  const rlKey = windowedKey('crl:', rlHash, RATE_LIMIT_WINDOW_MS, nowMs);
   try {
+    for (const delta of [1, 2]) {
+      const oldBucketKey = `crl:${Math.floor(nowMs / RATE_LIMIT_WINDOW_MS) - delta}:${rlHash}`;
+      await DB.delete(oldBucketKey).catch(() => {});
+    }
     const rlRaw = await DB.get(rlKey).catch(() => null);
-    let rlState = { ts: Date.now(), count: 0 };
+    let rlState = { ts: nowMs, count: 0 };
     try { if (rlRaw) rlState = JSON.parse(rlRaw); } catch (e) {}
-    if (Date.now() - rlState.ts >= 60000) rlState = { ts: Date.now(), count: 0 };
-    if (rlState.count >= 30) {
-      return jsonResponse({ error: '创建过于频繁，请稍后再试' }, 429);
+    if (nowMs - rlState.ts >= RATE_LIMIT_WINDOW_MS) rlState = { ts: nowMs, count: 0 };
+    if (rlState.count >= RATE_LIMIT_PER_MIN) {
+      const retryAfterSec = Math.max(1, Math.ceil((RATE_LIMIT_WINDOW_MS - (nowMs - rlState.ts)) / 1000));
+      return jsonResponse({ error: '创建过于频繁，请稍后再试' }, 429, { 'Retry-After': String(retryAfterSec) });
     }
     rlState.count += 1;
     await DB.put(rlKey, JSON.stringify(rlState)).catch(() => {});
@@ -88,14 +98,15 @@ export async function onRequest({ request, env = {} }) {
   }
   const sharedNote = normalizeNote(body.note);
 
-  // 选项校验（对单条与批量统一生效）
-  const expiresAt = body.ttlDays !== undefined && body.ttlDays !== null && body.ttlDays !== 0
-    ? Date.now() + parsePositiveInt(body.ttlDays, 3650) * 86400000
-    : (body.expiresAt ? Date.now() + parsePositiveInt(body.expiresAt, 3650) * 86400000 : null);
-  if (body.ttlDays !== undefined && body.ttlDays !== null && body.ttlDays !== 0
-      && parsePositiveInt(body.ttlDays, 3650) === undefined) {
+  // 选项校验（对单条与批量统一生效）：有效期统一用 ttlDays（1-3650 天）
+  if (body.expiresAt !== undefined) {
+    return jsonResponse({ error: '有效期请使用 ttlDays（1-3650 天）' }, 400);
+  }
+  const ttlDays = parsePositiveInt(body.ttlDays, 3650);
+  if (body.ttlDays !== undefined && body.ttlDays !== null && body.ttlDays !== 0 && ttlDays === undefined) {
     return jsonResponse({ error: '有效期不合法（1-3650 天）' }, 400);
   }
+  const expiresAt = ttlDays ? Date.now() + ttlDays * 86400000 : null;
   let maxVisits = null;
   if (body.maxVisits !== undefined && body.maxVisits !== null && body.maxVisits !== '') {
     maxVisits = parsePositiveInt(body.maxVisits, 1000000000);
@@ -112,22 +123,26 @@ export async function onRequest({ request, env = {} }) {
   const note = normalizeNote(body.note);
 
   // 每 IP 每日创建上限（0 = 不限）；单 key 复用，按日期重置
+  // 键名带日期桶（dc:<yyyymmdd>:<ipHash>），跨天后旧键离开读取路径并被顺手清理
   const ip = getClientIp(request);
   let createdToday = 0;
   if (settings.dailyCreateLimit > 0) {
     const ipHash = await sha256(ip);
-    const raw = await DB.get(`dc:${ipHash}`).catch(() => null);
-    let counter = { date: '', count: 0 };
-    try { if (raw) counter = JSON.parse(raw); } catch (e) {}
     const today = new Date().toISOString().slice(0, 10);
-    if (counter.date !== today) counter = { date: today, count: 0 };
-    if (counter.count + entries.length > settings.dailyCreateLimit) {
-      return jsonResponse({ error: `已达每日创建上限（${settings.dailyCreateLimit} 条/天）` }, 429);
+    const dcKey = `dc:${today.replace(/-/g, '')}:${ipHash}`;
+    const raw = await DB.get(dcKey).catch(() => null);
+    let counter = { count: 0 };
+    try { if (raw) counter = JSON.parse(raw); } catch (e) {}
+    // 清理昨天（更早的键不再追溯：每日首次请求只多一次 delete 开销）
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10).replace(/-/g, '');
+    await DB.delete(`dc:${yesterday}:${ipHash}`).catch(() => {});
+    if ((counter.count || 0) + entries.length > settings.dailyCreateLimit) {
+      return jsonResponse({ error: `已达每日创建上限（${settings.dailyCreateLimit} 条/天）` }, 429, { 'Retry-After': '86400' });
     }
     createdToday = entries.length;
-    counter.count += entries.length;
+    counter.count = (counter.count || 0) + entries.length;
     // 先落计数再创建，避免并发突破限额；创建失败造成的少量空耗可接受
-    await DB.put(`dc:${ipHash}`, JSON.stringify(counter)).catch(() => {});
+    await DB.put(dcKey, JSON.stringify(counter)).catch(() => {});
   }
 
   const results = [];
@@ -151,7 +166,9 @@ export async function onRequest({ request, env = {} }) {
     }
     const urlHash = await sha256(url);
 
-    // URL 去重（运行时设置开关）：相同长链接复用同一短链（仅单条且未指定自定义短链时）
+    // URL 去重（运行时设置开关）：相同长链接复用同一短链（仅单条且未指定自定义短链时）。
+    // 命中时只返回瘦身字段（与 /api/links 列表一致）：完整的 daily/ref/dev/ipd 统计
+    // 属于管理侧数据，不能随创建响应泄露给任何持有创建权限的调用方。
     if (settings.dedupHash && !isBatch && !entry.slug) {
       const existingSlug = await DB.get(`hash:${urlHash}`).catch(() => null);
       if (existingSlug) {
@@ -160,7 +177,18 @@ export async function onRequest({ request, env = {} }) {
           try {
             const parsed = JSON.parse(existingLinkData);
             if (parsed.original && !parsed.deletedAt) {
-              results.push({ index, slug: existingSlug, deduped: true, ...parsed });
+              results.push({
+                index,
+                slug: existingSlug,
+                deduped: true,
+                original: parsed.original,
+                visits: parsed.visits || 0,
+                createdAt: parsed.createdAt || 0,
+                note: parsed.note || '',
+                expiresAt: parsed.expiresAt || 0,
+                maxVisits: parsed.maxVisits || 0,
+                hasPassword: !!parsed.pwdHash
+              });
               continue;
             }
           } catch (e) {}
@@ -212,18 +240,28 @@ export async function onRequest({ request, env = {} }) {
     if (settings.dedupHash) ops.push(DB.put(`hash:${urlHash}`, slug));
     await Promise.all(ops);
 
-    results.push({ index, slug, ...linkData });
+    results.push({
+      index, slug,
+      original: linkData.original,
+      visits: 0,
+      createdAt: linkData.createdAt,
+      note: linkData.note || '',
+      expiresAt: linkData.expiresAt || 0,
+      maxVisits: linkData.maxVisits || 0,
+      hasPassword: !!linkData.pwdHash
+    });
   }
 
   // 全部失败：回滚今日计数，避免失败请求占用额度
   if (settings.dailyCreateLimit > 0 && createdToday > 0 && !results.length) {
     const ipHash = await sha256(ip);
-    const raw = await DB.get(`dc:${ipHash}`).catch(() => null);
+    const dcKey = `dc:${new Date().toISOString().slice(0, 10).replace(/-/g, '')}:${ipHash}`;
+    const raw = await DB.get(dcKey).catch(() => null);
     try {
       if (raw) {
         const counter = JSON.parse(raw);
-        counter.count = Math.max(0, counter.count - createdToday);
-        await DB.put(`dc:${ipHash}`, JSON.stringify(counter));
+        counter.count = Math.max(0, (counter.count || 0) - createdToday);
+        await DB.put(dcKey, JSON.stringify(counter));
       }
     } catch (e) {}
   }

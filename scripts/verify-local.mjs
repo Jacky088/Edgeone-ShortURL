@@ -60,8 +60,9 @@ for (const [n, h] of Object.entries(rendered)) {
   ok('A9 qr-lib导出qrcode', /var qrcode=function/.test(fs.readFileSync('public/qr-lib.js', 'utf8')));
   // 兜底与 public 同源
   const sa = await import('../functions/static-assets.js');
-  ok('A10 兜底APP_CSS一致', sa.APP_CSS === css);
-  ok('A11 兜底UI_JS一致', sa.UI_JS === fs.readFileSync('public/ui.js', 'utf8'));
+  const norm = (s) => s.replace(/\r\n/g, '\n');
+  ok('A10 兜底APP_CSS一致', norm(sa.APP_CSS) === norm(css));
+  ok('A11 兜底UI_JS一致', norm(sa.UI_JS) === norm(fs.readFileSync('public/ui.js', 'utf8')));
 }
 
 // ---------- B. 端到端（local-serve） ----------

@@ -104,14 +104,23 @@ export async function sha256(str) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Cookie 值按 URL 组件解码；畸形值（如以 % 结尾）会抛 URIError，按「无该 Cookie」处理，
+// 避免单个畸形 Cookie 把 logout / 跳转等正常请求打成 500。
 export function getCookie(request, name) {
   const cookieString = request.headers.get('Cookie');
   if (!cookieString) return null;
 
   const cookies = cookieString.split(';');
   for (const cookie of cookies) {
-    const [key, value] = cookie.trim().split('=');
-    if (key === name) return decodeURIComponent(value || '');
+    const [key, ...rest] = cookie.trim().split('=');
+    if (key === name) {
+      const raw = rest.join('=');
+      try {
+        return decodeURIComponent(raw);
+      } catch (e) {
+        return null;
+      }
+    }
   }
   return null;
 }
@@ -200,6 +209,15 @@ export function generateSlug(settings) {
   return out;
 }
 
+// —— 限流键的时间桶治理 ——
+// EdgeOne KV 不支持 TTL，按 IP 哈希写入的 rl:/crl: 键会永久留存。
+// 把窗口起点编进键名（如 rl:<分钟桶>:<hash>），不同窗口天然分键；
+// 调用方在读取时顺手清理历史桶键，键空间随时间自我清理。
+export function windowedKey(prefix, hash, windowMs, now = Date.now()) {
+  const bucket = Math.floor(now / windowMs);
+  return `${prefix}${bucket}:${hash}`;
+}
+
 // 目标域名白名单：空列表不限制；条目匹配主域名或其任意子域
 export function isHostAllowed(url, whitelist) {
   if (!Array.isArray(whitelist) || whitelist.length === 0) return true;
@@ -217,11 +235,18 @@ export function isHostAllowed(url, whitelist) {
   });
 }
 
-// 客户端 IP：优先代理头，回退 EdgeOne 注入头
+// 客户端 IP：优先平台注入头（不可伪造），回退 XFF 取「最右侧」一段。
+// XFF 由客户端可随意写入、CDN 边缘把真实 IP 追加在末尾：取第一段会让登录限流、
+// 创建限流、每日配额、访问去重全部因伪造头而失效，因此绝不能信任 XFF 的左侧值。
 export function getClientIp(request) {
+  const eo = request.headers.get('EO-Client-IP');
+  if (eo && eo.trim()) return eo.split(',')[0].trim();
   const xf = request.headers.get('x-forwarded-for');
-  if (xf) return xf.split(',')[0].trim();
-  return request.headers.get('EO-Client-IP') || 'unknown';
+  if (xf) {
+    const parts = xf.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
+  }
+  return 'unknown';
 }
 
 // 当前是否需要登录鉴权：运行时自定义口令优先，其次环境变量

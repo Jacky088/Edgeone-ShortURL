@@ -45,7 +45,10 @@ test('create API：items 批量支持逐条自定义短链与备注', async () =
   assert.equal(data.results[0].note, '第一条');
   assert.ok(data.results[0].expiresAt > Date.now(), '共享有效期应应用到位');
   assert.ok(data.results[1].slug, '未指定 slug 的行应随机生成');
-  assert.equal(data.results[1].note, undefined);
+  assert.equal(data.results[1].note, '', '未提供备注时返回空串（与 links 列表瘦身字段一致）');
+  // 创建响应只含瘦身字段，不泄露 daily/ref/dev/ipd 聚合统计
+  assert.equal(data.results[1].daily, undefined, '创建响应不应携带 daily 统计');
+  assert.equal(data.results[1].pwdHash, undefined, '创建响应不应回传密码哈希');
 });
 
 test('create API：重复自定义短链按行报错（index 定位），其余行正常创建', async () => {

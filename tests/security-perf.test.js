@@ -91,9 +91,11 @@ test('auth：限流 key 只存 IP 哈希，不存原始 IP', async () => {
   const res = await authHandler({ request: bad, env });
   assert.equal(res.status, 401);
   assert.ok(!Object.keys(store).some(k => k.includes('203.0.113.7')), 'KV key 不应包含原始 IP');
+  // v3.5: 限流键带分钟桶（rl:<bucket>:<hash>），哈希段仍在键中
   const rlKey = Object.keys(store).find(k => k.startsWith('rl:'));
   assert.ok(rlKey, '应写入哈希限流 key');
-  assert.equal(rlKey, `rl:${await sha256('203.0.113.7')}`);
+  assert.equal(rlKey.endsWith(`:${await sha256('203.0.113.7')}`), true, '键尾应为 IP 哈希');
+  assert.match(rlKey, /^rl:\d+:[a-f0-9]{64}$/, '应为分钟桶形态 rl:<bucket>:<hash>');
 });
 
 // —— 保留字一致性：update/delete/restore 同样拦截自定义保留字 ——
@@ -206,7 +208,13 @@ test('静态兜底：app.css/ui.js/qr-*.js 被 [slug] 路由拦截时返回静�
     assert.equal(res.status, 200, `/${slug} 应兜底 200`);
     assert.ok(res.headers.get('Content-Type').includes(typePart), `/${slug} Content-Type 应为 ${typePart}`);
     assert.ok(res.headers.get('Cache-Control').includes('immutable'), `/${slug} 应可长期缓存`);
-    assert.equal(await res.text(), fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8'), `/${slug} 内容应与 public 一致`);
+    // 归一化换行比较：Windows 下 checkout 可能是 CRLF，与内嵌的 LF 版本语义一致
+    const normalize = (s) => s.replace(/\r\n/g, '\n');
+    assert.equal(
+      normalize(await res.text()),
+      normalize(fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')),
+      `/${slug} 内容应与 public 一致`
+    );
   }
   // 非法 slug 不应被兜底误伤：仍走短链校验（400）而非返回静态内容
   const bad = await onRequest({
@@ -224,4 +232,164 @@ test('generateSlug：拒绝采样后长度稳定且字符集正确', () => {
     assert.equal(s.length, 8);
     assert.match(s, /^[abcdefghjkmnpqrstuvwxyz23456789]{8}$/);
   }
+});
+
+// —— v3.5 安全回归：IP 来源不再信任 XFF 左侧（可被伪造的段） ——
+test('getClientIp：优先 EO-Client-IP，XFF 只取最右一段，伪造左侧不生效', async () => {
+  const { getClientIp } = await import('../functions/utils.js');
+  const mkReq = (headers) => new Request('https://x/', { headers });
+
+  // 平台注入头优先：即便攻击者伪造 XFF 也以 EO-Client-IP 为准
+  assert.equal(
+    getClientIp(mkReq({ 'EO-Client-IP': '198.51.100.9', 'x-forwarded-for': '1.2.3.4, 198.51.100.9' })),
+    '198.51.100.9',
+    'EO-Client-IP 应优先于 XFF'
+  );
+  // 无平台头时取 XFF 最右一段（CDN 追加真实 IP 的位置），伪造左侧无效
+  assert.equal(
+    getClientIp(mkReq({ 'x-forwarded-for': '6.6.6.6, 7.7.7.7, 203.0.113.5' })),
+    '203.0.113.5',
+    'XFF 应取最右一段'
+  );
+  assert.equal(getClientIp(mkReq({ 'x-forwarded-for': '1.2.3.4' })), '1.2.3.4');
+  assert.equal(getClientIp(mkReq({})), 'unknown', '无任何 IP 头时返回 unknown');
+
+  // 端到端：登录限流的 key 必须基于最右段（伪造左侧不更换限流桶）
+  const store = {};
+  const kv = mockKV(store);
+  const env = { PASSWORD: 'secret', my_kv: kv };
+  await authHandler({
+    request: req('https://x/api/auth', 'POST', { 'x-forwarded-for': '9.9.9.9, 203.0.113.7' }, { password: 'wrong' }),
+    env
+  });
+  const rlKey = Object.keys(store).find(k => k.startsWith('rl:'));
+  assert.equal(rlKey.endsWith(`:${await sha256('203.0.113.5')}`), false, '不应取 XFF 左侧伪造段');
+  assert.equal(rlKey.endsWith(`:${await sha256('203.0.113.7')}`), true, '应取 XFF 最右真实段');
+});
+
+// —— v3.5 安全回归：畸形 Cookie 不再 500 ——
+test('getCookie：非法百分号序列按无 Cookie 处理，logout 仍返回 200', async () => {
+  const { getCookie } = await import('../functions/utils.js');
+  const cookieReq = (cookie) => req('https://x/', 'GET', { Cookie: cookie });
+  assert.equal(getCookie(cookieReq('auth_session=%zz'), 'auth_session'), null, '解码失败应返回 null');
+  assert.equal(getCookie(cookieReq('auth_session=ab%20cd'), 'auth_session'), 'ab cd', '合法编码应正常解码');
+  assert.equal(getCookie(cookieReq('auth_session=a=b'), 'auth_session'), 'a=b', '值中的等号应保留');
+
+  const { onRequest: logoutHandler } = await import('../functions/api/logout/index.js');
+  const res = await logoutHandler({
+    request: req('https://x/api/logout', 'POST', { Cookie: 'auth_session=%; crap' }),
+    env: { my_kv: mockKV({}) }
+  });
+  assert.equal(res.status, 200, '畸形 Cookie 下 logout 不应 500');
+});
+
+// —— v3.5 安全回归：create 去重命中只返回瘦身字段 ——
+test('create：去重命中复用短链但不泄露聚合统计与密码哈希', async () => {
+  const urlHash = await sha256('https://dup.example/page');
+  const store = {
+    [SETTINGS_KEY]: JSON.stringify({ dedupHash: true }),
+    [`hash:${urlHash}`]: 'dup',
+    dup: JSON.stringify({
+      original: 'https://dup.example/page', visits: 42, createdAt: 111,
+      note: '已有', daily: { '2026-01-01': 40 }, ref: { 'a.com': 9 }, dev: { m: 1, d: 2 },
+      ipd: { abc: 123 }, pwdHash: 'deadbeef'
+    })
+  };
+  const env = authedEnv(store);
+  const res = await createHandler({
+    request: req('https://x/api/create', 'POST', { 'Content-Type': 'application/json' }, { url: 'https://dup.example/page' }),
+    env
+  });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.deduped, true, '应命中去重复用');
+  assert.equal(data.slug, 'dup');
+  assert.equal(data.visits, 42, '瘦身字段仍含 visits');
+  assert.equal(data.daily, undefined, '不应泄露 daily 统计');
+  assert.equal(data.ref, undefined, '不应泄露 ref 统计');
+  assert.equal(data.ipd, undefined, '不应泄露 IP 指纹表');
+  assert.equal(data.pwdHash, undefined, '不应回传密码哈希');
+  assert.equal(data.hasPassword, true, '只暴露是否设了密码');
+});
+
+// —— v3.5 安全回归：update 同时提交 password 与 clearPassword 应互斥拒绝 ——
+test('update：password 与 clearPassword 同时提交返回 400', async () => {
+  const store = { v1: JSON.stringify({ original: 'https://example.com/v1', visits: 0, createdAt: 1 }) };
+  const env = authedEnv(store);
+  const res = await updateHandler({
+    request: req('https://x/api/update', 'POST', { 'X-Admin-Slug': 'admin' }, { slug: 'v1', password: 'newpw1', clearPassword: true }),
+    env
+  });
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).error, /不能同时提交/);
+});
+
+// —— v3.5 治理回归：限流键带时间桶，历史桶被清理 ——
+test('create：限流键为分钟桶形态，且不再遗留无桶旧键', async () => {
+  const store = {};
+  const env = authedEnv(store);
+  await createHandler({
+    request: req('https://x/api/create', 'POST', { 'Content-Type': 'application/json' }, { url: 'https://bucket.example/1' }),
+    env
+  });
+  const crlKeys = Object.keys(store).filter(k => k.startsWith('crl:'));
+  assert.equal(crlKeys.length, 1, '单次调用只留当前分钟桶一个键');
+  assert.match(crlKeys[0], /^crl:\d+:[a-f0-9]{64}$/, '应为分钟桶形态 crl:<bucket>:<hash>');
+});
+
+// —— v3.5 治理回归：每日配额键带日期桶，跨天后旧键被清理 ——
+test('create：dailyCreateLimit 键带日期桶并清理昨日键', async () => {
+  const ipHash = await sha256('unknown');
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10).replace(/-/g, '');
+  const store = {
+    [SETTINGS_KEY]: JSON.stringify({ dailyCreateLimit: 5 }),
+    [`dc:${yesterday}:${ipHash}`]: JSON.stringify({ count: 3 })
+  };
+  const env = authedEnv(store);
+  const res = await createHandler({
+    request: req('https://x/api/create', 'POST', { 'Content-Type': 'application/json' }, { url: 'https://daily.example/1' }),
+    env
+  });
+  assert.equal(res.status, 200, '昨日计数不应占用今日额度');
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  assert.ok(store[`dc:${today}:${ipHash}`], '应写入今日日期桶键');
+  assert.equal(store[`dc:${yesterday}:${ipHash}`], undefined, '昨日桶键应被清理');
+});
+
+// —— v3.5 兼容回归：create 不再接受 expiresAt 别名（语义一直是天数，与字段名冲突） ——
+test('create：expiresAt 别名被拒绝并提示使用 ttlDays', async () => {
+  const store = {};
+  const env = authedEnv(store);
+  const res = await createHandler({
+    request: req('https://x/api/create', 'POST', { 'Content-Type': 'application/json' }, { url: 'https://alias.example/1', expiresAt: 7 }),
+    env
+  });
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).error, /ttlDays/);
+});
+
+// —— v3.5 限流响应头：429 携带 Retry-After ——
+test('create + auth：429 响应携带 Retry-After', async () => {
+  const store = {};
+  const env = authedEnv(store);
+  let last;
+  for (let i = 0; i < 31; i++) {
+    last = await createHandler({
+      request: req('https://x/api/create', 'POST', { 'Content-Type': 'application/json' }, { url: `https://retry.example/${i}` }),
+      env
+    });
+  }
+  assert.equal(last.status, 429);
+  assert.ok(Number(last.headers.get('Retry-After')) >= 1, 'create 429 应带 Retry-After');
+
+  const authEnv = { PASSWORD: 'secret', my_kv: mockKV({}) };
+  let authRes;
+  for (let i = 0; i < 6; i++) {
+    authRes = await authHandler({
+      request: req('https://x/api/auth', 'POST', { 'x-forwarded-for': '203.0.113.9' }, { password: 'wrong' }),
+      env: authEnv
+    });
+  }
+  assert.equal(authRes.status, 429);
+  assert.ok(Number(authRes.headers.get('Retry-After')) >= 1, 'auth 429 应带 Retry-After');
 });

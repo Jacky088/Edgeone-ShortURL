@@ -2,7 +2,7 @@
 
 基于 **腾讯云 EdgeOne Pages** 的无服务器短链接服务：创建 / 统计 / 管理后台 / 日间夜间主题，桌面与移动端自适应。
 
-> 当前版本 **v3.4.0**（变更见文末「更新日志」）
+> 当前版本 **v3.5.0**（变更见文末「更新日志」）
 
 ---
 
@@ -52,7 +52,7 @@
 
 | 接口 | 方法 | 鉴权 | 说明 |
 |------|------|------|------|
-| `/api/create` | POST | 会话或 Token | 建链 `{ "url", "slug", "ttlDays", "maxVisits", "password", "note" }`；批量 `{ "urls": [...] }`（≤20 条）；30 次/分钟限流 |
+| `/api/create` | POST | 会话或 Token | 建链 `{ "url", "slug", "ttlDays", "maxVisits", "password", "note" }`；批量 `{ "urls": [...] }`（≤20 条）；30 次/分钟限流（429 带 `Retry-After`） |
 | `/api/links` | GET | Admin-Slug + 会话或 Token | 列表（瘦身字段）；`?trash=1` 回收站；`?detail=1` 统计；`?slug=xxx` 单条详情；`?limit&cursor` 分页；超 2000 条 `{ links, truncated: true }` |
 | `/api/update` | POST | 同上 | 编辑目标链接 / 备注 / 有效期 / 次数上限 / 访问密码 |
 | `/api/delete` | POST | 同上 | 软删除；`{ "slug", "purge": true }` 彻底删除 |
@@ -79,9 +79,9 @@ curl https://your.domain/api/links -H "X-API-Token: <token>"
 | `<slug>` | 短链 `{ "original", "visits", "createdAt", "note", "expiresAt", "maxVisits", "pwdHash", "deletedAt", "daily", "ref", "dev", "ipd" }` |
 | `hash:<sha256(url)>` | URL 去重映射（可关闭） |
 | `sess:<token>` | 登录会话（含过期时间与会话版本） |
-| `rl:<ip哈希>` | 登录失败限流计数 |
-| `crl:<调用方哈希>` | 创建接口分钟级限流（30 次/分钟） |
-| `dc:<ip哈希>` | 每 IP 每日创建计数（设上限后启用） |
+| `rl:<分钟桶>:<ip哈希>` | 登录失败限流计数（分钟桶键，历史桶自动清理） |
+| `crl:<分钟桶>:<调用方哈希>` | 创建接口分钟级限流（30 次/分钟，历史桶自动清理） |
+| `dc:<日期桶>:<ip哈希>` | 每 IP 每日创建计数（设上限后启用，昨日桶自动清理） |
 | `cfg:settings` | 运行时设置 |
 | `cfg:tokens` | API Token（仅存哈希） |
 
@@ -89,9 +89,21 @@ curl https://your.domain/api/links -H "X-API-Token: <token>"
 
 ## 🔒 安全说明
 
-- 口令**常量时间比较**；登录失败按 IP 限流（默认 5 次锁定 10 分钟）。
+- 客户端 IP 优先取 EdgeOne 注入的 `EO-Client-IP`，XFF 只取最右一段：伪造 `X-Forwarded-For` 左侧无法绕过限流与去重。
+- 口令**常量时间比较**；登录失败按 IP 限流（默认 5 次锁定 10 分钟，429 带 `Retry-After`）。
 - 会话为随机 token，`HttpOnly` + `Secure` 会话级 Cookie，服务端存储 + 滑动续期；改口令致旧会话失效。
 - 跳转仅 `http/https`；slug 仅字母数字、`-`、`_`；`api` / `favicon.ico` / `hash:` / `sess:` / `rl:` / `crl:` / `cfg:` / `dc:` 及管理路径为保留字。
+- HTML 响应带 CSP（禁 object/embed、独立文档基址与被框嵌）、`nosniff`、`no-referrer`、`X-Frame-Options: DENY`。
+- 创建接口的去重命中只回瘦身字段：聚合统计与密码哈希不会经创建响应泄露。
+
+---
+
+## ⚠️ 已知限制
+
+- **并发计数**：访问计数为「读-改-写」写回 KV，EdgeOne KV 无原子自增；同一热门短链被高并发访问时可能少计（低流量下影响可忽略）。
+- **301 缓存**：跳转码设为 301 后浏览器会缓存跳转，后续访问不再经过函数、不计数。建议保持默认 302；301 仅用于确定永久跳转的场景。
+- **限流精度**：分钟级限流为「读后写」，高并发下同一窗口可能略微超出阈值（KV 模型下的已知折衷）。
+- **KV 无 TTL**：EdgeOne KV 不支持过期删除；会话过期靠鉴权时惰性清理，限流键已改为时间桶并在使用时清理历史桶。
 
 ---
 
@@ -121,6 +133,19 @@ scripts/             # gen-assets.mjs（同步兜底）/ local-serve.mjs / verif
 ---
 
 ## 🕘 更新日志
+
+### v3.5.0
+
+- **安全（重要）**：客户端 IP 不再信任 `X-Forwarded-For` 左侧（可被任意伪造）。改为优先取 EdgeOne 注入的 `EO-Client-IP`，无平台头时取 XFF **最右**一段。登录限流、创建限流、每日配额、访问去重不再可被伪造头绕过。
+- **安全**：`/api/create` URL 去重命中时只返回瘦身字段，不再泄露该短链的 `daily/ref/dev/ipd` 聚合统计与密码哈希。
+- **安全**：畸形 Cookie（非法 `%` 序列）按「无 Cookie」处理，`/api/logout` 等不再 500。
+- **安全**：HTML 响应头新增 CSP（`object-src 'none'` / `base-uri 'none'` / `frame-ancestors 'none'` 等，不影响内联脚本）。
+- **治理**：`rl:`（登录限流）与 `crl:`（创建限流）键改带分钟桶、`dc:`（每日配额）键改带日期桶，历史桶键被顺手清理，KV 键空间不再随时间无限增长。
+- **行为**：`/api/create` 废除 `expiresAt` 天数别名（语义与字段名冲突），统一用 `ttlDays`，传 `expiresAt` 直接 400。
+- **行为**：`/api/update` 同时提交 `password` 与 `clearPassword` 返回 400（原先 clear 静默获胜）。
+- **兼容**：429 响应新增 `Retry-After` 头。
+- **性能**：`[slug]` 跳转热路径不再预检会话（鉴权下移到 Admin 路由与主页）；快速通道与完整校验通道的统计逻辑合并为单一 `trackVisit` 实现。
+- **工程**：新增 GitHub Actions CI（ubuntu/windows × Node 18/20/22）；新增 `.gitattributes` 固定 LF，Windows 检出下测试不再红。
 
 ### v3.4.0
 
