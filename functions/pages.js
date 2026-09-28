@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.7.2';
+const ASSET_VERSION = '3.7.3';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -176,19 +176,20 @@ function appShellCss() {
       html[data-theme="light"] #icon-sun { display: none; }
       html[data-theme="dark"] #icon-moon { display: none; }
 
-      /* ---------- 布局：内容 + 底部导航栏 ---------- */
-      .app-body { min-width: 0; }
-      /* 底部导航（管理后台）：固定于视口底部常显，图标在上文字在下；
-         各项 flex 均分 + 文本省略，小窗口 / 移动端都不会横向溢出 */
-      .footer-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: stretch; background: var(--surface); border-top: 1px solid var(--border); padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -10px 30px -18px rgba(30, 70, 180, .35); }
-      /* 有底部导航的页面预留空间，避免内容被遮挡 */
-      .app.has-footer-nav { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
-      .nav-item { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 4px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-size: .72rem; font-weight: 600; font-family: inherit; cursor: pointer; text-align: center; position: relative; transition: background-color .16s, color .16s; -webkit-tap-highlight-color: transparent; text-decoration: none; }
-      .nav-item svg { width: 20px; height: 20px; flex: none; }
-      .nav-item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      /* ---------- 布局：桌面侧边栏 + 小屏底部导航 ---------- */
+      .app-body { display: grid; grid-template-columns: 216px 1fr; gap: 20px; align-items: start; }
+      .sidebar { position: sticky; top: calc(20px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 10px; box-shadow: var(--shadow-sm); }
+      .nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: 0; border-radius: 11px; background: transparent; color: var(--muted); font-size: .92rem; font-weight: 600; font-family: inherit; cursor: pointer; text-align: left; position: relative; transition: background-color .16s, color .16s; -webkit-tap-highlight-color: transparent; text-decoration: none; }
+      .nav-item svg { width: 19px; height: 19px; flex: none; }
       .nav-item:hover { background: var(--surface-2); color: var(--text); }
       .nav-item.active { background: var(--nav-active-bg); color: var(--nav-active-text); }
-      .nav-item.active::before { content: ""; position: absolute; left: 25%; right: 25%; top: 0; height: 3px; border-radius: 0 0 3px 3px; background: var(--primary); }
+      .nav-item.active::before { content: ""; position: absolute; left: 0; top: 20%; bottom: 20%; width: 3px; border-radius: 3px; background: var(--primary); }
+      .nav-sep { height: 1px; margin: 6px 10px; background: var(--border); flex: none; }
+
+      /* 底部导航（管理后台）：仅小窗口 / 移动端显示（≤860px），图标在上文字在下；
+         各项 flex 均分 + 文本省略，不会横向溢出 */
+      .footer-nav { display: none; }
+      .footer-nav .nav-item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
       .content { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
       /* 视图容器：内部卡片与图表区保持统一间距，避免贴边重叠 */
@@ -525,6 +526,13 @@ function appShellCss() {
 
       /* ---------- 响应式 ---------- */
       @media (max-width: 860px) {
+        .app-body { grid-template-columns: 1fr; }
+        .sidebar { display: none; }
+        .footer-nav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; align-items: stretch; background: var(--surface); border-top: 1px solid var(--border); padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -10px 30px -18px rgba(30, 70, 180, .35); }
+        .app.has-footer-nav { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+        .footer-nav .nav-item { flex: 1 1 0; min-width: 0; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 4px; border-radius: 10px; text-align: center; font-size: .72rem; }
+        .footer-nav .nav-item svg { width: 20px; height: 20px; }
+        .footer-nav .nav-item.active::before { left: 25%; right: 25%; top: 0; bottom: auto; width: auto; height: 3px; border-radius: 0 0 3px 3px; }
         .chart-grid { grid-template-columns: 1fr; }
       }
       @media (max-width: 620px) {
@@ -1478,6 +1486,14 @@ export const adminHtml = buildPage({
         ${authedActionsHtml({ backHome: true })}
     </header>
     <div class="app-body">
+        <!-- 桌面侧边栏菜单（>860px 显示；小窗口/移动端由页尾 .footer-nav 接管） -->
+        <nav class="sidebar" aria-label="主导航">
+            <button type="button" class="nav-item active" aria-current="page" data-view="list">${ICON_LIST}<span>短链列表</span></button>
+            <button type="button" class="nav-item" data-view="stats">${ICON_CHART}<span>访问统计</span></button>
+            <button type="button" class="nav-item" data-view="settings">${ICON_SLIDERS}<span>系统设置</span></button>
+            <div class="nav-sep" aria-hidden="true"></div>
+            <button type="button" class="nav-item open-about">${ICON_INFO}<span>关于项目</span></button>
+        </nav>
         <main class="content">
             <section class="view" id="view-list">
                 <div class="card">
@@ -1654,7 +1670,7 @@ export const adminHtml = buildPage({
         </main>
     </div>
     ${appFooterHtml()}
-    <nav class="footer-nav" aria-label="主导航">
+    <nav class="footer-nav" aria-label="底部导航">
         <button type="button" class="nav-item active" aria-current="page" data-view="list">${ICON_LIST}<span>短链列表</span></button>
         <button type="button" class="nav-item" data-view="stats">${ICON_CHART}<span>访问统计</span></button>
         <button type="button" class="nav-item" data-view="settings">${ICON_SLIDERS}<span>系统设置</span></button>

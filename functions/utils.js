@@ -1,6 +1,11 @@
 // functions/utils.js
 // 各 API 与页面处理函数共用的工具函数，统一维护
 
+// WebCrypto：Node 18 默认不暴露全局 crypto（19+ 才默认开启），显式从 node:crypto 取用；
+// EdgeOne Pages 等边缘运行时原生提供全局 crypto，两者接口一致，优先用全局。
+import { webcrypto as nodeWebCrypto } from 'node:crypto';
+const cryptoObj = typeof crypto !== 'undefined' ? crypto : nodeWebCrypto;
+
 // 服务端会话兜底有效期：24 小时，活跃访问自动续期
 // （登录 Cookie 为会话级，关闭浏览器标签即失效；服务端 exp 仅作安全兜底）
 // v3.0 起可被运行时设置 settings.sessionHours 覆盖
@@ -99,7 +104,7 @@ export function buildAuthCookie(token, maxAgeSec) {
 }
 
 export async function sha256(str) {
-  const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  const buffer = await cryptoObj.subtle.digest('SHA-256', new TextEncoder().encode(str));
   const hashArray = Array.from(new Uint8Array(buffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
@@ -201,7 +206,7 @@ export function generateSlug(settings) {
   let out = '';
   while (out.length < length) {
     const bytes = new Uint8Array(length * 2);
-    crypto.getRandomValues(bytes);
+    cryptoObj.getRandomValues(bytes);
     for (let i = 0; i < bytes.length && out.length < length; i++) {
       if (bytes[i] < limit) out += charset[bytes[i] % charset.length];
     }
