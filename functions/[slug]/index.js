@@ -3,7 +3,7 @@
 
 import { loginHtml, indexHtml, adminHtml, errorPageHtml, passwordHtml, ADMIN_BUTTON_HTML } from '../pages.js';
 import { APP_CSS, UI_JS, QR_LIB_JS, QR_DRAW_JS } from '../static-assets.js';
-import { getKV, isAllowedUrl, verifySessionWithRenewal, getSettings, getCookie, sha256, getClientIp } from '../utils.js';
+import { getKV, isAllowedUrl, verifySession, verifySessionWithRenewal, getSettings, getCookie, needsAuth, sha256, getClientIp } from '../utils.js';
 
 // 浏览器标签页图标（与 public/favicon.svg 一致）。
 // 固定返回内联 SVG：本函数会拦截 /favicon.svg 等路径（部署时静态资源优先级不保证），
@@ -94,6 +94,17 @@ function trackVisit(linkData, request, now, ipHash, settings) {
   }
 }
 
+// 管理员预览：后台会话点击短链不计入访问统计（避免管理员自查污染数据）。
+// 仅当请求携带会话 Cookie 时才做会话验证——访客请求没有 Cookie，零额外开销，
+// 跳转热路径不会为普通访客增加任何 KV 读；未配置口令的部署不存在管理会话，直接 false。
+async function isAdminPreview(request, env, DB) {
+  if (!getCookie(request, 'auth_session')) return false;
+  if (!DB) return false;
+  const settings = await getSettings(DB);
+  if (!needsAuth(env, settings)) return false;
+  return verifySession(request, env, DB);
+}
+
 export async function onRequest(context) {
   const { request, params, env = {} } = context;
   const { slug } = params;
@@ -180,6 +191,10 @@ export async function onRequest(context) {
         // 跳转前只做计数内存计算 + waitUntil 后写，延迟只有短链 KV 读 + settings 缓存命中。
         if (!linkData.pwdHash && !linkData.deletedAt && !linkData.expiresAt && !linkData.maxVisits) {
           const redirectCode = settings.redirectCode === 301 ? 301 : 302;
+          // 管理员会话预览：直接跳转，不计数不落库
+          if (await isAdminPreview(request, env, DB)) {
+            return Response.redirect(linkData.original, redirectCode);
+          }
           const now = Date.now();
           const ipHash = settings.dedupMin > 0
             ? await sha256(`${await getClientIpHash(request)}|${cleanSlug}`)
@@ -227,21 +242,24 @@ export async function onRequest(context) {
           }
         }
 
-        // 访问统计：与快速通道共用 trackVisit；可选按 IP 指纹去重（运行时设置）
-        const now = Date.now();
-        const ipHash = settings.dedupMin > 0
-          ? await sha256(`${await getClientIpHash(request)}|${cleanSlug}`)
-          : '';
-        trackVisit(linkData, request, now, ipHash, settings);
+        // 访问统计：与快速通道共用 trackVisit；可选按 IP 指纹去重（运行时设置）。
+        // 管理员会话预览同样不计数（密码保护链接仍需先通过密码，这里只跳过统计）。
+        if (!(await isAdminPreview(request, env, DB))) {
+          const now = Date.now();
+          const ipHash = settings.dedupMin > 0
+            ? await sha256(`${await getClientIpHash(request)}|${cleanSlug}`)
+            : '';
+          trackVisit(linkData, request, now, ipHash, settings);
 
-        // 计数写入不阻塞跳转；运行时不支持 waitUntil 时回退为同步等待
-        const visitUpdate = DB.put(cleanSlug, JSON.stringify(linkData)).catch(err => {
-          console.error(`Visit count update failed for ${cleanSlug}: ${err && err.message}`);
-        });
-        if (typeof context.waitUntil === 'function') {
-          context.waitUntil(visitUpdate);
-        } else {
-          await visitUpdate;
+          // 计数写入不阻塞跳转；运行时不支持 waitUntil 时回退为同步等待
+          const visitUpdate = DB.put(cleanSlug, JSON.stringify(linkData)).catch(err => {
+            console.error(`Visit count update failed for ${cleanSlug}: ${err && err.message}`);
+          });
+          if (typeof context.waitUntil === 'function') {
+            context.waitUntil(visitUpdate);
+          } else {
+            await visitUpdate;
+          }
         }
         return Response.redirect(linkData.original, settings.redirectCode === 301 ? 301 : 302);
       } else {

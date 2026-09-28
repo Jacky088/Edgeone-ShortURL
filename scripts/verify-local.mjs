@@ -15,7 +15,7 @@ let ob = 0, cb = 0;
 for (const c of css) { if (c === '{') ob++; if (c === '}') cb++; }
 ok('A1 CSS括号配平', ob === cb && ob > 300, `(${ob}/${cb})`);
 ok('A2 CSS无杂散反引号', !css.includes('`'));
-for (const k of ['.app ', '.app-header', '.sidebar', '.stat-card', '.batch-row-edit', '.settings-grid', '.qr-view', '.auth-card', '.toast', '[data-theme="dark"]']) {
+for (const k of ['.app ', '.app-header', '.footer-nav', '.stat-card', '.batch-row-edit', '.settings-grid', '.qr-view', '.auth-card', '.toast', '[data-theme="dark"]']) {
   ok(`A3 CSS含 ${k.trim()}`, css.includes(k));
 }
 
@@ -143,6 +143,25 @@ try {
   ok('B22 恢复', rst.success === true);
   const back = await req('/demo', { redirect: 'manual' });
   ok('B23 恢复后跳转302', back.status === 302);
+  // B25 批量删除 / 批量恢复（slugs 数组参数）
+  const BH = { 'Content-Type': 'application/json', 'X-Admin-Slug': 'admin' };
+  const mkA = await (await req('/api/create', { method: 'POST', headers: BH, body: JSON.stringify({ url: 'https://example.com/b25a' }) })).json();
+  const mkB = await (await req('/api/create', { method: 'POST', headers: BH, body: JSON.stringify({ url: 'https://example.com/b25b' }) })).json();
+  const bd = await (await req('/api/delete', { method: 'POST', headers: BH, body: JSON.stringify({ slugs: [mkA.slug, mkB.slug] }) })).json();
+  ok('B25 批量软删除', bd.batch === true && bd.ok === 2 && (await req('/' + mkA.slug, { redirect: 'manual' })).status === 410);
+  const br = await (await req('/api/restore', { method: 'POST', headers: BH, body: JSON.stringify({ slugs: [mkA.slug, mkB.slug] }) })).json();
+  ok('B25b 批量恢复后可跳转', br.batch === true && br.ok === 2 && (await req('/' + mkA.slug, { redirect: 'manual' })).status === 302);
+  // B26 管理员会话点击短链不计数（预览），匿名访问正常计数
+  const mkP = await (await req('/api/create', { method: 'POST', headers: BH, body: JSON.stringify({ url: 'https://example.com/b26-preview' }) })).json();
+  await req('/' + mkP.slug, { redirect: 'manual' }); // 带会话 Cookie 的点击 → 预览不计数
+  const d1 = await (await req('/api/links?slug=' + mkP.slug, { headers: BH })).json();
+  await fetch(BASE + '/' + mkP.slug, { redirect: 'manual' }); // 匿名访问 → 正常计数
+  const d2 = await (await req('/api/links?slug=' + mkP.slug, { headers: BH })).json();
+  ok('B26 管理员点击不计数，匿名计数', (d1.visits || 0) === 0 && (d2.visits || 0) === 1);
+  // B27 全站统计聚合（趋势 / 总量 / 数量，排除回收站）
+  const st = await (await req('/api/stats?days=14', { headers: { 'X-Admin-Slug': 'admin' } })).json();
+  const today = new Date().toISOString().slice(0, 10);
+  ok('B27 全站趋势聚合', st && typeof st.daily === 'object' && Object.keys(st.daily).length === 14 && (st.daily[today] || 0) >= 1 && st.linkCount >= 6 && st.totalVisits >= 1);
   const pwd = await (await req('/api/settings', { method: 'POST', headers: H, body: JSON.stringify({ password: 'e2e-new-pass' }) })).json();
   ok('B24 改口令不崩溃', pwd.sessionInvalidated === true);
 }

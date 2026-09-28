@@ -56,7 +56,7 @@ seed();
 // ---- 模块加载 ----
 const slugMod = await import('../functions/[slug]/index.js');
 const apiMods = {};
-for (const n of ['auth', 'create', 'links', 'update', 'delete', 'restore', 'settings', 'token', 'logout']) {
+for (const n of ['auth', 'create', 'links', 'update', 'delete', 'restore', 'settings', 'token', 'logout', 'stats']) {
   apiMods[n] = await import(`../functions/api/${n}/index.js`);
 }
 

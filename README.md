@@ -2,7 +2,7 @@
 
 基于 **腾讯云 EdgeOne Pages** 的无服务器短链接服务：创建 / 统计 / 管理后台 / 日间夜间主题，桌面与移动端自适应。
 
-> 当前版本 **v3.6.0**（变更见文末「更新日志」）
+> 当前版本 **v3.6.0**
 
 ---
 
@@ -11,8 +11,8 @@
 - 🔗 **短链生成**：随机或自定义 slug，**批量一次 20 条**（逐行编辑 / 文本导入 / 一键复制）。
 - ⏱ **链接控制**：有效期、访问次数上限、访问密码（验证后 24 小时免输）。
 - 📱 **二维码**：结果自带二维码，可下载 PNG；支持中心 Logo（默认或自定义）与前景色。
-- 📊 **访问统计**：总量 / 近 7 天新增 / TOP 排行；单链近 14 天趋势、设备占比、来源 TOP5，可选去重防刷。
-- 🧠 **管理后台**：搜索（含备注）、状态筛选、排序、分页、行内编辑、回收站（批量恢复 / 清空）、CSV / JSON 导出。
+- 📊 **访问统计**：总量 / 近 7 天新增 / 全站近 14 天访问趋势 / TOP 排行；单链近 14 天趋势、设备占比、来源 TOP5，可选去重防刷。
+- 🧠 **管理后台**：搜索（含备注）、状态筛选、多选批量操作、排序、分页、行内编辑、回收站（恢复 / 彻底删除，支持批量）、CSV / JSON 导出。
 - ⚙️ **运行时设置**：口令、会话时长、限流、slug 策略、去重、跳转 301/302、白名单、每日限额、保留字，保存即生效。
 - 🔑 **API Token**：`X-API-Token` 调用全部管理接口，仅创建时显示一次，可吊销。
 
@@ -53,10 +53,11 @@
 | 接口 | 方法 | 鉴权 | 说明 |
 |------|------|------|------|
 | `/api/create` | POST | 会话或 Token | 建链 `{ "url", "slug", "ttlDays", "maxVisits", "password", "note" }`；批量 `{ "urls": [...] }`（≤20 条）；30 次/分钟限流（429 带 `Retry-After`） |
-| `/api/links` | GET | Admin-Slug + 会话或 Token | 列表（瘦身字段）；`?trash=1` 回收站；`?detail=1` 统计；`?slug=xxx` 单条详情；`?limit&cursor` 分页；超 2000 条 `{ links, truncated: true }` |
+| `/api/links` | GET | 会话（需 `X-Admin-Slug` 头）或 Token | 列表（瘦身字段）；`?trash=1` 回收站；`?detail=1` 统计；`?slug=xxx` 单条详情；`?limit&cursor` 分页；超 2000 条 `{ links, truncated: true }` |
+| `/api/stats` | GET | 同上 | 全站聚合：近 N 天访问趋势（`?days=`，默认 14，最大 30）、准确总访问 / 短链数 / 最近创建（排除回收站） |
 | `/api/update` | POST | 同上 | 编辑目标链接 / 备注 / 有效期 / 次数上限 / 访问密码 |
-| `/api/delete` | POST | 同上 | 软删除；`{ "slug", "purge": true }` 彻底删除 |
-| `/api/restore` | POST | 同上 | 从回收站恢复 `{ "slug" }` |
+| `/api/delete` | POST | 同上 | 软删除；`{ "slug", "purge": true }` 彻底删除；批量 `{ "slugs": [...], "purge" }`（≤100 条，逐条返回 `results`） |
+| `/api/restore` | POST | 同上 | 从回收站恢复 `{ "slug" }`；批量 `{ "slugs": [...] }`（≤100 条） |
 | `/api/settings` | GET/POST | 同上 | 读写运行时设置（改口令致旧会话失效） |
 | `/api/token` | GET/POST/DELETE | 同上 | Token 列表 / 生成（明文仅一次）/ 吊销 |
 | `/api/auth` | POST | - | 口令登录 `{ "password" }` |
@@ -95,6 +96,7 @@ curl https://your.domain/api/links -H "X-API-Token: <token>"
 - 跳转仅 `http/https`；slug 仅字母数字、`-`、`_`；`api` / `favicon.ico` / `hash:` / `sess:` / `rl:` / `crl:` / `cfg:` / `dc:` 及管理路径为保留字。
 - HTML 响应带 CSP（禁 object/embed、独立文档基址与被框嵌）、`nosniff`、`no-referrer`、`X-Frame-Options: DENY`。
 - 创建接口的去重命中只回瘦身字段：聚合统计与密码哈希不会经创建响应泄露。
+- **管理员预览不计数**：携带有效管理会话 Cookie 的短链点击不计入访问统计（避免管理员自查污染数据）；访客请求无 Cookie，跳转热路径零额外开销；密码保护链接的管理员预览仍需密码。
 
 ---
 
@@ -117,7 +119,8 @@ npm test    # Node 18+，无第三方依赖
 functions/           # 页面路由 / 短链跳转 / 鉴权（[slug]/index.js）
 ├── pages.js         # 页面模板（样式与公共脚本走 public/ 静态文件）
 ├── utils.js         # 公共工具与运行时设置（含 settings 短缓存）
-└── api/             # create / links / update / delete / restore / settings / token / auth / logout
+├── static-assets.js # 自动生成的静态资源兜底（勿手工编辑，由 gen-assets.mjs 同步）
+└── api/             # create / links / stats / update / delete / restore / settings / token / auth / logout
 public/              # app.css / ui.js / qr-lib.js / qr-draw.js（可缓存静态资源）
 scripts/             # gen-assets.mjs（同步兜底）/ local-serve.mjs / verify-local.mjs
 ```
@@ -129,52 +132,6 @@ scripts/             # gen-assets.mjs（同步兜底）/ local-serve.mjs / verif
 ## 🛡️ 致谢
 
 灵感来自 [**hobk 的 eo-short**](https://github.com/hobk/eo-short)，感谢开源贡献。
-
----
-
-## 🕘 更新日志
-
-### v3.6.0
-
-- **后台**：会话过期统一处理——任何管理接口返回 401 都会提示「登录已过期」并自动回到登录页，不再只弹一句「删除失败」。
-- **后台**：搜索支持匹配备注；新增状态筛选下拉（正常 / 已过期 / 达上限 / 密码保护）。
-- **后台**：回收站新增「恢复全部」「清空回收站」批量操作（均带确认），并显示每条的删除时间。
-- **后台**：列表短链列只显示 `/slug`（悬停看完整地址），为表格腾出宽度，移动端操作列不再被挤出屏幕。
-- **后台**：移动端工具栏改为两列自动换行，压缩纵向占用；错误类 toast 红色样式区分成功 / 失败。
-- **后台**：排序表头支持键盘操作（Tab + 回车）并输出 `aria-sort`；新增快捷键 `/` 聚焦搜索、`R` 刷新。
-- **后台**：空列表提供「去前台创建」直达链接；统计视图在列表超 2000 条截断时显示汇总近似提示。
-- **编辑弹窗**：有效期快捷预设（7 / 30 / 90 天、永久）；新密码与「清除访问密码」互斥的客户端预校验（与服务端 400 对齐）。
-- **详情弹窗**：新增「复制短链」「二维码」入口（`<dialog>` 叠层展示）；二维码弹窗新增「复制链接」与「高清下载（≥1024px）」。
-- **设置页**：API Token 卡片占满整行；底部新增保存入口；口令冲突客户端预校验。
-- **安全细节**：API Token 明文在复制成功后自动收起，不再常驻页面。
-- **导出**：CSV / JSON 文件名统一带日期，回收站导出带 `-trash` 后缀并在提示中注明。
-
-### v3.5.0
-
-- **安全（重要）**：客户端 IP 不再信任 `X-Forwarded-For` 左侧（可被任意伪造）。改为优先取 EdgeOne 注入的 `EO-Client-IP`，无平台头时取 XFF **最右**一段。登录限流、创建限流、每日配额、访问去重不再可被伪造头绕过。
-- **安全**：`/api/create` URL 去重命中时只返回瘦身字段，不再泄露该短链的 `daily/ref/dev/ipd` 聚合统计与密码哈希。
-- **安全**：畸形 Cookie（非法 `%` 序列）按「无 Cookie」处理，`/api/logout` 等不再 500。
-- **安全**：HTML 响应头新增 CSP（`object-src 'none'` / `base-uri 'none'` / `frame-ancestors 'none'` 等，不影响内联脚本）。
-- **治理**：`rl:`（登录限流）与 `crl:`（创建限流）键改带分钟桶、`dc:`（每日配额）键改带日期桶，历史桶键被顺手清理，KV 键空间不再随时间无限增长。
-- **行为**：`/api/create` 废除 `expiresAt` 天数别名（语义与字段名冲突），统一用 `ttlDays`，传 `expiresAt` 直接 400。
-- **行为**：`/api/update` 同时提交 `password` 与 `clearPassword` 返回 400（原先 clear 静默获胜）。
-- **兼容**：429 响应新增 `Retry-After` 头。
-- **性能**：`[slug]` 跳转热路径不再预检会话（鉴权下移到 Admin 路由与主页）；快速通道与完整校验通道的统计逻辑合并为单一 `trackVisit` 实现。
-- **工程**：新增 GitHub Actions CI（ubuntu/windows × Node 18/20/22）；新增 `.gitattributes` 固定 LF，Windows 检出下测试不再红。
-
-### v3.4.0
-
-- **页脚**：三页统一吸底；大窗口一行，小窗口 / 移动端自动两行。
-- **后台菜单**：小窗口 / 移动端横向滑动（可拖拽），溢出显示左右箭头，点击自动靠前；≤620px 不再切网格。
-- **修复**：`/api/links` 去掉 KV 不支持的 `list({ limit })`（只传 `cursor`），失败重试一次；回收站徽标兼容两种形态。
-- **修复**：`ui.js` 初始化等 `DOMContentLoaded`，解决「关于项目点不开」。
-
-### v3.3.9
-
-- **性能**：样式与脚本拆为 `public/` 静态文件，HTML 缩小约 60%，登录页不再加载二维码库。
-- **性能**：`/api/links` 默认瘦身字段，详情 `?slug=` 按需查，导出 `?detail=1` 补齐；超 2000 条 `{ links, truncated: true }`；settings 30 秒短缓存；搜索防抖。
-- **安全**：修复改口令崩溃；统一安全头；限流 key 只存哈希；创建 30 次/分钟限流；管理接口滑动续期；保留字校验对齐；slug 拒绝采样。
-- **兼容**：`[slug]` 内置静态资源兜底，带点路径不再 400（与 `public/` 同源）。
 
 ---
 

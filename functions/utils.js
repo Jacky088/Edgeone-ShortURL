@@ -250,7 +250,7 @@ export function getClientIp(request) {
 }
 
 // 当前是否需要登录鉴权：运行时自定义口令优先，其次环境变量
-function needsAuth(env, settings) {
+export function needsAuth(env, settings) {
   return !!(settings.passwordHash || env.PASSWORD);
 }
 

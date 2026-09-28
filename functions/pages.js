@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.6.0';
+const ASSET_VERSION = '3.7.2';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -45,6 +45,7 @@ const ICON_DOWNLOAD = icon('<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d
 const ICON_SLIDERS = icon('<path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M1 14h6"/><path d="M9 8h6"/><path d="M17 16h6"/>');
 const ICON_QR = icon('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z"/><path d="M21 14v4"/><path d="M14 21h3"/><path d="M21 21h.01"/>');
 const ICON_PLUS = icon('<path d="M12 5v14"/><path d="M5 12h14"/>');
+const ICON_MORE = icon('<circle cx="12" cy="5.5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="18.5" r="1"/>');
 
 // 品牌二维码中心 Logo（data URL，供 canvas 绘制，UTF-8 编码安全注入页面脚本）
 const QR_LOGO_DATA_URL = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2c6bff"/><stop offset="1" stop-color="#1246b8"/></linearGradient></defs><rect width="32" height="32" rx="7" fill="url(#g)"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" transform="translate(4.6 4.6) scale(0.95)"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></g></svg>');
@@ -175,15 +176,19 @@ function appShellCss() {
       html[data-theme="light"] #icon-sun { display: none; }
       html[data-theme="dark"] #icon-moon { display: none; }
 
-      /* ---------- 布局：侧边栏 + 内容 ---------- */
-      .app-body { display: grid; grid-template-columns: 216px 1fr; gap: 20px; align-items: start; }
-      .sidebar { position: sticky; top: calc(20px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 10px; box-shadow: var(--shadow-sm); }
-      .nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: 0; border-radius: 11px; background: transparent; color: var(--muted); font-size: .92rem; font-weight: 600; font-family: inherit; cursor: pointer; text-align: left; position: relative; transition: background-color .16s, color .16s; -webkit-tap-highlight-color: transparent; text-decoration: none; }
-      .nav-item svg { width: 19px; height: 19px; flex: none; }
+      /* ---------- 布局：内容 + 底部导航栏 ---------- */
+      .app-body { min-width: 0; }
+      /* 底部导航（管理后台）：固定于视口底部常显，图标在上文字在下；
+         各项 flex 均分 + 文本省略，小窗口 / 移动端都不会横向溢出 */
+      .footer-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: stretch; background: var(--surface); border-top: 1px solid var(--border); padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -10px 30px -18px rgba(30, 70, 180, .35); }
+      /* 有底部导航的页面预留空间，避免内容被遮挡 */
+      .app.has-footer-nav { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+      .nav-item { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 4px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-size: .72rem; font-weight: 600; font-family: inherit; cursor: pointer; text-align: center; position: relative; transition: background-color .16s, color .16s; -webkit-tap-highlight-color: transparent; text-decoration: none; }
+      .nav-item svg { width: 20px; height: 20px; flex: none; }
+      .nav-item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .nav-item:hover { background: var(--surface-2); color: var(--text); }
       .nav-item.active { background: var(--nav-active-bg); color: var(--nav-active-text); }
-      .nav-item.active::before { content: ""; position: absolute; left: 0; top: 20%; bottom: 20%; width: 3px; border-radius: 3px; background: var(--primary); }
-      .nav-sep { height: 1px; margin: 6px 10px; background: var(--border); flex: none; }
+      .nav-item.active::before { content: ""; position: absolute; left: 25%; right: 25%; top: 0; height: 3px; border-radius: 0 0 3px 3px; background: var(--primary); }
 
       .content { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
       /* 视图容器：内部卡片与图表区保持统一间距，避免贴边重叠 */
@@ -520,10 +525,6 @@ function appShellCss() {
 
       /* ---------- 响应式 ---------- */
       @media (max-width: 860px) {
-        .app-body { grid-template-columns: 1fr; }
-        .sidebar { position: static; flex-direction: row; overflow-x: auto; gap: 4px; padding: 8px; scroll-snap-type: x proximity; }
-        .nav-item { flex: 0 0 auto; min-height: 46px; min-width: max-content; width: auto; padding: 10px 14px; }
-        .nav-item.active::before { display: none; }
         .chart-grid { grid-template-columns: 1fr; }
       }
       @media (max-width: 620px) {
@@ -542,10 +543,9 @@ function appShellCss() {
         .col-orig { display: none; }
         .col-created { display: none; }
         .stat-value { font-size: 1.45rem; }
-        /* 后台菜单 2×2 网格完整显示，不横向滑动 */
-        .sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; overflow-x: visible; }
-        .nav-item { min-width: 0; }
-        .nav-sep { display: none; }
+        /* 极窄屏幕：底部导航文字再缩一档，保证四个菜单完整显示不溢出 */
+        .footer-nav { padding-left: 4px; padding-right: 4px; }
+        .nav-item { font-size: .66rem; padding: 6px 2px; }
         /* iOS 聚焦时禁止自动放大 */
         input, #url-input, #slug-input, .auth-form input { font-size: 16px; }
       }
@@ -1472,23 +1472,12 @@ export const adminHtml = buildPage({
   title: '短链接生成服务 - 管理后台',
   scripts: [`/qr-lib.js?v=${ASSET_VERSION}`, `/qr-draw.js?v=${ASSET_VERSION}`, `/ui.js?v=${ASSET_VERSION}`],
   body: decoHtml() + `
-<div class="app">
+<div class="app has-footer-nav">
     <header class="app-header">
         ${brandHtml()}
         ${authedActionsHtml({ backHome: true })}
     </header>
     <div class="app-body">
-        <div class="sidebar-wrap">
-        <button type="button" class="side-arrow left" id="side-arrow-left" aria-label="向左滚动菜单" hidden>‹</button>
-        <nav class="sidebar" id="sidebar-nav" aria-label="主导航">
-            <button type="button" class="nav-item active" aria-current="page" data-view="list">${ICON_LIST}<span>短链列表</span></button>
-            <button type="button" class="nav-item" data-view="stats">${ICON_CHART}<span>访问统计</span></button>
-            <button type="button" class="nav-item" data-view="settings">${ICON_SLIDERS}<span>系统设置</span></button>
-            <div class="nav-sep" aria-hidden="true"></div>
-            <button type="button" class="nav-item open-about">${ICON_INFO}<span>关于项目</span></button>
-        </nav>
-        <button type="button" class="side-arrow right" id="side-arrow-right" aria-label="向右滚动菜单" hidden>›</button>
-        </div>
         <main class="content">
             <section class="view" id="view-list">
                 <div class="card">
@@ -1505,17 +1494,35 @@ export const adminHtml = buildPage({
                             <option value="maxed">已达上限</option>
                             <option value="pwd">密码保护</option>
                         </select>
-                        <button type="button" class="btn-ghost tb-btn" id="refresh-btn" title="快捷键 R">${ICON_REFRESH}<span>刷新</span></button>
+                        <button type="button" class="btn-ghost tb-btn tb-flat" id="refresh-btn" title="快捷键 R">${ICON_REFRESH}<span>刷新</span></button>
                         <button type="button" class="btn-ghost tb-btn trash-toggle" id="trash-toggle" aria-pressed="false">${ICON_TRASH}<span>回收站</span><span class="badge" id="trash-count" hidden>0</span></button>
-                        <button type="button" class="btn-ghost tb-btn trash-only" id="restore-all-btn" hidden>恢复全部</button>
-                        <button type="button" class="btn-ghost tb-btn trash-only" id="purge-all-btn" hidden>清空回收站</button>
-                        <button type="button" class="btn-ghost tb-btn" id="export-csv">${ICON_DOWNLOAD}<span>CSV</span></button>
-                        <button type="button" class="btn-ghost tb-btn" id="export-json">${ICON_DOWNLOAD}<span>JSON</span></button>
+                        <button type="button" class="btn-ghost tb-btn tb-flat trash-only" id="restore-all-btn" hidden>恢复全部</button>
+                        <button type="button" class="btn-ghost tb-btn tb-flat trash-only" id="purge-all-btn" hidden>清空回收站</button>
+                        <button type="button" class="btn-ghost tb-btn tb-flat" id="export-csv">${ICON_DOWNLOAD}<span>CSV</span></button>
+                        <button type="button" class="btn-ghost tb-btn tb-flat" id="export-json">${ICON_DOWNLOAD}<span>JSON</span></button>
+                        <!-- 移动端「更多」收纳：低频操作（刷新/导出/回收站批量）收进下拉，工具栏一行放完 -->
+                        <div class="more-wrap">
+                            <button type="button" class="btn-ghost tb-btn more-btn" id="more-btn" aria-haspopup="menu" aria-expanded="false" aria-label="更多操作">${ICON_MORE}</button>
+                            <div class="more-menu" id="more-menu" role="menu" hidden>
+                                <button type="button" role="menuitem" data-act="refresh">${ICON_REFRESH}<span>刷新</span></button>
+                                <button type="button" role="menuitem" data-act="csv">${ICON_DOWNLOAD}<span>导出 CSV</span></button>
+                                <button type="button" role="menuitem" data-act="json">${ICON_DOWNLOAD}<span>导出 JSON</span></button>
+                                <button type="button" role="menuitem" class="trash-only" data-act="restore-all" hidden>${ICON_CHECK}<span>恢复全部</span></button>
+                                <button type="button" role="menuitem" class="trash-only danger" data-act="purge-all" hidden>${ICON_TRASH}<span>清空回收站</span></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="batch-bar" id="batch-bar" hidden>
+                        <span class="batch-count" id="batch-count"></span>
+                        <button type="button" class="btn-ghost tb-btn" id="batch-delete">批量删除</button>
+                        <button type="button" class="btn-ghost tb-btn" id="batch-restore" hidden>批量恢复</button>
+                        <button type="button" class="btn-ghost tb-btn" id="batch-purge" hidden>彻底删除</button>
+                        <button type="button" class="btn-ghost tb-btn" id="batch-clear">取消选择</button>
                     </div>
                     <div class="table-wrap">
                         <table>
                             <thead><tr>
-                                <th>短链接</th><th class="col-orig">原始链接</th><th class="th-sort col-visits" data-key="visits" title="点击排序">访问次数<span class="arrow" data-arrow="visits"></span></th><th class="th-sort col-created" data-key="createdAt" title="点击排序">创建时间<span class="arrow" data-arrow="createdAt"></span></th><th>操作</th>
+                                <th class="col-check"><input type="checkbox" id="check-all" aria-label="全选筛选结果"></th><th>短链接</th><th class="col-orig">原始链接</th><th class="th-sort col-visits" data-key="visits" title="点击排序">访问次数<span class="arrow" data-arrow="visits"></span></th><th class="th-sort col-created" data-key="createdAt" title="点击排序">创建时间<span class="arrow" data-arrow="createdAt"></span></th><th>操作</th>
                             </tr></thead>
                             <tbody id="links-table-body"></tbody>
                         </table>
@@ -1529,6 +1536,14 @@ export const adminHtml = buildPage({
                     <h2 class="card-title">${ICON_CHART}<span>访问统计</span></h2>
                     ${statsGridHtml('总访问次数')}
                     <p class="hint-line" id="stats-note" hidden></p>
+                </div>
+                <div class="card">
+                    <div class="card-title-row">
+                        <h2 class="card-title">${ICON_CHART}<span>全站访问趋势</span></h2>
+                        <span class="badge" id="trend-window">近 14 天</span>
+                    </div>
+                    <div class="bar-chart" id="visits-chart"></div>
+                    <p class="hint-line" id="trend-note" hidden></p>
                 </div>
                 <div class="chart-grid">
                     <div class="chart-card"><h3>近 7 天新增短链</h3><div class="bar-chart" id="created-chart"></div></div>
@@ -1637,8 +1652,14 @@ export const adminHtml = buildPage({
                 </div>
             </section>
         </main>
-        ${appFooterHtml()}
     </div>
+    ${appFooterHtml()}
+    <nav class="footer-nav" aria-label="主导航">
+        <button type="button" class="nav-item active" aria-current="page" data-view="list">${ICON_LIST}<span>短链列表</span></button>
+        <button type="button" class="nav-item" data-view="stats">${ICON_CHART}<span>访问统计</span></button>
+        <button type="button" class="nav-item" data-view="settings">${ICON_SLIDERS}<span>系统设置</span></button>
+        <button type="button" class="nav-item open-about">${ICON_INFO}<span>关于项目</span></button>
+    </nav>
 </div>
 <dialog id="confirm-dialog">
     <h2>${ICON_TRASH}<span id="confirm-title">删除短链</span></h2>
@@ -1755,6 +1776,13 @@ export const adminHtml = buildPage({
             const trashToggle = document.getElementById('trash-toggle');
             const trashCount = document.getElementById('trash-count');
             const statusFilterEl = document.getElementById('status-filter');
+            const batchBar = document.getElementById('batch-bar');
+            const batchCount = document.getElementById('batch-count');
+            const batchDeleteBtn = document.getElementById('batch-delete');
+            const batchRestoreBtn = document.getElementById('batch-restore');
+            const batchPurgeBtn = document.getElementById('batch-purge');
+            const batchClearBtn = document.getElementById('batch-clear');
+            const checkAll = document.getElementById('check-all');
             const exportCsvBtn = document.getElementById('export-csv');
             const exportJsonBtn = document.getElementById('export-json');
             const editDialog = document.getElementById('edit-dialog');
@@ -1777,6 +1805,10 @@ export const adminHtml = buildPage({
             let shownCount = PAGE_SIZE;
             // 服务端截断标记：列表超过 2000 条时接口返回 { links, truncated }，据此提示用户
             let listTruncated = false;
+            // 多选状态：勾选的 slug 集合（跨过滤/排序保持，切换视图/刷新数据时清空）
+            const selectedSlugs = new Set();
+            // 全站趋势懒加载时间戳：60 秒内重复切到统计视图不重新扫描
+            let siteStatsLoadedAt = 0;
 
             function linkStatus(l) {
                 const nowTs = Date.now();
@@ -1832,7 +1864,7 @@ export const adminHtml = buildPage({
                 tbody.textContent = '';
                 for (let i = 0; i < 5; i++) {
                     const tr = document.createElement('tr');
-                    for (let c = 0; c < 5; c++) {
+                    for (let c = 0; c < 6; c++) {
                         const td = document.createElement('td');
                         const bar = document.createElement('div');
                         bar.className = 'skel';
@@ -1853,6 +1885,7 @@ export const adminHtml = buildPage({
 
             function renderList() {
                 tbody.textContent = '';
+                updateBatchBar();
                 const filtered = visibleLinks();
                 const links = filtered.slice(0, shownCount);
                 const remaining = filtered.length - links.length;
@@ -1863,7 +1896,7 @@ export const adminHtml = buildPage({
                 if (!allLinks.length) {
                     const tr = document.createElement('tr');
                     const td = document.createElement('td');
-                    td.colSpan = 5; td.className = 'empty';
+                    td.colSpan = 6; td.className = 'empty';
                     if (viewMode === 'trash') {
                         td.textContent = '回收站是空的。';
                     } else {
@@ -1881,7 +1914,7 @@ export const adminHtml = buildPage({
                 if (!filtered.length) {
                     const tr = document.createElement('tr');
                     const td = document.createElement('td');
-                    td.colSpan = 5; td.className = 'empty';
+                    td.colSpan = 6; td.className = 'empty';
                     td.textContent = '没有匹配「' + filterText + '」的短链接。';
                     tr.appendChild(td); tbody.appendChild(tr);
                     linkCount.textContent = '0';
@@ -1891,6 +1924,17 @@ export const adminHtml = buildPage({
                     const shortUrl = window.location.origin + '/' + link.slug;
                     const row = document.createElement('tr');
                     row.dataset.slug = link.slug;
+
+                    // 多选复选框：勾选状态跨重渲染保持（selectedSlugs 集合）
+                    const checkCell = document.createElement('td');
+                    checkCell.className = 'col-check';
+                    const rowCheck = document.createElement('input');
+                    rowCheck.type = 'checkbox';
+                    rowCheck.className = 'row-check';
+                    rowCheck.dataset.slug = link.slug;
+                    rowCheck.checked = selectedSlugs.has(link.slug);
+                    rowCheck.setAttribute('aria-label', '选择 /' + link.slug);
+                    checkCell.appendChild(rowCheck);
 
                     const shortCell = document.createElement('td');
                     shortCell.className = 'slug-cell';
@@ -2007,11 +2051,112 @@ export const adminHtml = buildPage({
                         actionCell.append(qrButton, detailButton, editButton, deleteButton);
                     }
 
-                    row.append(shortCell, originalCell, visitsCell, createdCell, actionCell);
+                    row.append(checkCell, shortCell, originalCell, visitsCell, createdCell, actionCell);
                     tbody.appendChild(row);
                 });
                 linkCount.textContent = String(filtered.length);
             }
+
+            // ---------- 多选与批量操作条 ----------
+            function updateBatchBar() {
+                const n = selectedSlugs.size;
+                batchBar.hidden = n === 0;
+                if (batchCount) batchCount.textContent = n ? '已选 ' + n + ' 条' : '';
+                // 按视图显示对应动作：列表=批量删除（进回收站）；回收站=批量恢复/彻底删除
+                if (batchDeleteBtn) batchDeleteBtn.hidden = viewMode !== 'list';
+                if (batchRestoreBtn) batchRestoreBtn.hidden = viewMode !== 'trash';
+                if (batchPurgeBtn) batchPurgeBtn.hidden = viewMode !== 'trash';
+                // 全选框三态：全选 / 部分选中 / 未选
+                if (checkAll) {
+                    const list = visibleLinks();
+                    const sel = list.filter(function (l) { return selectedSlugs.has(l.slug); }).length;
+                    checkAll.checked = list.length > 0 && sel === list.length;
+                    checkAll.indeterminate = sel > 0 && sel < list.length;
+                }
+            }
+
+            function clearSelection() {
+                selectedSlugs.clear();
+                updateBatchBar();
+            }
+
+            async function runBatchSlugs(endpoint, purge) {
+                const slugs = [...selectedSlugs];
+                if (!slugs.length) return;
+                const btns = [batchDeleteBtn, batchRestoreBtn, batchPurgeBtn, batchClearBtn];
+                btns.forEach(function (b) { if (b) b.disabled = true; });
+                try {
+                    const res = await authedFetch(endpoint, { method: 'POST', headers: authHeaders, body: JSON.stringify({ slugs: slugs, purge: purge === true }) });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || '批量操作失败');
+                    const okCount = typeof data.ok === 'number' ? data.ok : (data.results || []).filter(function (r) { return r.success; }).length;
+                    selectedSlugs.clear();
+                    if (okCount === slugs.length) showToast('已处理 ' + okCount + ' 条');
+                    else showToast('完成 ' + okCount + '/' + slugs.length + ' 条，其余失败，可重试', 'error');
+                    // 批量删除进回收站时同步徽标：列表视图刷新不会重取回收站数据，
+                    // 按成功条数本地累加；徽标尚未初始化时回退为拉取一次回收站数量
+                    if (endpoint === '/api/delete' && !purge) {
+                        if (trashTotal == null) syncTrashCount();
+                        else { trashTotal += okCount; updateTrashBadge(); }
+                    }
+                    await getLinks();
+                } catch (err) {
+                    showToast(err.message, 'error');
+                } finally {
+                    btns.forEach(function (b) { if (b) b.disabled = false; });
+                    updateBatchBar();
+                }
+            }
+
+            function requestBatch(kind) {
+                const total = selectedSlugs.size;
+                if (!total) return;
+                const plans = {
+                    delete: { endpoint: '/api/delete', purge: false, title: '批量删除', okLabel: '删除', danger: true, prefix: '将选中的 ', suffix: ' 条短链移入回收站，可随时恢复。' },
+                    restore: { endpoint: '/api/restore', purge: false, title: '批量恢复', okLabel: '恢复', danger: false, prefix: '将从回收站恢复选中的 ', suffix: ' 条短链。' },
+                    purge: { endpoint: '/api/delete', purge: true, title: '批量彻底删除', okLabel: '彻底删除', danger: true, prefix: '将彻底删除选中的 ', suffix: ' 条短链，该操作不可恢复。' }
+                };
+                const plan = plans[kind];
+                const message = plan.prefix + total + plan.suffix;
+                const run = function () { runBatchSlugs(plan.endpoint, plan.purge); };
+                if (typeof dialog.showModal !== 'function') {
+                    nativeConfirmFallback(message, run);
+                    return;
+                }
+                requestConfirm({
+                    title: plan.title,
+                    buildText: function (el) {
+                        el.textContent = plan.prefix;
+                        const b = document.createElement('b');
+                        b.textContent = String(total);
+                        el.append(b, document.createTextNode(plan.suffix));
+                    },
+                    okLabel: plan.okLabel,
+                    danger: plan.danger,
+                    onOk: run
+                });
+            }
+            if (batchDeleteBtn) batchDeleteBtn.addEventListener('click', function () { requestBatch('delete'); });
+            if (batchRestoreBtn) batchRestoreBtn.addEventListener('click', function () { requestBatch('restore'); });
+            if (batchPurgeBtn) batchPurgeBtn.addEventListener('click', function () { requestBatch('purge'); });
+            if (batchClearBtn) batchClearBtn.addEventListener('click', clearSelection);
+            // 行内复选框（事件委托到 tbody）
+            tbody.addEventListener('change', function (e) {
+                const box = e.target.closest('.row-check');
+                if (!box) return;
+                if (box.checked) selectedSlugs.add(box.dataset.slug);
+                else selectedSlugs.delete(box.dataset.slug);
+                updateBatchBar();
+            });
+            // 表头全选：作用于当前筛选结果（含未渲染的分页部分）
+            if (checkAll) checkAll.addEventListener('change', function () {
+                const list = visibleLinks();
+                list.forEach(function (l) {
+                    if (checkAll.checked) selectedSlugs.add(l.slug);
+                    else selectedSlugs.delete(l.slug);
+                });
+                renderList();
+            });
 
             function renderStats(links) {
                 let visits = 0, latest = 0;
@@ -2107,6 +2252,8 @@ export const adminHtml = buildPage({
                         allLinks = adoptList(payload);
                     }
                     shownCount = PAGE_SIZE;
+                    // 数据已刷新，旧选择可能失效，清空多选
+                    selectedSlugs.clear();
                     if (viewMode === 'list') {
                         lastActive = allLinks;
                         // 统计视图基于列表数据聚合：接口截断时给出近似口径提示
@@ -2356,6 +2503,38 @@ export const adminHtml = buildPage({
                 updateNote();
             });
 
+            // ---------- 移动端「更多」菜单：收纳低频操作（刷新/导出/恢复全部/清空） ----------
+            // 菜单项点击转发到对应平铺按钮（复用其全部逻辑：确认弹窗/旋转动画/导出）；
+            // 点外部或 Esc 关闭。桌面端菜单随 .more-wrap 一起隐藏，行为不变。
+            const moreBtn = document.getElementById('more-btn');
+            const moreMenu = document.getElementById('more-menu');
+            function closeMoreMenu() {
+                if (moreMenu && !moreMenu.hidden) {
+                    moreMenu.hidden = true;
+                    if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
+                }
+            }
+            if (moreBtn && moreMenu) {
+                moreBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const open = moreMenu.hidden;
+                    moreMenu.hidden = !open;
+                    moreBtn.setAttribute('aria-expanded', String(open));
+                });
+                document.addEventListener('click', function (e) {
+                    if (!moreMenu.hidden && !moreMenu.contains(e.target)) closeMoreMenu();
+                });
+                document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMoreMenu(); });
+                moreMenu.addEventListener('click', function (e) {
+                    const item = e.target.closest('[data-act]');
+                    if (!item || item.hidden) return;
+                    closeMoreMenu();
+                    const targets = { refresh: 'refresh-btn', csv: 'export-csv', json: 'export-json', 'restore-all': 'restore-all-btn', 'purge-all': 'purge-all-btn' };
+                    const target = document.getElementById(targets[item.dataset.act]);
+                    if (target && !target.hidden) target.click();
+                });
+            }
+
             // ---------- 回收站切换 ----------
             trashToggle.addEventListener('click', async function () {
                 viewMode = viewMode === 'list' ? 'trash' : 'list';
@@ -2367,13 +2546,16 @@ export const adminHtml = buildPage({
                 filterText = '';
                 filterStatus = 'all';
                 statusFilterEl.value = 'all';
+                // 切换视图：清空多选并同步批量条按钮显隐
+                clearSelection();
                 // 批量按钮仅回收站视图有意义
                 document.querySelectorAll('.trash-only').forEach(function (b) { b.hidden = viewMode !== 'trash'; });
                 await getLinks();
             });
 
-            // 启动时后台获取回收站数量（徽标提示；数组/截断对象两种形态兼容）
-            (async function () {
+            // 拉取回收站数量并刷新徽标（数组/截断对象两种形态兼容）；
+            // 启动时调用一次，徽标未初始化（trashTotal == null）时也用它兜底同步
+            async function syncTrashCount() {
                 try {
                     const res = await authedFetch('/api/links?trash=1', { headers: authHeaders });
                     if (res.ok) {
@@ -2382,7 +2564,8 @@ export const adminHtml = buildPage({
                         updateTrashBadge();
                     }
                 } catch (e) {}
-            })();
+            }
+            syncTrashCount();
 
             // ---------- 数据导出（CSV / JSON，来自当前内存数据） ----------
             function downloadFile(name, content, mime) {
@@ -2721,7 +2904,53 @@ export const adminHtml = buildPage({
                 updateNote();
             });
 
-            // 侧边栏切换「短链列表 / 访问统计 / 系统设置」，支持 ?view= 深链直达
+            // ---------- 全站访问趋势（/api/stats 懒加载；60 秒内重复进入复用缓存） ----------
+            // 列表接口默认不带逐日数据，趋势由该端点全量扫描聚合；同时用准确值修正统计卡
+            async function loadSiteStats() {
+                const chart = document.getElementById('visits-chart');
+                const note = document.getElementById('trend-note');
+                const badge = document.getElementById('trend-window');
+                if (!chart) return;
+                if (note) { note.hidden = false; note.textContent = '趋势加载中…'; }
+                try {
+                    const res = await authedFetch('/api/stats?days=14', { headers: authHeaders });
+                    if (!res.ok) throw new Error('x');
+                    const s = await res.json();
+                    siteStatsLoadedAt = Date.now();
+                    document.getElementById('stat-visits').textContent = numberFormat(s.totalVisits);
+                    document.getElementById('stat-links').textContent = numberFormat(s.linkCount);
+                    setStatDate(document.getElementById('stat-created'), s.latestCreatedAt);
+                    const statsNote = document.getElementById('stats-note');
+                    if (statsNote) statsNote.hidden = !s.truncated;
+                    if (badge) badge.textContent = '近 ' + (s.windowDays || 14) + ' 天';
+                    // 柱状图与「近 7 天新增」同款样式；日期键为 UTC（与计数落库口径一致）
+                    chart.textContent = '';
+                    const keys = Object.keys(s.daily || {}).sort();
+                    let max = 1;
+                    keys.forEach(function (k) { if ((s.daily[k] || 0) > max) max = s.daily[k]; });
+                    const thinLabels = window.innerWidth < 640;
+                    keys.forEach(function (k, idx) {
+                        const count = s.daily[k] || 0;
+                        const col = document.createElement('div'); col.className = 'bar-col';
+                        const track = document.createElement('div'); track.className = 'bar-track';
+                        const fill = document.createElement('div'); fill.className = 'bar-fill' + (idx === keys.length - 1 ? ' today' : '');
+                        fill.style.height = count ? Math.max(5, Math.round(count / max * 100)) + '%' : '0%';
+                        track.appendChild(fill);
+                        if (count) {
+                            const val = document.createElement('div'); val.className = 'bar-val'; val.textContent = String(count);
+                            track.insertBefore(val, fill);
+                        }
+                        const lbl = document.createElement('div'); lbl.className = 'bar-label';
+                        lbl.textContent = (thinLabels && idx % 2 === 1) ? '' : k.slice(5);
+                        col.append(track, lbl); chart.appendChild(col);
+                    });
+                    if (note) note.hidden = true;
+                } catch (e) {
+                    if (note) { note.hidden = false; note.textContent = '全站趋势加载失败，可稍后重试。'; }
+                }
+            }
+
+            // 底部导航切换「短链列表 / 访问统计 / 系统设置」，支持 ?view= 深链直达
             function setView(v) {
                 viewList.hidden = v !== 'list';
                 viewStats.hidden = v !== 'stats';
@@ -2731,6 +2960,9 @@ export const adminHtml = buildPage({
                     x.classList.toggle('active', active);
                     if (active) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current');
                 });
+                if (v === 'stats' && Date.now() - siteStatsLoadedAt > 60000) {
+                    loadSiteStats();
+                }
                 if (v === 'settings' && !settingsLoaded) {
                     settingsLoaded = true;
                     loadSettings();
@@ -2738,45 +2970,8 @@ export const adminHtml = buildPage({
                 }
             }
             document.querySelectorAll('.nav-item[data-view]').forEach(function (b) {
-                b.addEventListener('click', function () { setView(b.dataset.view); scrollNavItemIntoView(b); });
+                b.addEventListener('click', function () { setView(b.dataset.view); });
             });
-            // 小窗口横向菜单：点击项自动靠前显示；箭头按可滚动方向显隐（桌面拖拽/触屏滑动同步更新）
-            function scrollNavItemIntoView(el) {
-                try {
-                    var nav = document.getElementById('sidebar-nav');
-                    if (!nav || nav.scrollWidth <= nav.clientWidth + 1) return;
-                    nav.scrollTo({ left: Math.max(0, el.offsetLeft - 8), behavior: 'smooth' });
-                } catch (e) {}
-            }
-            function updateSideArrows() {
-                try {
-                    var nav = document.getElementById('sidebar-nav');
-                    var left = document.getElementById('side-arrow-left');
-                    var right = document.getElementById('side-arrow-right');
-                    if (!nav || !left || !right) return;
-                    var canScroll = nav.scrollWidth > nav.clientWidth + 1;
-                    var showLeft = canScroll && nav.scrollLeft > 4;
-                    var showRight = canScroll && nav.scrollLeft < nav.scrollWidth - nav.clientWidth - 4;
-                    left.hidden = !showLeft;
-                    right.hidden = !showRight;
-                } catch (e) {}
-            }
-            (function initSideScroll() {
-                var nav = document.getElementById('sidebar-nav');
-                if (!nav) return;
-                nav.addEventListener('scroll', updateSideArrows, { passive: true });
-                window.addEventListener('resize', updateSideArrows);
-                var left = document.getElementById('side-arrow-left');
-                var right = document.getElementById('side-arrow-right');
-                if (left) left.addEventListener('click', function () {
-                    nav.scrollBy({ left: -Math.max(120, nav.clientWidth * 0.7), behavior: 'smooth' });
-                });
-                if (right) right.addEventListener('click', function () {
-                    nav.scrollBy({ left: Math.max(120, nav.clientWidth * 0.7), behavior: 'smooth' });
-                });
-                updateSideArrows();
-                setTimeout(updateSideArrows, 300);
-            })();
             let initialView = 'list';
             try {
                 const requested = new URLSearchParams(window.location.search).get('view');
