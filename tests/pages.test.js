@@ -107,7 +107,7 @@ test('管理后台：窄窗口工具栏溢出收进「更多」菜单；窄屏�
   const css = fs.readFileSync(new URL('../public/app.css', import.meta.url), 'utf8');
   assert.ok(css.includes('.table-toolbar.overflowing .more-wrap'), 'CSS 应在 overflowing 时显示「更多」按钮');
   assert.ok(css.includes('"idx url url del" "slug slug note note"'), '窄屏批量行第二行 短链+备注 满宽同行');
-  assert.ok(css.includes('.bre-del:hover') && css.includes('var(--error-bg)'), '删除钮应 ghost 化（悬停转危险色）');
+  assert.ok(css.includes('.bre-del:hover') && /bre-del \{[^}]*var\(--error\)[^}]*\}/.test(css), '删除钮应保持红色实心样式');
 });
 
 test('管理后台：设置分组标题为卡内竖条组头（不再用 fieldset legend 骑线）', () => {
