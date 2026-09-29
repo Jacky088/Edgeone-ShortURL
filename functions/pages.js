@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.7.5';
+const ASSET_VERSION = '3.7.6';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -1622,8 +1622,8 @@ export const adminHtml = buildPage({
                     </div>
                     <p class="card-desc">设置保存在 KV 中，保存后即时生效，无需重新部署。留空或关闭的项使用默认值。</p>
                     <div class="settings-grid">
-                        <fieldset class="settings-card">
-                            <legend>安全</legend>
+                        <section class="settings-card" role="group" aria-label="安全">
+                            <h3 class="settings-group-title">安全</h3>
                             <label for="set-password">自定义访问口令
                                 <input type="password" id="set-password" placeholder="留空保持不变" autocomplete="new-password">
                             </label>
@@ -1640,9 +1640,9 @@ export const adminHtml = buildPage({
                                     <input type="number" id="set-rl-win" min="1" max="1440">
                                 </label>
                             </div>
-                        </fieldset>
-                        <fieldset class="settings-card">
-                            <legend>短链</legend>
+                        </section>
+                        <section class="settings-card" role="group" aria-label="短链">
+                            <h3 class="settings-group-title">短链</h3>
                             <div class="opt-pair">
                                 <label for="set-slug-len">随机短链长度（4-16）
                                     <input type="number" id="set-slug-len" min="4" max="16">
@@ -1670,9 +1670,9 @@ export const adminHtml = buildPage({
                             <label for="set-reserved">自定义保留字（每行一个）
                                 <textarea id="set-reserved" rows="2" placeholder="admin&#10;login"></textarea>
                             </label>
-                        </fieldset>
-                        <fieldset class="settings-card">
-                            <legend>统计与二维码</legend>
+                        </section>
+                        <section class="settings-card" role="group" aria-label="统计与二维码">
+                            <h3 class="settings-group-title">统计与二维码</h3>
                             <label for="set-dedup-min">访问去重窗口（同一访客短时间内不重复计数）
                                 <select id="set-dedup-min">
                                     <option value="0">关闭（每次跳转都计数）</option>
@@ -1694,9 +1694,9 @@ export const adminHtml = buildPage({
                             <label for="set-qr-dark">二维码前景色
                                 <input type="color" id="set-qr-dark" value="#16181d">
                             </label>
-                        </fieldset>
-                        <fieldset class="settings-card settings-card-wide">
-                            <legend>API Token</legend>
+                        </section>
+                        <section class="settings-card settings-card-wide" role="group" aria-label="API Token">
+                            <h3 class="settings-group-title">API Token</h3>
                             <p class="settings-hint">用于脚本 / 第三方调用管理接口：请求头携带 <b>X-API-Token</b>，可访问创建 / 列表 / 编辑 / 删除 / 设置等全部管理接口。Token 仅在创建时完整显示一次。</p>
                             <div class="token-create">
                                 <input type="text" id="token-name" placeholder="Token 名称（如：自动化脚本）" maxlength="30">
@@ -1707,7 +1707,7 @@ export const adminHtml = buildPage({
                                 <button type="button" class="copy-btn" id="token-copy">复制</button>
                             </div>
                             <div class="token-list" id="token-list"></div>
-                        </fieldset>
+                        </section>
                     </div>
                     <div class="settings-foot">
                         <button type="button" class="btn-primary settings-save-btn">保存设置</button>

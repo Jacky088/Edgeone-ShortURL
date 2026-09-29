@@ -106,7 +106,20 @@ test('管理后台：窄窗口工具栏溢出收进「更多」菜单；窄屏�
   assert.ok(adminHtml.includes('scheduleToolbarSync()'), '视图/回收站/徽标变化应触发重新测量');
   const css = fs.readFileSync(new URL('../public/app.css', import.meta.url), 'utf8');
   assert.ok(css.includes('.table-toolbar.overflowing .more-wrap'), 'CSS 应在 overflowing 时显示「更多」按钮');
-  assert.ok(css.includes('"idx url url del" "idx slug note ."'), '窄屏批量行应为 短链+备注 同行两列');
+  assert.ok(css.includes('"idx url url del" "slug slug note note"'), '窄屏批量行第二行 短链+备注 满宽同行');
+  assert.ok(css.includes('.bre-del:hover') && css.includes('var(--error-bg)'), '删除钮应 ghost 化（悬停转危险色）');
+});
+
+test('管理后台：设置分组标题为卡内竖条组头（不再用 fieldset legend 骑线）', () => {
+  assert.ok(!adminHtml.includes('<fieldset'), '不应再使用 fieldset 骑线渲染');
+  assert.ok(!adminHtml.includes('<legend>'), 'legend 应全部替换');
+  const titles = ['安全', '短链', '统计与二维码', 'API Token'];
+  for (const t of titles) {
+    assert.ok(adminHtml.includes(`aria-label="${t}"`), `分组「${t}」应保留无障碍语义`);
+    assert.ok(adminHtml.includes(`class="settings-group-title">${t}</h3>`), `分组「${t}」应为竖条组头`);
+  }
+  const css = fs.readFileSync(new URL('../public/app.css', import.meta.url), 'utf8');
+  assert.ok(css.includes('.settings-group-title') && css.includes('.settings-group-title::before'), 'CSS 应定义竖条组头样式');
 });
 
 test('静态资源：样式与公共脚本走 public 静态文件（可缓存），二维码库仅主页/后台加载', () => {

@@ -397,16 +397,19 @@ dialog::backdrop { background: var(--scrim); }
 .batch-rows { display: flex; flex-direction: column; gap: 8px; }
 .batch-row-edit { display: grid; grid-template-columns: min-content minmax(260px, 2.2fr) minmax(170px, 1.3fr) minmax(150px, 1fr) 38px; gap: 8px; align-items: center; border: 1px solid var(--border); border-radius: 10px; background: var(--input-bg); padding: 10px; }
 .batch-row-edit.invalid { border-color: var(--error); box-shadow: 0 0 0 3px var(--error-bg); }
-.bre-idx { font-size: .8rem; font-weight: 700; color: var(--faint); font-variant-numeric: tabular-nums; text-align: center; }
+/* 序号徽章：小圆底，随行数自动编号；网格对齐见下方媒体查询 */
+.bre-idx { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--surface-3); font-size: .72rem; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
 .batch-row-edit input { min-width: 0; min-height: 38px; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: .88rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; }
 .batch-row-edit input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
-.bre-del { width: 38px; min-height: 38px; border: 0; border-radius: 9px; background: var(--error); color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: filter .16s, transform .12s; }
-.bre-del:hover { filter: brightness(1.08); }
+/* 删除钮 ghost 化：默认灰色描边降低视觉重量，悬停才转危险色 */
+.bre-del { width: 38px; min-height: 38px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: color .16s, border-color .16s, background-color .16s, transform .12s; -webkit-tap-highlight-color: transparent; }
+.bre-del:hover { color: var(--error); border-color: var(--error); background: var(--error-bg); }
 .bre-del:active { transform: scale(.94); }
 .bre-del svg { width: 14px; height: 14px; }
 @media (max-width: 820px) {
-  /* 窄屏两行布局：第一行 链接+删除，第二行 自定义短链+备注 并排（各占一半） */
-  .batch-row-edit { grid-template-columns: min-content 1fr 1fr 38px; grid-template-areas: "idx url url del" "idx slug note ."; }
+  /* 窄屏两行布局：第一行 序号徽章+链接+删除（三者同高对齐），
+     第二行 短链+备注 满宽铺到删除钮右缘，不再预留空列 */
+  .batch-row-edit { grid-template-columns: auto 1fr 1fr 38px; grid-template-areas: "idx url url del" "slug slug note note"; }
   .bre-idx { grid-area: idx; }
   .br-url { grid-area: url; }
   .br-slug { grid-area: slug; }
@@ -439,7 +442,9 @@ dialog::backdrop { background: var(--scrim); }
 /* ---------- 系统设置 ---------- */
 .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
 .settings-card { border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; margin: 0; }
-.settings-card legend { font-weight: 700; font-size: .84rem; color: var(--muted); padding: 0 6px; }
+/* 分组标题：卡片内部首行，主色竖条 + 正文字色加粗（替代 fieldset legend 骑线渲染） */
+.settings-group-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: .92rem; font-weight: 700; color: var(--text); }
+.settings-group-title::before { content: ''; flex: none; width: 4px; height: 14px; border-radius: 2px; background: var(--primary); }
 .settings-card label { display: flex; flex-direction: column; gap: 5px; font-size: .8rem; font-weight: 600; color: var(--muted); }
 .settings-card label.chk { flex-direction: row; align-items: center; gap: 8px; }
 .settings-card input[type="text"], .settings-card input[type="password"], .settings-card input[type="number"], .settings-card select, .settings-card textarea { width: 100%; min-width: 0; height: 38px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .88rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
