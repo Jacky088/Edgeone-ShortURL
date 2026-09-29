@@ -129,6 +129,16 @@ test('管理后台：设置页含存储用量卡片（精确统计 + 缓存 + �
   assert.ok(adminHtml.includes('usage-grid') && adminHtml.includes('usage-note'), '应有统计值网格与说明行');
 });
 
+test('管理后台：设置保存逻辑——单保存按钮、改动统一提交、成功弹「保存已生效」', () => {
+  assert.ok(!adminHtml.includes('settings-foot'), '底部保存条应已移除');
+  assert.equal((adminHtml.match(/class="btn-primary settings-save-btn"/g) || []).length, 1, '应只有一个保存按钮（标题行右侧）');
+  assert.ok(!adminHtml.includes('Logo 已启用，二维码即时生效'), 'Logo 上传不应再即时提交');
+  assert.ok(adminHtml.includes('点击「保存设置」后生效'), 'Logo 上传/恢复应提示需保存生效');
+  assert.ok(adminHtml.includes("showToastClosable('保存已生效', 3000)"), '保存成功应弹「保存已生效」（登录成功同款弹窗）');
+  assert.ok(adminHtml.includes('logoDataUrl: qrLogoCustom'), '保存时应随表单提交 Logo 草稿（空串=恢复默认）');
+  assert.ok(adminHtml.includes('QR_CFG.dark = payload.qr.dark'), '保存后应同步本页二维码内存配置');
+});
+
 test('静态资源：样式与公共脚本走 public 静态文件（可缓存），二维码库仅主页/后台加载', () => {
   for (const [label, html] of [['登录页', loginHtml], ['主页', indexHtml], ['管理后台', adminHtml]]) {
     assert.ok(html.includes('/app.css'), `${label} 样式应走静态 /app.css`);

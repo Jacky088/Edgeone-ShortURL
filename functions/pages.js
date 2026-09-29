@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.7.8';
+const ASSET_VERSION = '3.7.9';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -1618,7 +1618,7 @@ export const adminHtml = buildPage({
                 <div class="card">
                     <div class="card-title-row">
                         <h2 class="card-title">${ICON_SLIDERS}<span>系统设置</span></h2>
-                        <button type="button" class="btn-primary settings-save-btn" id="settings-save" style="height:40px; padding: 0 18px;">保存设置</button>
+                        <button type="button" class="btn-primary settings-save-btn" id="settings-save">保存设置</button>
                     </div>
                     <p class="card-desc">设置保存在 KV 中，保存后即时生效，无需重新部署。留空或关闭的项使用默认值。</p>
                     <div class="settings-grid">
@@ -1690,7 +1690,7 @@ export const adminHtml = buildPage({
                                     <button type="button" class="btn-ghost" id="set-qr-logo-reset">恢复默认 Logo</button>
                                 </div>
                             </div>
-                            <p class="settings-hint">默认 Logo 为网站图标；自定义图片建议正方形 PNG / JPG，不超过 110KB。上传与恢复均即时生效，主页与后台的二维码同步更新。</p>
+                            <p class="settings-hint">默认 Logo 为网站图标；自定义图片建议正方形 PNG / JPG，不超过 110KB。上传与恢复仅作预览，点击「保存设置」后生效，主页与后台的二维码同步更新。</p>
                             <label for="set-qr-dark">二维码前景色
                                 <input type="color" id="set-qr-dark" value="#16181d">
                             </label>
@@ -1723,10 +1723,6 @@ export const adminHtml = buildPage({
                                 <button type="button" class="btn-ghost" id="usage-scan">重新统计</button>
                             </div>
                         </section>
-                    </div>
-                    <div class="settings-foot">
-                        <button type="button" class="btn-primary settings-save-btn">保存设置</button>
-                        <span class="settings-foot-hint">保存后即时生效，无需重新部署；留空或关闭的项使用默认值</span>
                     </div>
                 </div>
             </section>
@@ -3210,7 +3206,8 @@ export const adminHtml = buildPage({
                 } catch (e) { showToast('设置加载失败', 'error'); }
             }
 
-            // 上传自定义 Logo（立即保存生效；自动勾选「中心放置 Logo」）
+            // 上传自定义 Logo：仅本地预览（草稿态），点击「保存设置」后随表单一并提交；
+            // 自动勾选「中心放置 Logo」，用户可在保存前取消
             document.getElementById('set-qr-logo-file').addEventListener('change', async function () {
                 const file = this.files && this.files[0];
                 this.value = '';
@@ -3223,86 +3220,74 @@ export const adminHtml = buildPage({
                     reader.readAsDataURL(file);
                 });
                 if (!/^data:image\\/(png|jpe?g|webp|svg\\+xml);base64,/.test(dataUrl)) { showToast('仅支持 PNG / JPG / WebP / SVG 图片'); return; }
-                try {
-                    const res = await authedFetch('/api/settings', { method: 'POST', headers: authHeaders, body: JSON.stringify({ qr: { centerLogo: true, logoDataUrl: dataUrl } }) });
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok) throw new Error(data.error || 'Logo 上传失败');
-                    qrLogoCustom = dataUrl;
-                    // 同步内存配置：本页二维码弹窗立即使用新 Logo，无需刷新
-                    QR_CFG.logoDataUrl = dataUrl;
-                    QR_CFG.centerLogo = true;
-                    document.getElementById('set-qr-logo').checked = true;
-                    updateQrLogoPreview();
-                    showToast('自定义 Logo 已启用，二维码即时生效');
-                } catch (err) { showToast(err.message, 'error'); }
+                qrLogoCustom = dataUrl;
+                document.getElementById('set-qr-logo').checked = true;
+                updateQrLogoPreview();
+                showToastClosable('Logo 已就绪（预览），点击「保存设置」后生效', 3200);
             });
 
-            // 恢复默认 Logo（网站图标），同样立即生效
-            document.getElementById('set-qr-logo-reset').addEventListener('click', async function () {
-                const btn = this;
-                btn.disabled = true;
-                try {
-                    const res = await authedFetch('/api/settings', { method: 'POST', headers: authHeaders, body: JSON.stringify({ qr: { logoDataUrl: '' } }) });
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok) throw new Error(data.error || '操作失败');
-                    qrLogoCustom = '';
-                    QR_CFG.logoDataUrl = '';
-                    updateQrLogoPreview();
-                    showToast('已恢复默认 Logo（网站图标）');
-                } catch (err) { showToast(err.message, 'error'); }
-                finally { btn.disabled = false; }
+            // 恢复默认 Logo（网站图标）：同样仅本地预览，保存后服务端清空自定义 Logo
+            document.getElementById('set-qr-logo-reset').addEventListener('click', function () {
+                qrLogoCustom = '';
+                updateQrLogoPreview();
+                showToastClosable('已切换为默认 Logo 预览，点击「保存设置」后生效', 3200);
             });
 
-            // 顶部与底部两个保存按钮共用同一处理；保存期间同时禁用
-            document.querySelectorAll('.settings-save-btn').forEach(function (b) {
-                b.addEventListener('click', async function () {
-                    const pwdVal = document.getElementById('set-password').value;
-                    // 与服务端 400 行为对齐：新口令与恢复环境变量口令互斥，提交前先拦下
-                    if (pwdVal && document.getElementById('set-clearpwd').checked) {
-                        showToast('新口令与「恢复为环境变量口令」不能同时设置', 'error');
-                        return;
-                    }
-                    document.querySelectorAll('.settings-save-btn').forEach(function (x) { x.disabled = true; });
-                    const payload = {
-                        sessionHours: Number(document.getElementById('set-session').value) || 24,
-                        rateLimit: {
-                            max: Number(document.getElementById('set-rl-max').value) || 5,
-                            windowMin: Number(document.getElementById('set-rl-win').value) || 10
-                        },
-                        slug: {
-                            length: Number(document.getElementById('set-slug-len').value) || 8,
-                            charset: document.getElementById('set-slug-charset').value
-                        },
-                        dedupHash: document.getElementById('set-dedup').checked,
-                        redirectCode: document.getElementById('set-redirect').value === '301' ? 301 : 302,
-                        dailyCreateLimit: Number(document.getElementById('set-daily-limit').value) || 0,
-                        domainWhitelist: document.getElementById('set-whitelist').value.split('\\n').map(s => s.trim()).filter(Boolean),
-                        extraReserved: document.getElementById('set-reserved').value.split('\\n').map(s => s.trim()).filter(Boolean),
-                        dedupMin: Number(document.getElementById('set-dedup-min').value) || 0,
-                        qr: {
-                            centerLogo: document.getElementById('set-qr-logo').checked,
-                            dark: document.getElementById('set-qr-dark').value
-                        }
-                    };
-                    if (pwdVal) payload.password = pwdVal;
-                    if (document.getElementById('set-clearpwd').checked) payload.clearPassword = true;
-                    try {
-                        const res = await authedFetch('/api/settings', { method: 'POST', headers: authHeaders, body: JSON.stringify(payload) });
-                        const data = await res.json().catch(() => ({}));
-                        if (!res.ok) throw new Error(data.error || '保存失败');
-                        document.getElementById('set-password').value = '';
-                        document.getElementById('set-clearpwd').checked = false;
-                        loadSettings();
-                        if (data.sessionInvalidated) {
-                            showToastClosable('口令已更新，所有旧会话已失效，即将重新登录…', 2600);
-                            setTimeout(function () { window.location.href = '/'; }, 1600);
-                        } else {
-                            showToast('设置已保存，即时生效');
-                        }
-                    } catch (err) { showToast(err.message || '保存失败', 'error'); }
-                    finally { document.querySelectorAll('.settings-save-btn').forEach(function (x) { x.disabled = false; }); }
-                });
-            });
+                    // 顶部「保存设置」：全部改动统一在此提交（含 Logo 草稿），成功前不落库
+                    document.querySelectorAll('.settings-save-btn').forEach(function (b) {
+                        b.addEventListener('click', async function () {
+                            const pwdVal = document.getElementById('set-password').value;
+                            // 与服务端 400 行为对齐：新口令与恢复环境变量口令互斥，提交前先拦下
+                            if (pwdVal && document.getElementById('set-clearpwd').checked) {
+                                showToast('新口令与「恢复为环境变量口令」不能同时设置', 'error');
+                                return;
+                            }
+                            document.querySelectorAll('.settings-save-btn').forEach(function (x) { x.disabled = true; });
+                            const payload = {
+                                sessionHours: Number(document.getElementById('set-session').value) || 24,
+                                rateLimit: {
+                                    max: Number(document.getElementById('set-rl-max').value) || 5,
+                                    windowMin: Number(document.getElementById('set-rl-win').value) || 10
+                                },
+                                slug: {
+                                    length: Number(document.getElementById('set-slug-len').value) || 8,
+                                    charset: document.getElementById('set-slug-charset').value
+                                },
+                                dedupHash: document.getElementById('set-dedup').checked,
+                                redirectCode: document.getElementById('set-redirect').value === '301' ? 301 : 302,
+                                dailyCreateLimit: Number(document.getElementById('set-daily-limit').value) || 0,
+                                domainWhitelist: document.getElementById('set-whitelist').value.split('\\n').map(s => s.trim()).filter(Boolean),
+                                extraReserved: document.getElementById('set-reserved').value.split('\\n').map(s => s.trim()).filter(Boolean),
+                                dedupMin: Number(document.getElementById('set-dedup-min').value) || 0,
+                                qr: {
+                                    centerLogo: document.getElementById('set-qr-logo').checked,
+                                    dark: document.getElementById('set-qr-dark').value,
+                                    logoDataUrl: qrLogoCustom || ''   // 空串 = 恢复默认 Logo（服务端清空）
+                                }
+                            };
+                            if (pwdVal) payload.password = pwdVal;
+                            if (document.getElementById('set-clearpwd').checked) payload.clearPassword = true;
+                            try {
+                                const res = await authedFetch('/api/settings', { method: 'POST', headers: authHeaders, body: JSON.stringify(payload) });
+                                const data = await res.json().catch(() => ({}));
+                                if (!res.ok) throw new Error(data.error || '保存失败');
+                                document.getElementById('set-password').value = '';
+                                document.getElementById('set-clearpwd').checked = false;
+                                // 同步本页二维码内存配置：弹窗无需刷新即用新设置
+                                QR_CFG.centerLogo = payload.qr.centerLogo;
+                                QR_CFG.dark = payload.qr.dark;
+                                QR_CFG.logoDataUrl = payload.qr.logoDataUrl;
+                                loadSettings();
+                                if (data.sessionInvalidated) {
+                                    showToastClosable('口令已更新，所有旧会话已失效，即将重新登录…', 2600);
+                                    setTimeout(function () { window.location.href = '/'; }, 1600);
+                                } else {
+                                    showToastClosable('保存已生效', 3000);
+                                }
+                            } catch (err) { showToast(err.message || '保存失败', 'error'); }
+                            finally { document.querySelectorAll('.settings-save-btn').forEach(function (x) { x.disabled = false; }); }
+                        });
+                    });
 
             // ---------- API Token ----------
             async function loadTokens() {

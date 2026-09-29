@@ -457,15 +457,18 @@ dialog::backdrop { background: var(--scrim); }
 .settings-card input[type="text"], .settings-card input[type="password"], .settings-card input[type="number"], .settings-card select, .settings-card textarea { width: 100%; min-width: 0; height: 38px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .88rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }
 .settings-card textarea { height: auto; padding: 8px 10px; resize: vertical; font-family: var(--mono); font-size: .8rem; line-height: 1.6; }
 .settings-card input:focus, .settings-card select:focus, .settings-card textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
-.settings-card input[type="color"] { padding: 2px; height: 38px; width: 64px; }
+.settings-card input[type="color"] { padding: 0; height: 38px; width: 64px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface); cursor: pointer; -webkit-appearance: none; appearance: none; }
+/* 色块自定义渲染：移动端浏览器原生色块外露白边且观感破碎，统一为圆角色片 */
+.settings-card input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+.settings-card input[type="color"]::-webkit-color-swatch { border: none; border-radius: 7px; }
+.settings-card input[type="color"]::-moz-color-swatch { border: none; border-radius: 7px; }
 .settings-card input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
 .settings-hint { margin: 0; font-size: .76rem; color: var(--faint); line-height: 1.6; }
 /* API Token 卡片内容横向较长，占满设置网格整行 */
 .settings-card-wide { grid-column: 1 / -1; }
 /* 设置页底部保存条：长表单滚动到底部时也有保存入口 */
-.settings-foot { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; }
-.settings-foot .settings-save-btn { height: 40px; padding: 0 18px; }
-.settings-foot-hint { font-size: .76rem; color: var(--faint); }
+/* 设置页底部保存条已移除：仅保留标题行右侧的「保存设置」按钮 */
+.settings-save-btn { height: 40px; padding: 0 18px; }
 .opt-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .qr-logo-row { display: flex; gap: 14px; align-items: center; }
 .qr-logo-preview { width: 56px; height: 56px; border-radius: 12px; background: #fff; border: 1px solid var(--border); object-fit: contain; padding: 5px; box-sizing: border-box; flex: none; }
