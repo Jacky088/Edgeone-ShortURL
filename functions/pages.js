@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.7.7';
+const ASSET_VERSION = '3.7.8';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -1708,6 +1708,21 @@ export const adminHtml = buildPage({
                             </div>
                             <div class="token-list" id="token-list"></div>
                         </section>
+                        <section class="settings-card settings-card-wide" role="group" aria-label="存储用量">
+                            <h3 class="settings-group-title">存储用量</h3>
+                            <p class="settings-hint">精确统计本服务写入 KV 的数据（全量扫描键与短链值，结果缓存，可手动重新统计）。控制台口径的命名空间总用量含平台开销，以 EdgeOne 控制台为准。</p>
+                            <div class="usage-grid">
+                                <div class="usage-item"><span class="usage-value" id="usage-active">—</span><span class="usage-label">活跃短链</span></div>
+                                <div class="usage-item"><span class="usage-value" id="usage-trash">—</span><span class="usage-label">回收站</span></div>
+                                <div class="usage-item"><span class="usage-value" id="usage-bytes">—</span><span class="usage-label">短链数据占用</span></div>
+                                <div class="usage-item"><span class="usage-value" id="usage-system">—</span><span class="usage-label">系统内部键</span></div>
+                                <div class="usage-item"><span class="usage-value" id="usage-total">—</span><span class="usage-label">总键数</span></div>
+                            </div>
+                            <div class="usage-foot">
+                                <span class="settings-hint" id="usage-note">尚未统计</span>
+                                <button type="button" class="btn-ghost" id="usage-scan">重新统计</button>
+                            </div>
+                        </section>
                     </div>
                     <div class="settings-foot">
                         <button type="button" class="btn-primary settings-save-btn">保存设置</button>
@@ -3099,11 +3114,62 @@ export const adminHtml = buildPage({
                     settingsLoaded = true;
                     loadSettings();
                     loadTokens();
+                    loadUsage();
                 }
                 scheduleToolbarSync();
             }
             document.querySelectorAll('.nav-item[data-view]').forEach(function (b) {
                 b.addEventListener('click', function () { setView(b.dataset.view); });
+            });
+
+            // ---------- 存储用量统计（设置页卡片：GET 读缓存 / POST 全量扫描） ----------
+            const usageBtn = document.getElementById('usage-scan');
+            function fmtBytes(n) {
+                n = Number(n) || 0;
+                if (n < 1024) return n + ' B';
+                if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+                if (n < 1073741824) return (n / 1048576).toFixed(2) + ' MB';
+                return (n / 1073741824).toFixed(2) + ' GB';
+            }
+            function renderUsage(u) {
+                if (!u || !u.scannedAt) {
+                    document.getElementById('usage-note').textContent = '尚未统计，点击「重新统计」开始全量扫描';
+                    return;
+                }
+                document.getElementById('usage-active').textContent = numberFormat(u.activeLinks);
+                document.getElementById('usage-trash').textContent = numberFormat(u.trashLinks);
+                document.getElementById('usage-bytes').textContent = fmtBytes(u.linkBytes);
+                document.getElementById('usage-system').textContent = numberFormat(u.systemKeys);
+                document.getElementById('usage-total').textContent = numberFormat(u.totalKeys);
+                let note = '上次统计：' + fmtDateTime(u.scannedAt) + ' · 耗时 ' + ((u.durationMs || 0) / 1000).toFixed(1) + ' 秒';
+                if (u.partial) note += ' · 键数超上限，仅部分统计';
+                if (u.badKeys > 0) note += ' · ' + u.badKeys + ' 个异常键';
+                document.getElementById('usage-note').textContent = note;
+            }
+            async function loadUsage() {
+                try {
+                    const res = await authedFetch('/api/usage', { headers: authHeaders });
+                    if (!res.ok) throw new Error('x');
+                    renderUsage(await res.json());
+                } catch (e) {
+                    document.getElementById('usage-note').textContent = '用量数据加载失败，可尝试重新统计';
+                }
+            }
+            usageBtn.addEventListener('click', async function () {
+                usageBtn.disabled = true;
+                const label = usageBtn.textContent;
+                usageBtn.textContent = '统计中…';
+                document.getElementById('usage-note').textContent = '正在全量扫描 KV 键与短链值，数据量大时需要几秒…';
+                try {
+                    const res = await authedFetch('/api/usage', { method: 'POST', headers: authHeaders });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || '统计失败');
+                    renderUsage(data);
+                } catch (e) {
+                    document.getElementById('usage-note').textContent = e.message;
+                }
+                usageBtn.disabled = false;
+                usageBtn.textContent = label;
             });
             let initialView = 'list';
             try {

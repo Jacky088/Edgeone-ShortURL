@@ -162,6 +162,11 @@ try {
   const st = await (await req('/api/stats?days=14', { headers: { 'X-Admin-Slug': 'admin' } })).json();
   const today = new Date().toISOString().slice(0, 10);
   ok('B27 全站趋势聚合', st && typeof st.daily === 'object' && Object.keys(st.daily).length === 14 && (st.daily[today] || 0) >= 1 && st.linkCount >= 6 && st.totalVisits >= 1);
+  // B28 存储用量：未统计时 scannedAt=0 → POST 全量扫描 → 计数/字节正确 → GET 读到缓存
+  const u0 = await (await req('/api/usage', { headers: H })).json();
+  const u1 = await (await req('/api/usage', { method: 'POST', headers: H })).json();
+  const u2 = await (await req('/api/usage', { headers: H })).json();
+  ok('B28 存储用量统计', u0.scannedAt === 0 && u1.activeLinks >= 3 && u1.trashLinks >= 1 && u1.linkBytes > 0 && u1.partial === false && u2.scannedAt === u1.scannedAt);
   const pwd = await (await req('/api/settings', { method: 'POST', headers: H, body: JSON.stringify({ password: 'e2e-new-pass' }) })).json();
   ok('B24 改口令不崩溃', pwd.sessionInvalidated === true);
 }

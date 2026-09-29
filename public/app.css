@@ -445,6 +445,13 @@ dialog::backdrop { background: var(--scrim); }
 /* 分组标题：卡片内部首行，主色竖条 + 正文字色加粗（替代 fieldset legend 骑线渲染） */
 .settings-group-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: .92rem; font-weight: 700; color: var(--text); }
 .settings-group-title::before { content: ''; flex: none; width: 4px; height: 14px; border-radius: 2px; background: var(--primary); }
+/* 存储用量卡片：统计值网格 + 底部「上次统计时间 + 重新统计」 */
+.usage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 12px; }
+.usage-item { display: flex; flex-direction: column; gap: 3px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.usage-value { font-size: 1.25rem; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.usage-label { font-size: .74rem; font-weight: 600; color: var(--faint); }
+.usage-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.usage-foot .settings-hint { margin: 0; }
 .settings-card label { display: flex; flex-direction: column; gap: 5px; font-size: .8rem; font-weight: 600; color: var(--muted); }
 .settings-card label.chk { flex-direction: row; align-items: center; gap: 8px; }
 .settings-card input[type="text"], .settings-card input[type="password"], .settings-card input[type="number"], .settings-card select, .settings-card textarea { width: 100%; min-width: 0; height: 38px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); font-size: .88rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }

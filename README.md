@@ -59,6 +59,7 @@
 | `/api/delete` | POST | 同上 | 软删除；`{ "slug", "purge": true }` 彻底删除；批量 `{ "slugs": [...], "purge" }`（≤100 条，逐条返回 `results`） |
 | `/api/restore` | POST | 同上 | 从回收站恢复 `{ "slug" }`；批量 `{ "slugs": [...] }`（≤100 条） |
 | `/api/settings` | GET/POST | 同上 | 读写运行时设置（改口令致旧会话失效） |
+| `/api/usage` | GET/POST | 同上 | 存储用量精确统计：GET 读缓存（未统计返回 `scannedAt: 0`）；POST 全量扫描键与短链值（活跃/回收站计数、键+值字节），结果缓存 `cfg:usage`，超 2 万键标记 `partial` |
 | `/api/token` | GET/POST/DELETE | 同上 | Token 列表 / 生成（明文仅一次）/ 吊销 |
 | `/api/auth` | POST | - | 口令登录 `{ "password" }` |
 | `/api/logout` | POST | 会话 | 注销当前会话 |

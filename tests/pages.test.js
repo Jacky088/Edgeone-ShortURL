@@ -122,6 +122,13 @@ test('管理后台：设置分组标题为卡内竖条组头（不再用 fieldse
   assert.ok(css.includes('.settings-group-title') && css.includes('.settings-group-title::before'), 'CSS 应定义竖条组头样式');
 });
 
+test('管理后台：设置页含存储用量卡片（精确统计 + 缓存 + 重新统计）', () => {
+  assert.ok(adminHtml.includes('aria-label="存储用量"'), '应有存储用量分组卡片');
+  assert.ok(adminHtml.includes("'/api/usage'") || adminHtml.includes('"/api/usage"'), '应调用用量接口');
+  assert.ok(adminHtml.includes('id="usage-scan"'), '应有重新统计按钮');
+  assert.ok(adminHtml.includes('usage-grid') && adminHtml.includes('usage-note'), '应有统计值网格与说明行');
+});
+
 test('静态资源：样式与公共脚本走 public 静态文件（可缓存），二维码库仅主页/后台加载', () => {
   for (const [label, html] of [['登录页', loginHtml], ['主页', indexHtml], ['管理后台', adminHtml]]) {
     assert.ok(html.includes('/app.css'), `${label} 样式应走静态 /app.css`);
