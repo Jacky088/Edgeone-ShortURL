@@ -57,6 +57,10 @@ export async function onRequest({ request, env = {} }) {
   const errors = [];
 
   // 口令：非空 = 设置新口令（哈希存储 + 会话版本自增使旧会话失效）；clearPassword = 恢复环境变量口令
+  // 两参数互斥：同时携带直接拒绝（与 /api/update 口令语义一致），避免「clear 静默获胜」的歧义
+  if (body.password && body.clearPassword === true) {
+    return jsonResponse({ error: 'password 与 clearPassword 不能同时提交' }, 400);
+  }
   if (typeof body.password === 'string' && body.password.length > 0) {
     const pwd = body.password;
     if (pwd.length < 4 || pwd.length > 64) {
@@ -113,6 +117,10 @@ export async function onRequest({ request, env = {} }) {
   }
   if (body.dedupMin !== undefined) {
     patch.dedupMin = clampInt(body.dedupMin, 0, 1440, 0);
+  }
+  if (body.tzOffsetMin !== undefined) {
+    // 统计日界时区偏移（分钟）：0 = UTC（历史行为），UTC+8 填 480；只影响按日计数的分组
+    patch.tzOffsetMin = clampInt(body.tzOffsetMin, -720, 840, 0);
   }
   if (body.qr && typeof body.qr === 'object') {
     patch.qr = {

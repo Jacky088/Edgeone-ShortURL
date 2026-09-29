@@ -5,11 +5,12 @@
 // 说明：EdgeOne 控制台口径的命名空间真实用量（含平台元数据 / 复制开销）没有开放给
 // 边缘函数的计量 API，本端点统计的是「本服务写入 KV 的数据」，供设置页展示。
 
-import { jsonResponse, getKV, checkAdmin } from '../../utils.js';
+import { jsonResponse, getKV, checkAdmin, getClientIp, sha256, windowedKey } from '../../utils.js';
 
 const USAGE_KEY = 'cfg:usage';
 const MAX_KEYS = 20000;      // 扫描键数上限，超过则标记 partial（部分统计）
 const GET_CONCURRENCY = 50;  // 短链值并发读取批量（KV 读是廉价操作，50 并发毫秒级完成一批）
+const SCAN_LIMIT_PER_MIN = 5; // 全量扫描频控：每 IP 每分钟最多 5 次（防按钮连点/被盗 Token 刷读配额）
 
 // UTF-8 字节长度（TextEncoder 复用一个实例，避免每键新建）
 const encoder = new TextEncoder();
@@ -47,7 +48,7 @@ export async function runUsageScan(DB, opts = {}) {
       else if (key.startsWith('cfg:')) sys.cfg++;
       else if (key.startsWith('hash:')) sys.hash++;
       else if (key.startsWith('sess:')) sys.sess++;
-      else if (key.startsWith('rl:') || key.startsWith('crl:')) sys.rate++;
+      else if (key.startsWith('rl:') || key.startsWith('crl:') || key.startsWith('rlp:')) sys.rate++;
       else if (key.startsWith('dc:')) sys.dc++;
       else linkKeys.push(key);
       // 页内即时截断（放在分类之后、循环体末尾：任何类型的键都计入且必达）
@@ -115,10 +116,22 @@ export async function onRequest({ request, env = {} }) {
     }
   }
 
-  // POST：全量扫描并覆盖缓存
+  // POST：全量扫描并覆盖缓存（每 IP 每分钟限 5 次；键用 rl: 前缀 + 独立哈希，与登录限流键不冲突；
+  // 计数在扫描完成后写入，限流键自身不会被扫进统计结果）
+  const nowMs = Date.now();
+  const scanKey = windowedKey('rl:', await sha256(`usage-scan|${getClientIp(request)}`), 60000, nowMs);
+  let scanCount = 0;
+  try {
+    const raw = await DB.get(scanKey);
+    if (raw) scanCount = JSON.parse(raw).count || 0;
+  } catch (e) {}
+  if (scanCount >= SCAN_LIMIT_PER_MIN) {
+    return jsonResponse({ error: '统计过于频繁，请一分钟后再试' }, 429, { 'Retry-After': '60' });
+  }
   try {
     const usage = await runUsageScan(DB, { adminPath: env.ADMIN_PATH });
     await DB.put(USAGE_KEY, JSON.stringify(usage)).catch(() => {});
+    await DB.put(scanKey, JSON.stringify({ count: scanCount + 1 })).catch(() => {});
     return jsonResponse(usage);
   } catch (err) {
     return jsonResponse({ error: '存储用量统计失败：' + ((err && err.message) || '未知错误') }, 500);

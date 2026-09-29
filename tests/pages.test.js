@@ -150,6 +150,14 @@ test('管理后台：API Token 弹窗式生成——名称必填、仅显示一�
   assert.ok(adminHtml.includes('名称必填；Token 仅在生成弹窗中完整显示一次'), '卡片提示应说明新逻辑');
 });
 
+test('管理后台：审计修复项——时区偏移设置、加载失败禁保存、密码门限流配套', () => {
+  assert.ok(adminHtml.includes('id="set-tz"'), '应有统计日界时区偏移设置项');
+  assert.ok(adminHtml.includes('tzOffsetMin: Number(document.getElementById(\'set-tz\').value)'), '保存应提交时区偏移');
+  assert.ok(adminHtml.includes('settingsReady'), '应有「未加载成功禁止保存」守卫');
+  const css = fs.readFileSync(new URL('../public/app.css', import.meta.url), 'utf8');
+  assert.ok(css.includes('.settings-save-btn'), '保存按钮类应有 CSS 定义（A7）');
+});
+
 test('静态资源：样式与公共脚本走 public 静态文件（可缓存），二维码库仅主页/后台加载', () => {
   for (const [label, html] of [['登录页', loginHtml], ['主页', indexHtml], ['管理后台', adminHtml]]) {
     assert.ok(html.includes('/app.css'), `${label} 样式应走静态 /app.css`);

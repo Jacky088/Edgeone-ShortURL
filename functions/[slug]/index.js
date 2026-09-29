@@ -3,7 +3,7 @@
 
 import { loginHtml, indexHtml, adminHtml, errorPageHtml, passwordHtml, ADMIN_BUTTON_HTML } from '../pages.js';
 import { APP_CSS, UI_JS, QR_LIB_JS, QR_DRAW_JS } from '../static-assets.js';
-import { getKV, isAllowedUrl, verifySession, verifySessionWithRenewal, getSettings, getCookie, needsAuth, sha256, getClientIp } from '../utils.js';
+import { getKV, isAllowedUrl, verifySession, verifySessionWithRenewal, getSettings, getCookie, needsAuth, sha256, getClientIp, windowedKey } from '../utils.js';
 
 // 浏览器标签页图标（与 public/favicon.svg 一致）。
 // 固定返回内联 SVG：本函数会拦截 /favicon.svg 等路径（部署时静态资源优先级不保证），
@@ -34,6 +34,32 @@ const MOBILE_UA = /Mobi|Android|iPhone|iPad|iPod/i;
 const MAX_DAILY_KEYS = 30;   // 单条短链保留最近 30 天的按日访问计数
 const MAX_REFERRERS = 10;    // 单条短链保留 TOP 10 来路域名
 const MAX_IP_ENTRIES = 50;   // 访问去重的 IP 指纹表上限（超出淘汰最旧）
+const PWD_MAX_ATTEMPTS = 10;      // 密码保护短链：单个窗口内最大错误尝试次数（按 IP+slug）
+const PWD_LOCKOUT_MS = 600000;    // 密码试错锁定窗口：10 分钟
+
+function dayKeyOf(ts, tzOffsetMin) {
+  // 统计日界时区偏移（分钟，默认 0 = UTC；UTC+8 填 480）：平移后再取 ISO 日期
+  return new Date(ts + (Number(tzOffsetMin) || 0) * 60000).toISOString().slice(0, 10);
+}
+
+// 按数量上限裁剪对象：删除 value 最小的若干项。
+// ref 表的 value 是次数（保留 TOP N）、ipd 表的 value 是时间戳（淘汰最旧），
+// 两者「按 value 升序淘汰」语义一致，因此共用此实现。
+function pruneByCount(obj, max) {
+  const keys = Object.keys(obj);
+  if (keys.length <= max) return;
+  keys.sort((a, b) => obj[a] - obj[b]);
+  for (let i = 0; i < keys.length - max; i++) delete obj[keys[i]];
+}
+
+// daily 表专用：键是 ISO 日期（字典序即时间序），按日期淘汰最旧的天。
+// 不能按 value（当日次数）淘汰——那会把低流量旧日误留、高流量近日误删，导致 30 天窗口失真。
+export function pruneOldestKeys(obj, max) {
+  const keys = Object.keys(obj);
+  if (keys.length <= max) return;
+  keys.sort();
+  for (let i = 0; i < keys.length - max; i++) delete obj[keys[i]];
+}
 
 // 静态资源兜底表：key 必须与 public/ 下文件名一致；?v= 版本查询串由平台忽略，无需处理。
 // 内容来自 functions/static-assets.js（scripts/gen-assets.mjs 生成），与 public/ 文件同源。
@@ -43,20 +69,6 @@ const STATIC_ASSETS = {
   'qr-lib.js': { body: QR_LIB_JS, type: 'application/javascript; charset=utf-8' },
   'qr-draw.js': { body: QR_DRAW_JS, type: 'application/javascript; charset=utf-8' }
 };
-
-function dayKeyOf(ts) {
-  return new Date(ts).toISOString().slice(0, 10);
-}
-
-// 按数量上限裁剪对象：删除 value 最小的若干项。
-// daily / ipd 表的 value 是时间戳、ref 表的 value 是次数，「按 value 升序淘汰最旧」
-// 对两者语义一致，因此只需这一个实现。
-function pruneByCount(obj, max) {
-  const keys = Object.keys(obj);
-  if (keys.length <= max) return;
-  keys.sort((a, b) => obj[a] - obj[b]);
-  for (let i = 0; i < keys.length - max; i++) delete obj[keys[i]];
-}
 
 // 访问统计的单一实现：visits / daily / ref / dev / ipd 的内存计算与裁剪。
 // 快速通道与完整校验通道共用；原地修改 linkData，调用方统一落库。
@@ -68,10 +80,10 @@ function trackVisit(linkData, request, now, ipHash, settings) {
   }
   if (counted) {
     linkData.visits = (linkData.visits || 0) + 1;
-    const dk = dayKeyOf(now);
+    const dk = dayKeyOf(now, settings.tzOffsetMin);
     linkData.daily = linkData.daily || {};
     linkData.daily[dk] = (linkData.daily[dk] || 0) + 1;
-    pruneByCount(linkData.daily, MAX_DAILY_KEYS);
+    pruneOldestKeys(linkData.daily, MAX_DAILY_KEYS);
     const referer = request.headers.get('Referer');
     if (referer) {
       try {
@@ -221,6 +233,19 @@ export async function onRequest(context) {
         if (linkData.pwdHash) {
           const cookieName = `pv_${cleanSlug}`;
           if (getCookie(request, cookieName) !== linkData.pwdHash) {
+            // 密码试错限流：同一 IP+slug 在 10 分钟窗口内最多 PWD_MAX_ATTEMPTS 次错误。
+            // 键按窗口分桶（rlp: 前缀，内部键列表已登记），旧窗口键在写入时顺手清理。
+            const nowMs = Date.now();
+            const attemptHash = await sha256(`${getClientIp(request)}|${cleanSlug}`);
+            const attemptKey = windowedKey('rlp:', attemptHash, PWD_LOCKOUT_MS, nowMs);
+            let attempts = { count: 0 };
+            try {
+              const raw = await DB.get(attemptKey);
+              if (raw) attempts = JSON.parse(raw);
+            } catch (e) {}
+            if ((attempts.count || 0) >= PWD_MAX_ATTEMPTS) {
+              return new Response(passwordHtml({ slug: cleanSlug, error: '错误次数过多，请 10 分钟后再试' }), { status: 429, headers: HTML_HEADERS });
+            }
             if (request.method === 'POST') {
               let password = '';
               try {
@@ -228,6 +253,7 @@ export async function onRequest(context) {
                 password = String(form.get('pw') || '');
               } catch (e) {}
               if (password && (await sha256(password)) === linkData.pwdHash) {
+                await DB.delete(attemptKey).catch(() => {}); // 密码正确：清零试错计数
                 return new Response(null, {
                   status: 303,
                   headers: {
@@ -236,6 +262,9 @@ export async function onRequest(context) {
                   }
                 });
               }
+              // 密码错误：计数 +1；顺手清理上一窗口键，键空间不随时间累积
+              await DB.delete(windowedKey('rlp:', attemptHash, PWD_LOCKOUT_MS, nowMs - PWD_LOCKOUT_MS)).catch(() => {});
+              await DB.put(attemptKey, JSON.stringify({ count: (attempts.count || 0) + 1 })).catch(() => {});
               return new Response(passwordHtml({ slug: cleanSlug, error: '密码错误，请重试' }), { status: 401, headers: HTML_HEADERS });
             }
             return new Response(passwordHtml({ slug: cleanSlug }), { status: 200, headers: HTML_HEADERS });

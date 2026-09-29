@@ -3,12 +3,13 @@
 // 列表接口默认不携带逐日数据（瘦身字段），趋势图由本端点按需全量扫描聚合，供统计视图懒加载。
 // 只聚合有效短链（排除回收站），与列表 / 统计卡口径一致；扫描上限与 /api/links 相同（2000 条）。
 
-import { jsonResponse, getKV, checkAdmin } from '../../utils.js';
+import { jsonResponse, getKV, checkAdmin, getSettings } from '../../utils.js';
 
-// 内部键：与 /api/links 相同的跳过规则
+// 内部键：与 /api/links 相同的跳过规则（rlp: 为密码试错限流键，与 utils 内部前缀列表同步）
 function isInternalKey(key, adminPath) {
   return key.startsWith('hash:') || key.startsWith('sess:') || key.startsWith('rl:')
     || key.startsWith('crl:') || key.startsWith('cfg:') || key.startsWith('dc:')
+    || key.startsWith('rlp:')
     || key === 'visitCount' || key === adminPath;
 }
 
@@ -50,12 +51,12 @@ export async function onRequest({ request, env = {} }) {
       if (allKeys.length >= MAX_KEYS) { truncated = !complete; break; }
     } while (!complete);
 
-    // 逐日键与 trackVisit 落库口径一致（UTC 日期键）
+    // 逐日键与 trackVisit 落库口径一致（按运行时设置的日界时区偏移分组；默认 0 = UTC）
+    const settings = await getSettings(DB);
+    const tzOffsetMin = Number(settings.tzOffsetMin) || 0;
     const dayKeys = [];
-    const now = new Date();
     for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
-      dayKeys.push(d.toISOString().slice(0, 10));
+      dayKeys.push(new Date(Date.now() + tzOffsetMin * 60000 - i * 86400000).toISOString().slice(0, 10));
     }
     const daily = {};
     for (const k of dayKeys) daily[k] = 0;

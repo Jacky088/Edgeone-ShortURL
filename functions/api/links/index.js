@@ -7,10 +7,11 @@
 
 import { jsonResponse, getKV, checkAdmin } from '../../utils.js';
 
-// 内部键：不以短链数据存储，列表时跳过
+// 内部键：不以短链数据存储，列表时跳过（rlp: = 密码试错限流键）
 function isInternalKey(key, adminPath) {
   return key.startsWith('hash:') || key.startsWith('sess:') || key.startsWith('rl:')
     || key.startsWith('crl:') || key.startsWith('cfg:') || key.startsWith('dc:')
+    || key.startsWith('rlp:')
     || key === 'visitCount' || key === adminPath;
 }
 

@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.8.0';
+const ASSET_VERSION = '3.8.1';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -1682,6 +1682,9 @@ export const adminHtml = buildPage({
                                     <option value="240">4 小时</option>
                                 </select>
                             </label>
+                            <label for="set-tz">统计日界时区偏移（分钟，0 = UTC；UTC+8 填 480）
+                                <input type="number" id="set-tz" min="-720" max="840" step="1" value="0">
+                            </label>
                             <label class="chk"><input type="checkbox" id="set-qr-logo"> 二维码中心放置 Logo（自动提升纠错等级）</label>
                             <div class="qr-logo-row">
                                 <img id="set-qr-logo-preview" class="qr-logo-preview" alt="当前 Logo 预览">
@@ -3184,6 +3187,7 @@ export const adminHtml = buildPage({
 
             // ---------- 系统设置 ----------
             let qrLogoCustom = '';
+            let settingsReady = false; // 加载成功才允许保存：避免「加载失败→保存」把默认值覆写回服务端
             function updateQrLogoPreview() {
                 const img = document.getElementById('set-qr-logo-preview');
                 if (img) img.src = qrLogoCustom || QR_LOGO_SRC;
@@ -3204,6 +3208,7 @@ export const adminHtml = buildPage({
                     document.getElementById('set-whitelist').value = (s.domainWhitelist || []).join('\\n');
                     document.getElementById('set-reserved').value = (s.extraReserved || []).join('\\n');
                     document.getElementById('set-dedup-min').value = String(s.dedupMin || 0);
+                    document.getElementById('set-tz').value = String(Number(s.tzOffsetMin) || 0);
                     document.getElementById('set-qr-logo').checked = !!(s.qr && s.qr.centerLogo);
                     document.getElementById('set-qr-dark').value = (s.qr && s.qr.dark) || '#16181d';
                     qrLogoCustom = (s.qr && s.qr.logoDataUrl) || '';
@@ -3211,7 +3216,15 @@ export const adminHtml = buildPage({
                     document.getElementById('set-pwd-hint').textContent = s.hasCustomPassword
                         ? '当前使用自定义口令（保存在 KV，修改后所有旧会话立即失效）'
                         : '当前使用环境变量口令（未配置则无需登录）';
-                } catch (e) { showToast('设置加载失败', 'error'); }
+                    settingsReady = true;
+                    const saveBtn = document.getElementById('settings-save');
+                    if (saveBtn) saveBtn.disabled = false;
+                } catch (e) {
+                    settingsReady = false;
+                    const saveBtn = document.getElementById('settings-save');
+                    if (saveBtn) saveBtn.disabled = true;
+                    showToast('设置加载失败，为防覆写已禁用保存，请刷新页面重试', 'error');
+                }
             }
 
             // 上传自定义 Logo：仅本地预览（草稿态），点击「保存设置」后随表单一并提交；
@@ -3244,6 +3257,11 @@ export const adminHtml = buildPage({
                     // 顶部「保存设置」：全部改动统一在此提交（含 Logo 草稿），成功前不落库
                     document.querySelectorAll('.settings-save-btn').forEach(function (b) {
                         b.addEventListener('click', async function () {
+                            // 加载失败时禁止保存：表单里是默认值，保存会把服务端配置覆写掉
+                            if (!settingsReady) {
+                                showToast('设置尚未加载成功，请刷新页面后再保存', 'error');
+                                return;
+                            }
                             const pwdVal = document.getElementById('set-password').value;
                             // 与服务端 400 行为对齐：新口令与恢复环境变量口令互斥，提交前先拦下
                             if (pwdVal && document.getElementById('set-clearpwd').checked) {
@@ -3266,8 +3284,9 @@ export const adminHtml = buildPage({
                                 dailyCreateLimit: Number(document.getElementById('set-daily-limit').value) || 0,
                                 domainWhitelist: document.getElementById('set-whitelist').value.split('\\n').map(s => s.trim()).filter(Boolean),
                                 extraReserved: document.getElementById('set-reserved').value.split('\\n').map(s => s.trim()).filter(Boolean),
-                                dedupMin: Number(document.getElementById('set-dedup-min').value) || 0,
-                                qr: {
+                        dedupMin: Number(document.getElementById('set-dedup-min').value) || 0,
+                        tzOffsetMin: Number(document.getElementById('set-tz').value) || 0,
+                        qr: {
                                     centerLogo: document.getElementById('set-qr-logo').checked,
                                     dark: document.getElementById('set-qr-dark').value,
                                     logoDataUrl: qrLogoCustom || ''   // 空串 = 恢复默认 Logo（服务端清空）

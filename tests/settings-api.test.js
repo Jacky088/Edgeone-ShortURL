@@ -69,3 +69,24 @@ test('settings API：保存设置不带 logoDataUrl 时不清除已有自定义 
   assert.equal(data.qr.logoDataUrl, good, '普通设置保存不应影响已上传的 Logo');
   assert.equal(data.qr.dark, '#ff0000');
 });
+
+test('settings API：password 与 clearPassword 同传返回 400（与 update 口令语义一致）', async () => {
+  const store = {};
+  const res = await call(buildEnv(store), 'POST', { password: 'pass1234', clearPassword: true });
+  assert.equal(res.status, 400);
+  const data = await res.json();
+  assert.match(data.error, /不能同时提交/);
+  assert.equal(store[SETTINGS_KEY], undefined, '被拒绝的请求不应写入 KV');
+});
+
+test('settings API：tzOffsetMin 合法保存、越界钳制、非数字回退', async () => {
+  const ok = await call(buildEnv({}), 'POST', { tzOffsetMin: 480 });
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).tzOffsetMin, 480, 'UTC+8 应存 480');
+
+  const clamped = await call(buildEnv({}), 'POST', { tzOffsetMin: 99999 });
+  assert.equal((await clamped.json()).tzOffsetMin, 840, '超出上限应钳制到 840');
+
+  const fallback = await call(buildEnv({}), 'POST', { tzOffsetMin: 'abc' });
+  assert.equal((await fallback.json()).tzOffsetMin, 0, '非数字回退默认 0（UTC）');
+});

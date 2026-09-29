@@ -240,6 +240,18 @@ export async function onRequest({ request, env = {} }) {
     if (settings.dedupHash) ops.push(DB.put(`hash:${urlHash}`, slug));
     await Promise.all(ops);
 
+    // 自定义短链并发竞态兜底：写入后回读校验归属。KV last-write-wins 下，
+    // 两个并发同名创建都可能「检查不存在→写入」成功，回读发现内容不是自己的即判失败
+    if (entry.slug) {
+      const written = await DB.get(slug).catch(() => null);
+      try {
+        if (!written || JSON.parse(written).original !== url) {
+          errors.push({ index, url, error: '该自定义短链已被占用（并发创建）' });
+          continue;
+        }
+      } catch (e) {}
+    }
+
     results.push({
       index, slug,
       original: linkData.original,

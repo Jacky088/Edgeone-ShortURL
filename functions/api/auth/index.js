@@ -22,10 +22,11 @@ function timingSafeEqual(a, b) {
   return result === 0;
 }
 
-async function getRateLimit(DB, ipHash, now) {
+async function getRateLimit(DB, ipHash, now, lockoutMs) {
   try {
-    // 键名带分钟桶：锁定窗口改变后旧键自然离开当前窗口，登录成功时顺手清理历史键
-    const key = windowedKey('rl:', ipHash, 60000, now);
+    // 键按「锁定窗口」分桶（而非分钟桶）：计数在同一窗口内跨请求累积，
+    // 超过窗口后自然落新桶，语义与「N 次 / 窗口分钟」一致；旧窗口键在写入/成功时顺手清理
+    const key = windowedKey('rl:', ipHash, lockoutMs, now);
     const raw = await DB.get(key);
     if (raw) return JSON.parse(raw);
     return { count: 0, firstAt: now };
@@ -35,12 +36,9 @@ async function getRateLimit(DB, ipHash, now) {
 }
 
 // 清理该 IP 历史分钟桶的限流键（超出当前窗口的桶都属历史，最多回看 2 个桶）
-async function cleanupOldRateLimit(DB, ipHash, now) {
+async function cleanupOldRateLimit(DB, ipHash, now, lockoutMs) {
   try {
-    for (const delta of [1, 2]) {
-      const oldKey = `rl:${Math.floor(now / 60000) - delta}:${ipHash}`;
-      await DB.delete(oldKey).catch(() => {});
-    }
+    await DB.delete(windowedKey('rl:', ipHash, lockoutMs, now - lockoutMs)).catch(() => {});
   } catch (e) {}
 }
 
@@ -69,11 +67,13 @@ export async function onRequest({ request, env = {} }) {
     const ip = getClientIp(request);
     const ipHash = ip === 'unknown' ? 'unknown' : await sha256(ip);
     const nowMs = Date.now();
-    const rl = await getRateLimit(DB, ipHash, nowMs);
     const maxAttempts = Math.min(100, Math.max(1, Number(settings.rateLimit && settings.rateLimit.max) || 5));
     const lockoutMs = Math.min(1440, Math.max(1, Number(settings.rateLimit && settings.rateLimit.windowMin) || 10)) * 60000;
-    if (rl.count >= maxAttempts && nowMs - rl.firstAt < lockoutMs) {
-      const retryAfterSec = Math.max(1, Math.ceil((lockoutMs - (nowMs - rl.firstAt)) / 1000));
+    // 计数按「锁定窗口」分桶累积：窗口内失败次数跨请求累加，语义与「N 次 / 窗口分钟」一致
+    const rl = await getRateLimit(DB, ipHash, nowMs, lockoutMs);
+    if (rl.count >= maxAttempts) {
+      const windowEnd = Math.floor(nowMs / lockoutMs) * lockoutMs + lockoutMs;
+      const retryAfterSec = Math.max(1, Math.ceil((windowEnd - nowMs) / 1000));
       return new Response(JSON.stringify({ error: '尝试次数过多，请稍后再试' }), {
         status: 429,
         headers: { 'Retry-After': String(retryAfterSec), 'Content-Type': 'application/json' }
@@ -89,16 +89,15 @@ export async function onRequest({ request, env = {} }) {
     }
 
     if (!ok) {
-      const newRl = nowMs - rl.firstAt >= lockoutMs
-        ? { count: 1, firstAt: nowMs }
-        : { count: rl.count + 1, firstAt: rl.firstAt };
-      await DB.put(windowedKey('rl:', ipHash, 60000, nowMs), JSON.stringify(newRl));
+      // 失败计数 +1；顺手清理上一窗口键，键空间不随时间累积
+      await DB.delete(windowedKey('rl:', ipHash, lockoutMs, nowMs - lockoutMs)).catch(() => {});
+      await DB.put(windowedKey('rl:', ipHash, lockoutMs, nowMs), JSON.stringify({ count: (rl.count || 0) + 1, firstAt: rl.firstAt })).catch(() => {});
       return new Response(JSON.stringify({ error: '口令错误' }), { status: 401 });
     }
 
-    // 登录成功：清除失败计数（含历史分钟桶），创建服务端会话（记录会话版本，口令变更后旧会话立即失效）
-    await cleanupOldRateLimit(DB, ipHash, nowMs);
-    await DB.delete(windowedKey('rl:', ipHash, 60000, nowMs)).catch(() => {});
+    // 登录成功：清除失败计数（当前与上一窗口键），创建服务端会话（记录会话版本，口令变更后旧会话立即失效）
+    await cleanupOldRateLimit(DB, ipHash, nowMs, lockoutMs);
+    await DB.delete(windowedKey('rl:', ipHash, lockoutMs, nowMs)).catch(() => {});
 
     const token = randomToken();
     const session = {

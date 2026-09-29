@@ -30,7 +30,8 @@ export const DEFAULT_SETTINGS = {
   dailyCreateLimit: 0,
   extraReserved: [],
   qr: { centerLogo: false, dark: '#16181d' },
-  dedupMin: 0
+  dedupMin: 0,
+  tzOffsetMin: 0
 };
 
 // 运行时设置进程内短缓存：同一函数实例的连续请求复用，跳转热路径每次跳转省 1 次 KV 读。
@@ -182,7 +183,7 @@ export function isValidSlug(slug) {
 
 // 内部键前缀与保留字，禁止被注册为短链接
 const RESERVED_SLUGS = ['api', 'favicon.ico'];
-const INTERNAL_PREFIXES = ['hash:', 'sess:', 'rl:', 'crl:', 'cfg:', 'dc:'];
+const INTERNAL_PREFIXES = ['hash:', 'sess:', 'rl:', 'crl:', 'cfg:', 'dc:', 'rlp:'];
 
 export function isReservedSlug(slug, adminPath, extraReserved) {
   if (slug === adminPath) return true;
