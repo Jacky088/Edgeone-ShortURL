@@ -1698,15 +1698,6 @@ export const adminHtml = buildPage({
                                 <input type="color" id="set-qr-dark" value="#16181d">
                             </label>
                         </section>
-                        <section class="settings-card settings-card-wide" role="group" aria-label="API Token">
-                            <h3 class="settings-group-title">API Token</h3>
-                            <p class="settings-hint">用于脚本 / 第三方调用管理接口：请求头携带 <b>X-API-Token</b>，可访问创建 / 列表 / 编辑 / 删除 / 设置等全部管理接口。Token 名称必填；Token 仅在生成弹窗中完整显示一次，关闭后无法再次查看。</p>
-                            <div class="token-create">
-                                <input type="text" id="token-name" placeholder="Token 名称（必填，如：自动化脚本）" maxlength="30">
-                                <button type="button" class="btn-ghost" id="token-create">生成 Token</button>
-                            </div>
-                            <div class="token-list" id="token-list"></div>
-                        </section>
                         <section class="settings-card settings-card-wide" role="group" aria-label="存储用量">
                             <h3 class="settings-group-title">存储用量</h3>
                             <p class="settings-hint">精确统计本服务写入 KV 的数据（全量扫描键与短链值，结果缓存，可手动重新统计）。控制台口径的命名空间总用量含平台开销，以 EdgeOne 控制台为准。</p>
@@ -1721,6 +1712,15 @@ export const adminHtml = buildPage({
                                 <span class="settings-hint" id="usage-note">尚未统计</span>
                                 <button type="button" class="btn-ghost" id="usage-scan">重新统计</button>
                             </div>
+                        </section>
+                        <section class="settings-card settings-card-wide" role="group" aria-label="API Token">
+                            <h3 class="settings-group-title">API Token</h3>
+                            <p class="settings-hint">用于脚本 / 第三方调用管理接口：请求头携带 <b>X-API-Token</b>，可访问创建 / 列表 / 编辑 / 删除 / 设置等全部管理接口。Token 名称必填；Token 仅在生成弹窗中完整显示一次，关闭后无法再次查看。</p>
+                            <div class="token-create">
+                                <input type="text" id="token-name" placeholder="Token 名称（必填，如：自动化脚本）" maxlength="30">
+                                <button type="button" class="btn-ghost" id="token-create">生成 Token</button>
+                            </div>
+                            <div class="token-list" id="token-list"></div>
                         </section>
                     </div>
                 </div>
