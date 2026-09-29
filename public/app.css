@@ -478,8 +478,10 @@ dialog::backdrop { background: var(--scrim); }
 .qr-upload-btn input[type="file"] { display: none; }
 .token-create { display: flex; gap: 8px; }
 .token-create input { flex: 1; min-width: 0; }
-.token-new { display: flex; align-items: center; gap: 10px; background: var(--success-bg); border: 1px solid rgba(38, 196, 160, .35); border-radius: 10px; padding: 8px 10px; }
-.token-new code { flex: 1; font-family: var(--mono); font-size: .76rem; word-break: break-all; color: var(--success); font-weight: 700; }
+/* Token 生成弹窗：明文展示条（仅显示一次，关闭即从 DOM 清除） */
+.token-reveal { display: flex; align-items: center; gap: 10px; background: var(--success-bg); border: 1px solid rgba(38, 196, 160, .35); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; }
+.token-reveal code { flex: 1; font-family: var(--mono); font-size: .78rem; word-break: break-all; color: var(--success); font-weight: 700; user-select: all; }
+.token-warn b { color: var(--error); }
 .token-list { display: flex; flex-direction: column; gap: 6px; }
 .token-item { display: flex; align-items: center; gap: 10px; font-size: .82rem; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
 .token-item .t-name { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

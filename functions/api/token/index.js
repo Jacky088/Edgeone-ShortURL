@@ -61,7 +61,8 @@ export async function onRequest({ request, env = {} }) {
   if (tokens.length >= 20) {
     return jsonResponse({ error: 'Token 数量已达上限（20 个），请先吊销不用的 Token' }, 409);
   }
-  const name = String(body.name || '').trim().slice(0, 30) || '未命名 Token';
+  const name = String(body.name || '').trim().slice(0, 30);
+  if (!name) return jsonResponse({ error: 'Token 名称必填（1-30 字）' }, 400);
   const token = generateToken();
   const record = { id: tokenId(), name, hash: await sha256(token), createdAt: Date.now() };
   tokens.push(record);

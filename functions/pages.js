@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.7.9';
+const ASSET_VERSION = '3.8.0';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -1697,14 +1697,10 @@ export const adminHtml = buildPage({
                         </section>
                         <section class="settings-card settings-card-wide" role="group" aria-label="API Token">
                             <h3 class="settings-group-title">API Token</h3>
-                            <p class="settings-hint">用于脚本 / 第三方调用管理接口：请求头携带 <b>X-API-Token</b>，可访问创建 / 列表 / 编辑 / 删除 / 设置等全部管理接口。Token 仅在创建时完整显示一次。</p>
+                            <p class="settings-hint">用于脚本 / 第三方调用管理接口：请求头携带 <b>X-API-Token</b>，可访问创建 / 列表 / 编辑 / 删除 / 设置等全部管理接口。Token 名称必填；Token 仅在生成弹窗中完整显示一次，关闭后无法再次查看。</p>
                             <div class="token-create">
-                                <input type="text" id="token-name" placeholder="Token 名称（如：自动化脚本）" maxlength="30">
+                                <input type="text" id="token-name" placeholder="Token 名称（必填，如：自动化脚本）" maxlength="30">
                                 <button type="button" class="btn-ghost" id="token-create">生成 Token</button>
-                            </div>
-                            <div class="token-new" id="token-new" hidden>
-                                <code id="token-new-value"></code>
-                                <button type="button" class="copy-btn" id="token-copy">复制</button>
                             </div>
                             <div class="token-list" id="token-list"></div>
                         </section>
@@ -1799,6 +1795,18 @@ export const adminHtml = buildPage({
         <button type="button" class="btn-ghost" id="qr-dlg-copy">复制链接</button>
         <button type="button" class="btn-ghost" id="qr-dlg-hd">高清下载</button>
         <button type="button" class="btn-ghost" id="qr-dlg-close">关闭</button>
+    </div>
+</dialog>
+<dialog id="token-dialog">
+    <h2 style="color: var(--primary)">${ICON_SHIELD}<span>API Token 已生成</span></h2>
+    <p class="dialog-text token-warn">请立即复制并妥善保存：<b>API Token 仅在本次弹窗中完整显示一次，关闭后无法再次查看！</b></p>
+    <div class="token-reveal">
+        <code id="token-dialog-value"></code>
+        <button type="button" class="btn-primary" id="token-dialog-copy">${ICON_COPY}<span>复制</span></button>
+    </div>
+    <p class="settings-hint" id="token-dialog-name"></p>
+    <div class="row-btns" style="grid-template-columns: 1fr;">
+        <button type="button" class="btn-ghost" id="token-dialog-close">我已保存，关闭</button>
     </div>
 </dialog>
 ` + aboutDialogHtml(),
@@ -3339,29 +3347,49 @@ export const adminHtml = buildPage({
                 }
             }
 
+            // ---------- API Token 生成：名称必填，明文仅在弹窗中显示一次 ----------
+            const tokenDialog = document.getElementById('token-dialog');
+            const tokenDialogValue = document.getElementById('token-dialog-value');
+            function closeTokenDialog() { if (tokenDialog.open) tokenDialog.close(); }
+            // 关闭即从 DOM 清除明文（关闭后无法再次查看的安全口径）
+            tokenDialog.addEventListener('close', function () { tokenDialogValue.textContent = ''; });
+            tokenDialog.addEventListener('click', function (e) { if (e.target === tokenDialog) closeTokenDialog(); });
+            document.getElementById('token-dialog-close').addEventListener('click', closeTokenDialog);
+            document.getElementById('token-dialog-copy').addEventListener('click', async function () {
+                const btn = this;
+                try {
+                    await navigator.clipboard.writeText(tokenDialogValue.textContent);
+                    const label = btn.querySelector('span');
+                    if (label) label.textContent = '已复制';
+                    showToast('Token 已复制到剪贴板');
+                    setTimeout(function () { if (label) label.textContent = '复制'; }, 1500);
+                } catch (e) { showToast('复制失败，请手动选中复制', 'error'); }
+            });
+
             document.getElementById('token-create').addEventListener('click', async function () {
                 const btn = this;
+                const nameInput = document.getElementById('token-name');
+                const name = nameInput.value.trim();
+                // 名称必填：留空直接拒绝并提醒，不发请求
+                if (!name) {
+                    showToast('请先输入 Token 名称（必填）', 'error');
+                    nameInput.focus();
+                    return;
+                }
                 btn.disabled = true;
                 try {
-                    const res = await authedFetch('/api/token', { method: 'POST', headers: authHeaders, body: JSON.stringify({ name: document.getElementById('token-name').value }) });
+                    const res = await authedFetch('/api/token', { method: 'POST', headers: authHeaders, body: JSON.stringify({ name: name }) });
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok) throw new Error(data.error || '创建失败');
-                    document.getElementById('token-new').hidden = false;
-                    document.getElementById('token-new-value').textContent = data.token;
-                    document.getElementById('token-name').value = '';
+                    // 明文仅进弹窗；关闭后从 DOM 清除，且不再有任何入口查看
+                    tokenDialogValue.textContent = data.token;
+                    document.getElementById('token-dialog-name').textContent = '名称：' + (data.name || name) + ' · 创建于 ' + fmtDateTime(data.createdAt || Date.now());
+                    if (typeof tokenDialog.showModal === 'function') tokenDialog.showModal();
+                    else window.alert('API Token（仅显示一次，请立即复制）：\\n' + data.token);
+                    nameInput.value = '';
                     loadTokens();
                 } catch (err) { showToast(err.message || '创建失败', 'error'); }
                 finally { btn.disabled = false; }
-            });
-            document.getElementById('token-copy').addEventListener('click', async function () {
-                const btn = this;
-                try {
-                    await navigator.clipboard.writeText(document.getElementById('token-new-value').textContent);
-                    btn.textContent = '已复制';
-                    setTimeout(function () { btn.textContent = '复制'; }, 1500);
-                    // 明文不常驻页面：复制成功后自动收起，与「仅显示一次」的安全口径一致
-                    setTimeout(function () { const box = document.getElementById('token-new'); if (box) box.hidden = true; }, 1600);
-                } catch (e) { showToast('复制失败，请手动复制', 'error'); }
             });
 
             getLinks();

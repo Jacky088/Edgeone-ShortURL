@@ -139,6 +139,17 @@ test('管理后台：设置保存逻辑——单保存按钮、改动统一提�
   assert.ok(adminHtml.includes('QR_CFG.dark = payload.qr.dark'), '保存后应同步本页二维码内存配置');
 });
 
+test('管理后台：API Token 弹窗式生成——名称必填、仅显示一次、关闭即清除', () => {
+  assert.ok(!adminHtml.includes('id="token-new"'), '内联明文展示应移除（改为弹窗）');
+  assert.ok(!adminHtml.includes('id="token-copy"'), '旧内联复制按钮应移除');
+  assert.ok(adminHtml.includes('id="token-dialog"'), '应有 Token 生成弹窗');
+  assert.ok(adminHtml.includes('仅在本次弹窗中完整显示一次，关闭后无法再次查看'), '弹窗应有「仅显示一次」警示');
+  assert.ok(adminHtml.includes('id="token-dialog-copy"'), '弹窗应有复制按钮');
+  assert.ok(adminHtml.includes("showToast('请先输入 Token 名称（必填）', 'error')"), '留空名称应拒绝并弹窗提醒');
+  assert.ok(adminHtml.includes("tokenDialog.addEventListener('close'"), '弹窗关闭应从 DOM 清除明文');
+  assert.ok(adminHtml.includes('名称必填；Token 仅在生成弹窗中完整显示一次'), '卡片提示应说明新逻辑');
+});
+
 test('静态资源：样式与公共脚本走 public 静态文件（可缓存），二维码库仅主页/后台加载', () => {
   for (const [label, html] of [['登录页', loginHtml], ['主页', indexHtml], ['管理后台', adminHtml]]) {
     assert.ok(html.includes('/app.css'), `${label} 样式应走静态 /app.css`);
