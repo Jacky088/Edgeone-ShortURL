@@ -46,6 +46,7 @@ const ICON_SLIDERS = icon('<path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 2
 const ICON_QR = icon('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z"/><path d="M21 14v4"/><path d="M14 21h3"/><path d="M21 21h.01"/>');
 const ICON_PLUS = icon('<path d="M12 5v14"/><path d="M5 12h14"/>');
 const ICON_MORE = icon('<circle cx="12" cy="5.5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="18.5" r="1"/>');
+const ICON_WARN = icon('<path d="M10.3 4.1 2.9 17a2 2 0 0 0 1.7 3h14.8a2 2 0 0 0 1.7-3L13.7 4.1a2 2 0 0 0-3.4 0z"/><path d="M12 9v4.5"/><path d="M12 17h.01"/>');
 
 // 品牌二维码中心 Logo（data URL，供 canvas 绘制，UTF-8 编码安全注入页面脚本）
 const QR_LOGO_DATA_URL = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2c6bff"/><stop offset="1" stop-color="#1246b8"/></linearGradient></defs><rect width="32" height="32" rx="7" fill="url(#g)"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" transform="translate(4.6 4.6) scale(0.95)"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></g></svg>');
@@ -1011,6 +1012,13 @@ export const indexHtml = buildPage({
         </main>
         ${appFooterHtml()}
 </div>
+<dialog id="slug-warn-dialog">
+    <h2>${ICON_WARN}<span>自定义短链格式有误</span></h2>
+    <p class="dialog-text" id="slug-warn-text"></p>
+    <div class="row-btns" style="grid-template-columns: 1fr;">
+        <button type="button" class="btn-primary" id="slug-warn-ok">好的，我来修改</button>
+    </div>
+</dialog>
 `,
   script: adminLinkJs + `
         // 二维码运行时配置：由服务端注入（__QR_SETTINGS__），挂到 window 供 qr-draw.js 读取；
@@ -1048,6 +1056,9 @@ export const indexHtml = buildPage({
             const optNote = document.getElementById('opt-note');
             const resultList = document.getElementById('result-list');
             const resultSingle = document.getElementById('result-single');
+            const slugWarnDialog = document.getElementById('slug-warn-dialog');
+            const slugWarnText = document.getElementById('slug-warn-text');
+            const slugWarnOk = document.getElementById('slug-warn-ok');
             // 二维码样式来自运行时设置（服务端注入到 window.__QR_CFG__，见本脚本头部）
             const submitLabel = submitBtn.querySelector('span');
 
@@ -1240,10 +1251,47 @@ export const indexHtml = buildPage({
                 return /^[a-zA-Z0-9_-]{1,64}$/.test(v) ? '' : '自定义短链仅可使用字母、数字、短横线、下划线，最长 64 位';
             }
 
+            // 自定义短链实时检测：输入超出「字母 / 数字 / 短横线 / 下划线」四类的字符时
+            // 弹窗警告并标记非法；单条与批量提交路径另有最终校验兜底，确保不能生成短链。
+            const SLUG_BAD_RE = /[^a-zA-Z0-9_-]/;
+            const SLUG_BAD_RE_ALL = /[^a-zA-Z0-9_-]/g; // g 版本用于 match 提取全部非法字符（test 用无 g 版本避免 lastIndex 状态）
+            let slugWarnSource = null; // 触发警告的输入框，弹窗关闭后把焦点还给它
+            function badCharLabel(ch) {
+                if (ch === ' ') return '「空格」';
+                if (ch === '\\t') return '「制表符」';
+                return '「' + ch + '」';
+            }
+            function warnInvalidSlug(input) {
+                const badChars = [...new Set(input.value.match(SLUG_BAD_RE_ALL) || [])];
+                const prefix = badChars.length ? '检测到不支持的字符：' + badChars.map(badCharLabel).join('') + '。' : '';
+                slugWarnText.textContent = prefix + '自定义短链仅可使用字母、数字、短横线、下划线（最长 64 位），已阻止生成短链，请修改后重试。';
+                slugWarnSource = input;
+                input.classList.add('invalid');
+                if (typeof slugWarnDialog.showModal === 'function') {
+                    if (!slugWarnDialog.open) slugWarnDialog.showModal();
+                } else {
+                    window.alert(slugWarnText.textContent);
+                    input.focus();
+                }
+            }
+            slugWarnOk.addEventListener('click', function () { slugWarnDialog.close(); });
+            slugWarnDialog.addEventListener('click', function (e) { if (e.target === slugWarnDialog) slugWarnDialog.close(); });
+            slugWarnDialog.addEventListener('close', function () {
+                if (slugWarnSource) { slugWarnSource.focus(); slugWarnSource = null; }
+            });
+
             urlInput.addEventListener('input', () => urlInput.classList.remove('invalid'));
             slugInput.addEventListener('input', function () {
                 slugInput.classList.remove('invalid');
                 slugCount.textContent = this.value.length ? this.value.length + '/64' : '';
+                if (SLUG_BAD_RE.test(this.value)) warnInvalidSlug(this);
+            });
+            // 批量行的自定义短链同样实时检测（事件委托，覆盖动态添加的行）
+            batchRowsEl.addEventListener('input', function (e) {
+                const t = e.target;
+                if (!t.classList || !t.classList.contains('br-slug')) return;
+                if (SLUG_BAD_RE.test(t.value)) warnInvalidSlug(t);
+                else t.classList.remove('invalid');
             });
 
             function setLoading(isLoading) {
@@ -1360,7 +1408,7 @@ export const indexHtml = buildPage({
                         if (!url && !slug && !note) continue; // 全空行跳过
                         if (!url) { showError('第 ' + (i + 1) + ' 行缺少目标链接'); row.classList.add('invalid'); row.querySelector('.br-url').focus(); return; }
                         const slugErr = validateSlug(slug);
-                        if (slugErr) { showError('第 ' + (i + 1) + ' 行：' + slugErr); row.classList.add('invalid'); row.querySelector('.br-slug').focus(); return; }
+                        if (slugErr) { showError('第 ' + (i + 1) + ' 行：' + slugErr); row.classList.add('invalid'); warnInvalidSlug(row.querySelector('.br-slug')); return; }
                         const item = { url: url };
                         if (slug) item.slug = slug;
                         if (note) item.note = note;
@@ -1405,7 +1453,7 @@ export const indexHtml = buildPage({
                 urlInput.classList.toggle('invalid', !!urlError);
                 slugInput.classList.toggle('invalid', !!slugError);
                 if (urlError) { showError(urlError); urlInput.focus(); return; }
-                if (slugError) { showError(slugError); slugInput.focus(); return; }
+                if (slugError) { showError(slugError); warnInvalidSlug(slugInput); return; }
                 setLoading(true);
                 errorMessage.style.display = 'none';
                 try {

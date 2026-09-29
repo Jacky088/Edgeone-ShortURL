@@ -77,6 +77,18 @@ test('主页 + 登录页的 __ADMIN_PATH_STATUS__ 占位符可被服务端完整
   }
 });
 
+test('主页：自定义短链输入检测——超出四类字符弹窗警告且不能生成短链', () => {
+  assert.ok(indexHtml.includes('id="slug-warn-dialog"'), '应有格式警告弹窗');
+  assert.ok(indexHtml.includes('const SLUG_BAD_RE = /[^a-zA-Z0-9_-]/'), '应有四类之外字符的检测正则');
+  assert.ok(indexHtml.includes('const SLUG_BAD_RE_ALL = /[^a-zA-Z0-9_-]/g;'), '提取非法字符应用全局正则（报出全部而非首个）');
+  assert.ok(indexHtml.includes('if (SLUG_BAD_RE.test(this.value)) warnInvalidSlug(this);'), '单条输入应实时弹窗警告');
+  assert.ok(indexHtml.includes("t.classList.contains('br-slug')"), '批量行自定义短链应事件委托实时检测');
+  assert.ok(indexHtml.includes("warnInvalidSlug(row.querySelector('.br-slug'))"), '批量提交拦截时应弹窗警告');
+  assert.ok(indexHtml.includes('if (slugError) { showError(slugError); warnInvalidSlug(slugInput); return; }'), '单条提交拦截时应弹窗警告且终止提交');
+  assert.ok(indexHtml.includes('已阻止生成短链'), '弹窗文案应明确本次不会生成短链');
+  assert.ok(indexHtml.includes('仅可使用字母、数字、短横线、下划线'), '弹窗文案应说明允许的四类字符');
+});
+
 test('管理后台：统计视图深链、客户端分页、列类名、完整时间', () => {
   assert.ok(adminHtml.includes("get('view')"), '管理后台应解析 ?view= 深链参数');
   assert.ok(indexHtml.includes("?view=' + encodeURIComponent(view)"), '主页侧边栏深链应带视图参数');
