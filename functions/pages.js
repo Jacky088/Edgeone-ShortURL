@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.7.4';
+const ASSET_VERSION = '3.7.5';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -2420,6 +2420,7 @@ export const adminHtml = buildPage({
                 if (trashTotal == null) { trashCount.hidden = true; return; }
                 trashCount.hidden = trashTotal === 0;
                 trashCount.textContent = String(trashTotal);
+                scheduleToolbarSync(); // 徽标显隐会改变「回收站」按钮宽度，可能触发工具栏溢出
             }
 
             // ---------- 回收站批量操作（恢复全部 / 清空回收站） ----------
@@ -2599,6 +2600,72 @@ export const adminHtml = buildPage({
                 });
             }
 
+            // ---------- 窄窗口工具栏溢出收纳（>620px 桌面档） ----------
+            // 平铺按钮放不下换行时，从右往左把低频按钮（导出/回收站批量/刷新）收进
+            // 「更多」菜单，保证工具栏始终单行；空间恢复时按后收先放顺序还原。
+            // ≤620px 由 CSS 直接收纳（.tb-flat 隐藏、菜单常显），测量逻辑两端通用。
+            const TB_COLLAPSE_ORDER = [
+                ['export-json', 'json'],
+                ['export-csv', 'csv'],
+                ['purge-all-btn', 'purge-all'],
+                ['restore-all-btn', 'restore-all'],
+                ['refresh-btn', 'refresh']
+            ];
+            const tbCollapsed = new Set();
+            function syncToolbarOverflow() {
+                const toolbar = moreBtn ? moreBtn.closest('.table-toolbar') : null;
+                if (!toolbar) return;
+                if (!toolbar.offsetParent) return; // 视图隐藏（统计/设置/未授权）时不测量
+                // 离开回收站等场景被 hidden 的按钮不在屏上：清掉本地 display 覆盖并移出收纳集
+                tbCollapsed.forEach(function (id) {
+                    const el = document.getElementById(id);
+                    if (el && el.hidden) { el.style.display = ''; tbCollapsed.delete(id); }
+                });
+                // 测量期间先显示「更多」按钮，把它自身占的宽度一并算入，避免临界宽度反复横跳
+                toolbar.classList.add('overflowing');
+                // 收纳：从右往左，直到回到单行（单行高 42px，两行约 94px，阈值取 58）
+                let guard = 0;
+                while (toolbar.offsetHeight > 58 && guard++ < TB_COLLAPSE_ORDER.length) {
+                    const next = TB_COLLAPSE_ORDER.map(function (p) { return document.getElementById(p[0]); })
+                        .find(function (el) { return el && !el.hidden && !tbCollapsed.has(el.id); });
+                    if (!next) break;
+                    next.style.display = 'none';
+                    tbCollapsed.add(next.id);
+                }
+                // 放回：后收的先还原；放回会再次换行则立即收回并停止
+                let restoreGuard = 0;
+                while (tbCollapsed.size && restoreGuard++ < TB_COLLAPSE_ORDER.length) {
+                    const candidates = TB_COLLAPSE_ORDER.map(function (p) { return document.getElementById(p[0]); })
+                        .filter(function (el) { return el && tbCollapsed.has(el.id) && !el.hidden; });
+                    if (!candidates.length) break;
+                    const last = candidates[candidates.length - 1];
+                    last.style.display = '';
+                    if (toolbar.offsetHeight > 58) { last.style.display = 'none'; break; }
+                    tbCollapsed.delete(last.id);
+                }
+                // 一条都没收（宽屏放得下）时隐藏「更多」按钮，回到纯平铺
+                if (!tbCollapsed.size) {
+                    toolbar.classList.remove('overflowing');
+                    closeMoreMenu();
+                }
+                // 菜单项可见性 = 对应平铺按钮已被收纳（且不在回收站隐藏态）
+                TB_COLLAPSE_ORDER.forEach(function (pair) {
+                    const flat = document.getElementById(pair[0]);
+                    const item = moreMenu.querySelector('[data-act="' + pair[1] + '"]');
+                    if (flat && item) item.hidden = flat.hidden || !tbCollapsed.has(pair[0]);
+                });
+            }
+            let tbSyncQueued = 0;
+            function scheduleToolbarSync() {
+                // setTimeout 而非 requestAnimationFrame：后台标签页 rAF 会被冻结，
+                // 收纳状态就会停留在过期布局；宏任务在后台也会执行
+                if (tbSyncQueued) return;
+                tbSyncQueued = setTimeout(function () { tbSyncQueued = 0; syncToolbarOverflow(); }, 0);
+            }
+            window.addEventListener('resize', scheduleToolbarSync);
+            if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleToolbarSync).catch(function () {});
+            scheduleToolbarSync();
+
             // ---------- 回收站切换 ----------
             trashToggle.addEventListener('click', async function () {
                 viewMode = viewMode === 'list' ? 'trash' : 'list';
@@ -2614,6 +2681,7 @@ export const adminHtml = buildPage({
                 clearSelection();
                 // 批量按钮仅回收站视图有意义
                 document.querySelectorAll('.trash-only').forEach(function (b) { b.hidden = viewMode !== 'trash'; });
+                scheduleToolbarSync();
                 await getLinks();
             });
 
@@ -3032,6 +3100,7 @@ export const adminHtml = buildPage({
                     loadSettings();
                     loadTokens();
                 }
+                scheduleToolbarSync();
             }
             document.querySelectorAll('.nav-item[data-view]').forEach(function (b) {
                 b.addEventListener('click', function () { setView(b.dataset.view); });

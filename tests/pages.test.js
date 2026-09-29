@@ -99,6 +99,16 @@ test('管理后台：统计视图深链、客户端分页、列类名、完整�
   assert.ok(adminHtml.includes('运行在 EdgeOne Pages'), '应包含统一页脚');
 });
 
+test('管理后台：窄窗口工具栏溢出收进「更多」菜单；窄屏批量行短链/备注同行', () => {
+  assert.ok(adminHtml.includes('function syncToolbarOverflow'), '应有工具栏溢出收纳逻辑');
+  assert.ok(adminHtml.includes("classList.add('overflowing')") && adminHtml.includes("classList.remove('overflowing')"), '收纳时加 overflowing 类，全放回时移除');
+  assert.ok(adminHtml.includes("['export-json', 'json']"), '导出按钮应最先被收纳（从右往左）');
+  assert.ok(adminHtml.includes('scheduleToolbarSync()'), '视图/回收站/徽标变化应触发重新测量');
+  const css = fs.readFileSync(new URL('../public/app.css', import.meta.url), 'utf8');
+  assert.ok(css.includes('.table-toolbar.overflowing .more-wrap'), 'CSS 应在 overflowing 时显示「更多」按钮');
+  assert.ok(css.includes('"idx url url del" "idx slug note ."'), '窄屏批量行应为 短链+备注 同行两列');
+});
+
 test('静态资源：样式与公共脚本走 public 静态文件（可缓存），二维码库仅主页/后台加载', () => {
   for (const [label, html] of [['登录页', loginHtml], ['主页', indexHtml], ['管理后台', adminHtml]]) {
     assert.ok(html.includes('/app.css'), `${label} 样式应走静态 /app.css`);

@@ -288,6 +288,11 @@ a.top-link-slug:hover { color: var(--primary); }
   .more-btn { width: 42px; padding: 0; justify-content: center; }
   .more-btn svg { width: 18px; height: 18px; }
 }
+/* >620px 桌面窄窗口：JS 测得平铺按钮放不下（toolbar 换行）时加 .overflowing，
+   显示「更多」按钮，把收进菜单的按钮藏到弹层里，保证工具栏始终单行 */
+.table-toolbar.overflowing .more-wrap { display: block; position: relative; flex: none; }
+.table-toolbar.overflowing .more-btn { width: 42px; padding: 0; justify-content: center; }
+.table-toolbar.overflowing .more-btn svg { width: 18px; height: 18px; }
 
 /* 可排序表头（访问次数 / 创建时间）：鼠标点击 + 键盘 Tab/回车 */
 th.th-sort { cursor: pointer; user-select: none; -webkit-user-select: none; }
@@ -400,7 +405,8 @@ dialog::backdrop { background: var(--scrim); }
 .bre-del:active { transform: scale(.94); }
 .bre-del svg { width: 14px; height: 14px; }
 @media (max-width: 820px) {
-  .batch-row-edit { grid-template-columns: min-content 1fr 38px; grid-template-areas: "idx url del" "idx slug slug" "idx note note"; }
+  /* 窄屏两行布局：第一行 链接+删除，第二行 自定义短链+备注 并排（各占一半） */
+  .batch-row-edit { grid-template-columns: min-content 1fr 1fr 38px; grid-template-areas: "idx url url del" "idx slug note ."; }
   .bre-idx { grid-area: idx; }
   .br-url { grid-area: url; }
   .br-slug { grid-area: slug; }
