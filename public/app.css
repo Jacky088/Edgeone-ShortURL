@@ -440,14 +440,20 @@ dialog::backdrop { background: var(--scrim); }
 .batch-bar .tb-btn { height: 36px; padding: 0 12px; font-size: .8rem; }
 
 /* ---------- 系统设置 ---------- */
-.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+/* 设置网格：默认 2×2（四张普通卡两行摆齐），≥1400px 宽屏一行四卡，≤620px 手机单列。
+   不用 auto-fit：三列的中间态会把第四张卡挤成 3+1 参差布局 */
+.settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (min-width: 1400px) { .settings-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .settings-grid { grid-template-columns: 1fr; } }
 .settings-card { border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; margin: 0; }
 /* 分组标题：卡片内部首行，主色竖条 + 正文字色加粗（替代 fieldset legend 骑线渲染） */
 .settings-group-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: .92rem; font-weight: 700; color: var(--text); }
 .settings-group-title::before { content: ''; flex: none; width: 4px; height: 14px; border-radius: 2px; background: var(--primary); }
 /* 存储用量卡片：统计值网格 + 底部「上次统计时间 + 重新统计」 */
-.usage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 12px; }
-.usage-item { display: flex; flex-direction: column; gap: 3px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.usage-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px; }
+.usage-item { display: flex; flex-direction: column; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; }
+/* 卡片内第 5 块瓦片独占一行，避免半宽孤块；窄屏单列卡片时行为一致 */
+.usage-item:last-child { grid-column: 1 / -1; }
 .usage-value { font-size: 1.25rem; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .usage-label { font-size: .74rem; font-weight: 600; color: var(--faint); }
 .usage-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }

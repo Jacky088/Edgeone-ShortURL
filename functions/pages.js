@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.8.1';
+const ASSET_VERSION = '3.8.5';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -1698,9 +1698,9 @@ export const adminHtml = buildPage({
                                 <input type="color" id="set-qr-dark" value="#16181d">
                             </label>
                         </section>
-                        <section class="settings-card settings-card-wide" role="group" aria-label="存储用量">
+                        <section class="settings-card" role="group" aria-label="存储用量">
                             <h3 class="settings-group-title">存储用量</h3>
-                            <p class="settings-hint">精确统计本服务写入 KV 的数据（全量扫描键与短链值，结果缓存，可手动重新统计）。控制台口径的命名空间总用量含平台开销，以 EdgeOne 控制台为准。</p>
+                            <p class="settings-hint">精确统计本服务写入 KV 的数据，结果缓存，可重新统计。控制台口径含平台开销，以 EdgeOne 控制台为准。</p>
                             <div class="usage-grid">
                                 <div class="usage-item"><span class="usage-value" id="usage-active">—</span><span class="usage-label">活跃短链</span></div>
                                 <div class="usage-item"><span class="usage-value" id="usage-trash">—</span><span class="usage-label">回收站</span></div>
