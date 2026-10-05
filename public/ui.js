@@ -59,10 +59,12 @@
   });
 
   /* ---------- Toast ---------- */
+  // toast 挂在 <html> 而非 <body>：任何 body 级 transform/动画都会把 fixed 的包含块
+  // 从视口改成 body，导致移动端滚动时提示随页面滚走；html 级免疫此问题
   // type 传 'error' 时显示红色警示样式，区别于默认的中性提示
   function showToast(text, type) {
     var t = document.getElementById('toast');
-    if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
+    if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.documentElement.appendChild(t); }
     t.textContent = text;
     t.classList.toggle('error', type === 'error');
     t.classList.add('show');
@@ -86,7 +88,7 @@
       close.textContent = '×';
       t.append(label, close);
       t.addEventListener('click', dismiss);
-      document.body.appendChild(t);
+      document.documentElement.appendChild(t);
     }
     function dismiss() { clearTimeout(t._timer); t.classList.remove('show'); }
     t.querySelector('.toast-text').textContent = text;

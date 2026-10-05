@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.8.5';
+const ASSET_VERSION = '3.8.6';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -682,9 +682,11 @@ const themeJs = `
 `;
 
 const toastJs = `
+      // toast 挂在 <html> 而非 <body>：任何 body 级 transform/动画都会把 fixed 的
+      // 包含块从视口改成 body，导致移动端滚动时提示随页面滚走；html 级免疫此问题
       function showToast(text) {
         let t = document.getElementById('toast');
-        if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
+        if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.documentElement.appendChild(t); }
         t.textContent = text;
         t.classList.add('show');
         clearTimeout(t._timer);
@@ -707,7 +709,7 @@ const toastJs = `
           close.textContent = '×';
           t.append(label, close);
           t.addEventListener('click', dismiss);
-          document.body.appendChild(t);
+          document.documentElement.appendChild(t);
         }
         function dismiss() { clearTimeout(t._timer); t.classList.remove('show'); }
         t.querySelector('.toast-text').textContent = text;

@@ -245,12 +245,15 @@ a.top-link-slug:hover { color: var(--primary); }
   .app-footer { flex-wrap: wrap; }
   .app-footer > span:first-child { flex-basis: 100%; }
 }
-.toast { position: fixed; left: 50%; top: calc(24px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -12px) scale(.98); opacity: 0; pointer-events: none; z-index: 50; background: var(--text); color: var(--surface); padding: 11px 18px; border-radius: 999px; font-size: .85rem; font-weight: 600; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .35); transition: opacity .2s, transform .2s; max-width: calc(100vw - 40px); text-align: center; }
-.toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+/* 顶部胶囊提示：fixed 相对视口（非页面文档），滚动时始终停在窗口顶部中央。
+   居中用 inset-inline + margin auto + max-content，不经 transform——
+   transform 定位在部分移动端浏览器会把 fixed 降级为随页面滚动 */
+.toast { position: fixed; left: 0; right: 0; margin-inline: auto; width: max-content; top: calc(24px + env(safe-area-inset-top, 0px)); transform: translateY(-12px) scale(.98); opacity: 0; pointer-events: none; z-index: 50; background: var(--text); color: var(--surface); padding: 11px 18px; border-radius: 999px; font-size: .85rem; font-weight: 600; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .35); transition: opacity .2s, transform .2s; max-width: calc(100vw - 40px); text-align: center; }
+.toast.show { opacity: 1; transform: translateY(0) scale(1); }
 /* 错误类提示：红色底区分于中性提示 */
 .toast.error { background: var(--error); color: #fff; }
 /* 可关闭提醒（登录成功等）：3 秒自动消失，点 × 或气泡立即关闭 */
-.toast-closable { display: inline-flex; align-items: center; gap: 10px; }
+.toast-closable { display: inline-flex; align-items: center; gap: 10px; pointer-events: auto; }
 .toast-text { min-width: 0; }
 .toast-close { flex: none; width: 20px; height: 20px; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 15px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; opacity: .6; font-family: inherit; }
 .toast-close:hover { opacity: 1; }
