@@ -681,43 +681,8 @@ const themeJs = `
       })();
 `;
 
-const toastJs = `
-      // toast 挂在 <html> 而非 <body>：任何 body 级 transform/动画都会把 fixed 的
-      // 包含块从视口改成 body，导致移动端滚动时提示随页面滚走；html 级免疫此问题
-      function showToast(text) {
-        let t = document.getElementById('toast');
-        if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.documentElement.appendChild(t); }
-        t.textContent = text;
-        t.classList.add('show');
-        clearTimeout(t._timer);
-        t._timer = setTimeout(() => t.classList.remove('show'), 2400);
-      }
-      // 可关闭提醒（登录成功等）：默认 3 秒自动消失，点击关闭按钮或提醒本身立即关闭
-      function showToastClosable(text, duration) {
-        let t = document.getElementById('toast-closable');
-        if (!t) {
-          t = document.createElement('div');
-          t.id = 'toast-closable';
-          t.className = 'toast toast-closable';
-          t.setAttribute('role', 'status');
-          const label = document.createElement('span');
-          label.className = 'toast-text';
-          const close = document.createElement('button');
-          close.type = 'button';
-          close.className = 'toast-close';
-          close.setAttribute('aria-label', '关闭提醒');
-          close.textContent = '×';
-          t.append(label, close);
-          t.addEventListener('click', dismiss);
-          document.documentElement.appendChild(t);
-        }
-        function dismiss() { clearTimeout(t._timer); t.classList.remove('show'); }
-        t.querySelector('.toast-text').textContent = text;
-        t.classList.add('show');
-        clearTimeout(t._timer);
-        t._timer = setTimeout(dismiss, duration || 3000);
-      }
-`;
+// toast 提示唯一实现在 public/ui.js（showToast / showToastClosable，全部页面 head 同步加载）；
+// 此处不再保留内嵌副本——旧 toastJs 副本缺 type 参数，一旦恢复使用会让错误提示退化为中性样式。
 
 // 管理后台入口逻辑（ADMIN_PATH 由服务端通过 __ADMIN_PATH_STATUS__ 注入）
 // 已登录页面的入口渲染为 <a class="goto-admin">：JS 负责补上真实路径（路径不写死在 HTML 里），

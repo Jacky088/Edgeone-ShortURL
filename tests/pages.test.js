@@ -158,6 +158,17 @@ test('管理后台：审计修复项——时区偏移设置、加载失败禁�
   assert.ok(css.includes('.settings-save-btn'), '保存按钮类应有 CSS 定义（A7）');
 });
 
+test('toast 提示唯一实现：全部页面由 ui.js 提供，内联脚本不含副本', () => {
+  const ui = fs.readFileSync(new URL('../public/ui.js', import.meta.url), 'utf8');
+  assert.ok(ui.includes('function showToast(text, type)'), 'ui.js 的 showToast 应支持 type 参数（error 红色样式）');
+  assert.ok(ui.includes('function showToastClosable(text, duration)'), 'ui.js 应提供可关闭 toast');
+  assert.ok(ui.includes('document.documentElement.appendChild'), 'toast 应挂在 html 上（视口锚定）');
+  for (const [label, html] of [['登录页', loginHtml], ['主页', indexHtml], ['管理后台', adminHtml]]) {
+    assert.ok(html.includes('/ui.js'), `${label} 应加载 ui.js`);
+    assert.ok(!html.includes('function showToast'), `${label} 内联脚本不得定义 toast 副本（唯一实现在 ui.js）`);
+  }
+});
+
 test('静态资源：样式与公共脚本走 public 静态文件（可缓存），二维码库仅主页/后台加载', () => {
   for (const [label, html] of [['登录页', loginHtml], ['主页', indexHtml], ['管理后台', adminHtml]]) {
     assert.ok(html.includes('/app.css'), `${label} 样式应走静态 /app.css`);
