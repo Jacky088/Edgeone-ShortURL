@@ -63,6 +63,9 @@
   // 从视口改成 body，导致移动端滚动时提示随页面滚走；html 级免疫此问题
   // type 传 'error' 时显示红色警示样式，区别于默认的中性提示
   function showToast(text, type) {
+    // 后来者替换：与可关闭提醒共用视口顶部同一位置，同时触发时新提示盖掉旧提示（不叠放）
+    var tc = document.getElementById('toast-closable');
+    if (tc) tc.classList.remove('show');
     var t = document.getElementById('toast');
     if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.documentElement.appendChild(t); }
     t.textContent = text;
@@ -73,6 +76,8 @@
   }
   // 可关闭提醒（登录成功等）：默认 3 秒自动消失，点击关闭按钮或提醒本身立即关闭
   function showToastClosable(text, duration) {
+    var tn = document.getElementById('toast');
+    if (tn) tn.classList.remove('show'); // 后来者替换
     var t = document.getElementById('toast-closable');
     if (!t) {
       t = document.createElement('div');

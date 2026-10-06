@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { loginHtml, indexHtml, adminHtml, errorPageHtml } from '../functions/pages.js';
+import { loginHtml, indexHtml, adminHtml, errorPageHtml, passwordHtml } from '../functions/pages.js';
 
 // 提取页面内所有 <script> 内容（含 head 主题预载脚本与页面脚本）
 function extractScripts(html) {
@@ -163,10 +163,43 @@ test('toast 提示唯一实现：全部页面由 ui.js 提供，内联脚本不�
   assert.ok(ui.includes('function showToast(text, type)'), 'ui.js 的 showToast 应支持 type 参数（error 红色样式）');
   assert.ok(ui.includes('function showToastClosable(text, duration)'), 'ui.js 应提供可关闭 toast');
   assert.ok(ui.includes('document.documentElement.appendChild'), 'toast 应挂在 html 上（视口锚定）');
+  assert.ok((ui.match(/后来者替换/g) || []).length === 2, '两种 toast 应互斥替换（同时触发不叠放）');
   for (const [label, html] of [['登录页', loginHtml], ['主页', indexHtml], ['管理后台', adminHtml]]) {
     assert.ok(html.includes('/ui.js'), `${label} 应加载 ui.js`);
     assert.ok(!html.includes('function showToast'), `${label} 内联脚本不得定义 toast 副本（唯一实现在 ui.js）`);
   }
+});
+
+test('UI 走查优化落地：弹窗图标语义化、内联样式清理、批量上限、命中区', () => {
+  const css = fs.readFileSync(new URL('../public/app.css', import.meta.url), 'utf8');
+  // 弹窗标题图标：默认主色，危险弹窗用 .danger-title 转红（替代 4 处内联覆盖）
+  assert.ok(css.includes('dialog h2 svg { width: 18px; height: 18px; color: var(--primary); }'), '弹窗标题图标应默认主色');
+  assert.ok(css.includes('.danger-title svg { color: var(--error); }'), '危险弹窗应有 danger-title 修饰');
+  assert.ok(!adminHtml.includes('style="color: var(--primary)"'), '管理弹窗不应再有内联主色覆盖');
+  assert.ok((adminHtml.match(/class="danger-title"/g) || []).length === 1, '删除确认弹窗应加 danger-title（后台）');
+  assert.ok((indexHtml.match(/class="danger-title"/g) || []).length === 1, 'slug 警告弹窗应加 danger-title（主页）');
+  // 单按钮弹窗行：.row-btns.single 替代内联 grid-template-columns
+  assert.ok(css.includes('.row-btns.single { grid-template-columns: 1fr; }'), '应有单按钮行修饰类');
+  assert.ok(!adminHtml.includes('style="grid-template-columns: 1fr;"'), '弹窗底部不应再有内联单列样式');
+  assert.ok((adminHtml.match(/class="row-btns single"/g) || []).length === 1, 'Token 弹窗应为 single 行（后台）');
+  assert.ok((indexHtml.match(/class="row-btns single"/g) || []).length === 1, 'slug 警告弹窗应为 single 行（主页）');
+  // 页脚链接 hover 反馈
+  assert.ok(css.includes('.app-footer a:hover'), '页脚链接应有 hover 反馈');
+  // 登录页眼睛按钮命中区 ≥44px
+  assert.ok(/\.eye-btn \{[^}]*width: 44px/.test(css), '眼睛按钮命中区应为 44px');
+  // 主页 slug 输入与批量行字号统一 .9rem
+  assert.ok(css.includes('font-size: .9rem; font-family: inherit; transition: border-color .18s, box-shadow .18s; -webkit-appearance: none; }\n#slug-input:focus'), 'slug 输入应归并到 .9rem');
+  // 批量 20 行上限：添加按钮满员禁用 + 守卫提示（批量面板在主页）
+  assert.ok(indexHtml.includes("querySelectorAll('.batch-row-edit').length >= 20"), '应有 20 行满员守卫');
+  assert.ok(indexHtml.includes('一次最多 20 条，请先删除部分行'), '满员应在按钮 title 提示');
+  // Token 空态统一 .empty 语义（紧凑档）
+  assert.ok(adminHtml.includes("'empty empty-compact'"), 'Token 空态应统一 empty 语义');
+  assert.ok(css.includes('.empty.empty-compact'), '应有紧凑空态样式');
+  // 密码保护页：表单走 .auth-form + 错误块 .on 类（无内联样式按钮）
+  assert.ok(passwordHtml({ slug: 'abc' }).includes('class="auth-form"'), '密码页表单应复用 auth-form 布局');
+  assert.ok(passwordHtml({ slug: 'abc', error: 'x' }).includes('class="auth-error on"'), '密码页错误应走 .on 类');
+  assert.ok(!passwordHtml({ slug: 'abc' }).includes('style='), '密码页不应残留内联样式');
+  assert.ok(css.includes('.auth-error.on { display: block; }'), '服务端渲染错误应有 .on 显示规则');
 });
 
 test('静态资源：样式与公共脚本走 public 静态文件（可缓存），二维码库仅主页/后台加载', () => {

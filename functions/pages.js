@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.8.6';
+const ASSET_VERSION = '3.8.7';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -944,7 +944,7 @@ export const indexHtml = buildPage({
                             <button type="button" class="btn-ghost batch-op" id="batch-clear">${ICON_TRASH}<span>清空</span></button>
                         </div>
                         <div class="batch-import-wrap" id="batch-import-wrap" hidden>
-                            <p class="settings-hint" style="margin: 0;">支持两种方式导入：① 将文本内容粘贴到下方输入框，每行一条；② 直接选择 .txt / .csv 文件导入，每行一条，一次最多 20 条。格式：链接 [自定义短链] [备注]（空格分隔）</p>
+                            <p class="settings-hint">支持两种方式导入：① 将文本内容粘贴到下方输入框，每行一条；② 直接选择 .txt / .csv 文件导入，每行一条，一次最多 20 条。格式：链接 [自定义短链] [备注]（空格分隔）</p>
                             <textarea id="batch-import" rows="3" placeholder="https://example.com/a my-link&#10;https://example.com/b"></textarea>
                             <div class="batch-import-ops">
                                 <label class="btn-ghost batch-op">选择 .txt / .csv 文件<input type="file" id="batch-import-file" accept=".txt,.csv,text/plain,text/csv" hidden></label>
@@ -980,9 +980,9 @@ export const indexHtml = buildPage({
         ${appFooterHtml()}
 </div>
 <dialog id="slug-warn-dialog">
-    <h2>${ICON_WARN}<span>自定义短链格式有误</span></h2>
+    <h2 class="danger-title">${ICON_WARN}<span>自定义短链格式有误</span></h2>
     <p class="dialog-text" id="slug-warn-text"></p>
-    <div class="row-btns" style="grid-template-columns: 1fr;">
+    <div class="row-btns single">
         <button type="button" class="btn-primary" id="slug-warn-ok">好的，我来修改</button>
     </div>
 </dialog>
@@ -1125,12 +1125,21 @@ export const indexHtml = buildPage({
                 [...batchRowsEl.querySelectorAll('.batch-row-edit')].forEach(function (row, i) {
                     row.querySelector('.bre-idx').textContent = String(i + 1);
                 });
+                // 满员状态同步：20 行上限在「添加一行」按钮上即时呈现（禁用 + 提示），
+                // 而不是等提交才报错；删行 / 清空 / 导入后自动恢复
+                const addBtn = document.getElementById('batch-add');
+                if (addBtn) {
+                    const full = batchRowsEl.querySelectorAll('.batch-row-edit').length >= 20;
+                    addBtn.disabled = full;
+                    addBtn.title = full ? '一次最多 20 条，请先删除部分行' : '';
+                }
             }
             function clearBatchRows() {
                 batchRowsEl.textContent = '';
                 batchAddRow(); batchAddRow(); batchAddRow();
             }
             document.getElementById('batch-add').addEventListener('click', function () {
+                if (batchRowsEl.querySelectorAll('.batch-row-edit').length >= 20) { showToast('一次最多 20 条'); return; }
                 batchAddRow();
                 const rows = batchRowsEl.querySelectorAll('.batch-row-edit');
                 rows[rows.length - 1].querySelector('.br-url').focus();
@@ -1703,7 +1712,7 @@ export const adminHtml = buildPage({
     </nav>
 </div>
 <dialog id="confirm-dialog">
-    <h2>${ICON_TRASH}<span id="confirm-title">删除短链</span></h2>
+    <h2 class="danger-title">${ICON_TRASH}<span id="confirm-title">删除短链</span></h2>
     <p class="dialog-text" id="confirm-text"></p>
     <div class="row-btns">
         <button type="button" class="btn-danger" id="confirm-ok">删除</button>
@@ -1711,7 +1720,7 @@ export const adminHtml = buildPage({
     </div>
 </dialog>
 <dialog id="edit-dialog">
-    <h2 style="color: var(--primary)">${ICON_PENCIL}<span>编辑短链</span></h2>
+    <h2>${ICON_PENCIL}<span>编辑短链</span></h2>
     <p class="dialog-text" id="edit-slug-label"></p>
     <div class="edit-form">
         <label for="edit-original">目标链接
@@ -1747,7 +1756,7 @@ export const adminHtml = buildPage({
     </div>
 </dialog>
 <dialog id="detail-dialog">
-    <h2 style="color: var(--primary)">${ICON_CHART}<span>访问详情</span></h2>
+    <h2>${ICON_CHART}<span>访问详情</span></h2>
     <p class="dialog-text" id="detail-slug"></p>
     <div id="detail-body"></div>
     <div class="row-btns detail-actions">
@@ -1757,7 +1766,7 @@ export const adminHtml = buildPage({
     </div>
 </dialog>
 <dialog id="qr-dialog">
-    <h2 style="color: var(--primary)">${ICON_QR}<span>短链二维码</span></h2>
+    <h2>${ICON_QR}<span>短链二维码</span></h2>
     <p class="dialog-text" id="qr-slug-label"></p>
     <div class="qr-view"><canvas id="qr-dialog-canvas" aria-label="短链二维码"></canvas></div>
     <div class="row-btns">
@@ -1768,14 +1777,14 @@ export const adminHtml = buildPage({
     </div>
 </dialog>
 <dialog id="token-dialog">
-    <h2 style="color: var(--primary)">${ICON_SHIELD}<span>API Token 已生成</span></h2>
+    <h2>${ICON_SHIELD}<span>API Token 已生成</span></h2>
     <p class="dialog-text token-warn">请立即复制并妥善保存：<b>API Token 仅在本次弹窗中完整显示一次，关闭后无法再次查看！</b></p>
     <div class="token-reveal">
         <code id="token-dialog-value"></code>
         <button type="button" class="btn-primary" id="token-dialog-copy">${ICON_COPY}<span>复制</span></button>
     </div>
     <p class="settings-hint" id="token-dialog-name"></p>
-    <div class="row-btns" style="grid-template-columns: 1fr;">
+    <div class="row-btns single">
         <button type="button" class="btn-ghost" id="token-dialog-close">我已保存，关闭</button>
     </div>
 </dialog>
@@ -3293,7 +3302,7 @@ export const adminHtml = buildPage({
                     list.textContent = '';
                     if (!tokens.length) {
                         const empty = document.createElement('div');
-                        empty.className = 'settings-hint';
+                        empty.className = 'empty empty-compact';
                         empty.textContent = '暂无 Token';
                         list.appendChild(empty);
                         return;
@@ -3397,12 +3406,12 @@ export function passwordHtml({ slug, error = '' } = {}) {
         <h1>密码保护链接</h1>
         <p class="auth-sub">该短链接设置了访问密码，验证通过后即可继续访问（24 小时内免重复输入）。</p>
         <div class="auth-divider"></div>
-        <form method="POST" action="/${slug}">
+        <form method="POST" action="/${slug}" class="auth-form">
             <div class="pw-wrap">
                 <input type="password" name="pw" placeholder="输入访问密码…" autocomplete="current-password" required autofocus>
             </div>
-            ${error ? `<div class="auth-error" style="display:block">${error}</div>` : ''}
-            <button type="submit" class="btn-primary" style="width:100%; margin-top:12px">${ICON_SHIELD}<span>继续访问</span></button>
+            ${error ? `<div class="auth-error on">${error}</div>` : ''}
+            <button type="submit" class="btn-primary">${ICON_SHIELD}<span>继续访问</span></button>
         </form>
     </div>
 </div>
