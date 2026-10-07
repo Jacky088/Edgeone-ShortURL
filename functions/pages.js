@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.9.2';
+const ASSET_VERSION = '3.9.3';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -2335,6 +2335,10 @@ export const adminHtml = buildPage({
                             statsNote.hidden = !listTruncated;
                             if (listTruncated) statsNote.textContent = '短链超过 2000 条，以上统计为前 2000 条的汇总近似。';
                         }
+                        // 异步校准回收站真实数量：列表接口不含回收站数据，本地 trashTotal
+                        // 可能因多标签页等外部操作漂移，静默拉取一次校正，保证
+                        // 工具栏「回收站 / 返回列表」角标与侧边栏菜单徽标始终一致
+                        syncTrashCount();
                     } else {
                         trashTotal = allLinks.length;
                         updateTrashBadge();
@@ -2718,7 +2722,7 @@ export const adminHtml = buildPage({
             });
 
             // 拉取回收站数量并刷新徽标（数组/截断对象两种形态兼容）；
-            // 启动时调用一次，徽标未初始化（trashTotal == null）时也用它兜底同步
+            // getLinks 列表分支会调用它校准（含启动首载），此处不再独立触发避免重复请求
             async function syncTrashCount() {
                 try {
                     const res = await authedFetch('/api/links?trash=1', { headers: authHeaders });
@@ -2729,7 +2733,6 @@ export const adminHtml = buildPage({
                     }
                 } catch (e) {}
             }
-            syncTrashCount();
 
             // ---------- 数据导出（CSV / JSON，来自当前内存数据） ----------
             function downloadFile(name, content, mime) {
