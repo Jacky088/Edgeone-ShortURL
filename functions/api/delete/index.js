@@ -3,7 +3,7 @@
 // 软删除会同步移除指向该 slug 的 URL 去重映射，使相同长链接可重新创建新短链。
 // 支持批量：body.slugs 为数组时逐条处理（≤100 条），单条 body.slug 行为保持不变。
 
-import { sha256, jsonResponse, getKV, isValidSlug, isReservedSlug, getSettings, checkAdmin } from '../../utils.js';
+import { sha256, jsonResponse, getKV, isValidSlug, isReservedSlug, getSettings, checkAdmin, USAGE_KEY } from '../../utils.js';
 
 // 单条删除核心：返回 { status, body }，单条与批量路径共用，保证响应形态一致
 async function deleteOne(DB, slug, purge, env, settings) {
@@ -104,6 +104,8 @@ export async function onRequest({ request, env = {} }) {
       results.push(item);
     }
     const ok = results.filter(r => r.success).length;
+    if (ok > 0)   // 数据已变更：失效存储用量缓存（设置页打开时检测到无缓存会自动补扫）
+  await DB.delete(USAGE_KEY).catch(() => {});
     return jsonResponse({ success: true, batch: true, results, ok, total: slugs.length });
   }
 
@@ -116,5 +118,7 @@ export async function onRequest({ request, env = {} }) {
   // 自定义保留字同样生效（与创建路径一致，需先读运行时设置）
   const settings = await getSettings(DB);
   const r = await deleteOne(DB, slug, purge, env, settings);
+  if (r.status === 200)   // 数据已变更：失效存储用量缓存（设置页打开时检测到无缓存会自动补扫）
+  await DB.delete(USAGE_KEY).catch(() => {});
   return jsonResponse(r.body, r.status);
 }

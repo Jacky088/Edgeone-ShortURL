@@ -4,7 +4,7 @@
 // slug 生成策略、URL 去重、域名白名单、每 IP 每日创建上限均来自运行时设置。
 
 import {
-  jsonResponse, getKV, isAllowedUrl, isValidSlug, isReservedSlug,
+  jsonResponse, getKV, isAllowedUrl, isValidSlug, isReservedSlug, USAGE_KEY,
   getSettings, generateSlug, isHostAllowed, getClientIp,
   sha256, checkCreateAuth, windowedKey
 } from '../../utils.js';
@@ -278,6 +278,8 @@ export async function onRequest({ request, env = {} }) {
     } catch (e) {}
   }
 
+  // 数据已变更：失效存储用量缓存（设置页打开时检测到无缓存会自动补扫）
+  await DB.delete(USAGE_KEY).catch(() => {});
   if (isBatch) {
     return jsonResponse({ results, errors });
   }

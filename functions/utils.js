@@ -14,6 +14,8 @@ export const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 // 运行时设置与 API Token 的 KV 键（cfg: 前缀已加入保留字，短链无法占用）
 export const SETTINGS_KEY = 'cfg:settings';
 export const TOKENS_KEY = 'cfg:tokens';
+// 存储用量统计缓存（数据变更后由各写操作端点失效，设置页打开时自动补扫）
+export const USAGE_KEY = 'cfg:usage';
 
 // 运行时设置默认值：管理后台「系统设置」页保存后即时生效，无需重新部署。
 // passwordHash 非空时覆盖环境变量 PASSWORD（口令以 SHA-256 哈希存储，不回传前端）；

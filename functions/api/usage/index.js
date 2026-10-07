@@ -5,9 +5,9 @@
 // 说明：EdgeOne 控制台口径的命名空间真实用量（含平台元数据 / 复制开销）没有开放给
 // 边缘函数的计量 API，本端点统计的是「本服务写入 KV 的数据」，供设置页展示。
 
-import { jsonResponse, getKV, checkAdmin, getClientIp, sha256, windowedKey } from '../../utils.js';
+import { jsonResponse, getKV, checkAdmin, getClientIp, sha256, windowedKey, USAGE_KEY } from '../../utils.js';
 
-const USAGE_KEY = 'cfg:usage';
+
 const MAX_KEYS = 20000;      // 扫描键数上限，超过则标记 partial（部分统计）
 const GET_CONCURRENCY = 50;  // 短链值并发读取批量（KV 读是廉价操作，50 并发毫秒级完成一批）
 const SCAN_LIMIT_PER_MIN = 5; // 全量扫描频控：每 IP 每分钟最多 5 次（防按钮连点/被盗 Token 刷读配额）

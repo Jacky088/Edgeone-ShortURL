@@ -2,7 +2,7 @@
 // 编辑短链：目标链接、备注、有效期、次数上限、访问密码。
 // 目标链接变更时同步维护 URL 去重映射（移除旧映射，空闲时回填新映射）。
 
-import { sha256, jsonResponse, getKV, isAllowedUrl, isValidSlug, isReservedSlug, getSettings, isHostAllowed, checkAdmin } from '../../utils.js';
+import { sha256, jsonResponse, getKV, isAllowedUrl, isValidSlug, isReservedSlug, getSettings, isHostAllowed, checkAdmin, USAGE_KEY } from '../../utils.js';
 
 export async function onRequest({ request, env = {} }) {
   if (request.method !== 'POST') {
@@ -120,6 +120,8 @@ export async function onRequest({ request, env = {} }) {
   }
 
   await DB.put(slug, JSON.stringify(linkData));
+  // 数据已变更：失效存储用量缓存（设置页打开时检测到无缓存会自动补扫）
+  await DB.delete(USAGE_KEY).catch(() => {});
 
   const { pwdHash, ...rest } = linkData;
   return jsonResponse({ slug, ...rest, hasPassword: !!pwdHash });
