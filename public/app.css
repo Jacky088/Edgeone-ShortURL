@@ -1,5 +1,8 @@
 :root {
   /* 色板：沿用设计稿 —— 深科技蓝 #1A5DE0 + 青绿 #26C4A0 */
+  color-scheme: light;
+  /* 下拉自绘箭头（chevron，muted 色）——select 统一外观用 */
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235d6d92' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   --primary: #1a5de0; --primary-2: #2c6bff; --primary-deep: #1246b8; --primary-soft: #e8f2fc;
   --teal: #26c4a0; --teal-soft: #e0f7f1;
   --bg-1: #eef4fe; --bg-2: #e2ecfb; --bg-blob-1: rgba(26, 93, 224, .16); --bg-blob-2: rgba(38, 196, 160, .16); --bg-blob-3: rgba(124, 92, 246, .12);
@@ -19,6 +22,9 @@
   --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Roboto Mono", monospace;
 }
 [data-theme="dark"] {
+  color-scheme: dark;
+  /* 深色主题下 chevron 用深色主题的 muted 色 */
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2396a6cc' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   --primary: #4f8bff; --primary-2: #6ea3ff; --primary-deep: #5c93f8; --primary-soft: rgba(79, 139, 255, .16);
   --teal: #34d9b4; --teal-soft: rgba(52, 217, 180, .14);
   --bg-1: #0a1026; --bg-2: #0e1733; --bg-blob-1: rgba(53, 103, 255, .26); --bg-blob-2: rgba(52, 217, 180, .15); --bg-blob-3: rgba(124, 120, 255, .18);
@@ -80,6 +86,10 @@ button, a, input, .nav-item { touch-action: manipulation; }
 .icon-btn:active { transform: scale(.94); }
 .icon-btn svg { width: 20px; height: 20px; }
 .icon-btn .icon-github { width: 19px; height: 19px; fill: currentColor; }
+/* 头部「关于」图标按钮：宽屏隐藏（侧边栏已有「关于项目」），
+   ≤860px 侧边栏退场、底部导航不含关于项，由它在 GitHub 图标后补位 */
+.icon-btn.about-top { display: none; }
+@media (max-width: 860px) { .icon-btn.about-top { display: inline-flex; } }
 .text-btn { height: 42px; padding: 0 15px; border-radius: 12px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: .875rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: background-color .18s, border-color .18s; text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .text-btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
 .text-btn svg { width: 16px; height: 16px; }
@@ -98,6 +108,8 @@ html[data-theme="dark"] #icon-moon { display: none; }
 .nav-item.active { background: var(--nav-active-bg); color: var(--nav-active-text); }
 .nav-item.active::before { content: ""; position: absolute; left: 0; top: 20%; bottom: 20%; width: 3px; border-radius: 3px; background: var(--primary); }
 .nav-sep { height: 1px; margin: 6px 10px; background: var(--border); flex: none; }
+/* 侧边栏「回收站」菜单项的计数徽标：推到行尾 */
+.nav-item .nav-trash-count { margin-left: auto; }
 
 /* 底部导航（管理后台）：仅小窗口 / 移动端显示（≤860px），图标在上文字在下；
    各项 flex 均分 + 文本省略，不会横向溢出 */
@@ -522,6 +534,19 @@ dialog::backdrop { background: var(--scrim); }
 .chip { height: 28px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--muted); font-size: .74rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: color .15s, border-color .15s, background-color .15s; -webkit-tap-highlight-color: transparent; }
 .chip:hover { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
 .detail-section { margin-top: 14px; }
+
+/* ---------- 下拉选择统一美化（tb-select / opts-grid / settings / edit-form 四档共用） ---------- */
+/* 1) 原生弹层跟随主题：color-scheme 已在 :root / dark 声明，Chromium/Firefox 深色主题下拉面板自动深色；
+   2) 自绘 chevron 箭头替代各浏览器原生箭头，颜色随主题（--select-arrow）；
+   3) option 配色兜底（Firefox 生效）。高度仍按分档体系（42/40/38），视觉语言统一 */
+.tb-select, .opts-grid select, .settings-card select, .edit-form select {
+  background-image: var(--select-arrow);
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px 12px;
+  padding-right: 30px;
+}
+select option { background: var(--surface); color: var(--text); }
 
 /* 主题切换过渡：仅在切换瞬间由 JS 挂上 theme-anim 类，避免首屏闪烁与日常动画冲突 */
 html.theme-anim * { transition: background-color .3s ease, color .3s ease, border-color .3s ease, box-shadow .3s ease; }

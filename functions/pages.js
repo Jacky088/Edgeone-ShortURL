@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.8.7';
+const ASSET_VERSION = '3.9.0';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -643,12 +643,14 @@ function loginActionsHtml() {
 }
 
 // 生成已登录状态的动作区（管理后台页使用；主页动作区因含条件渲染的管理入口而单独组装）
-// 「返回前台」固定在动作区第一位
+// 「返回前台」固定在动作区第一位；「关于」图标按钮仅在侧边栏隐藏的窄屏显示
+// （宽屏由侧边栏的「关于项目」承担，窄屏底部导航已移除关于项，由它补位）
 function authedActionsHtml({ admin = false, backHome = false } = {}) {
   return `<div class="top-actions">
       ${backHome ? `<a class="text-btn" href="/">${ICON_ARROW}<span>返回前台</span></a>` : ''}
       ${admin ? `<a class="text-btn goto-admin" href="#">${ICON_SHIELD}<span>管理后台</span></a>` : ''}
       ${githubHtml()}
+      <button type="button" class="icon-btn open-about about-top" aria-label="关于项目">${ICON_INFO}</button>
       ${themeToggleHtml()}
       <button type="button" class="text-btn" id="logout-btn">${ICON_POWER}<span>注销</span></button>
     </div>`;
@@ -1513,6 +1515,7 @@ export const adminHtml = buildPage({
         <!-- 桌面侧边栏菜单（>860px 显示；小窗口/移动端由页尾 .footer-nav 接管） -->
         <nav class="sidebar" aria-label="主导航">
             <button type="button" class="nav-item active" aria-current="page" data-view="list">${ICON_LIST}<span>短链列表</span></button>
+            <button type="button" class="nav-item" data-view="trash">${ICON_TRASH}<span>回收站</span><span class="badge nav-trash-count" hidden>0</span></button>
             <button type="button" class="nav-item" data-view="stats">${ICON_CHART}<span>访问统计</span></button>
             <button type="button" class="nav-item" data-view="settings">${ICON_SLIDERS}<span>系统设置</span></button>
             <div class="nav-sep" aria-hidden="true"></div>
@@ -1704,11 +1707,12 @@ export const adminHtml = buildPage({
         </main>
     </div>
     ${appFooterHtml()}
+    <!-- 底部导航（≤860px）：不含关于项——右上角 GitHub 后的「关于」图标按钮补位 -->
     <nav class="footer-nav" aria-label="底部导航">
         <button type="button" class="nav-item active" aria-current="page" data-view="list">${ICON_LIST}<span>短链列表</span></button>
+        <button type="button" class="nav-item" data-view="trash">${ICON_TRASH}<span>回收站</span></button>
         <button type="button" class="nav-item" data-view="stats">${ICON_CHART}<span>访问统计</span></button>
         <button type="button" class="nav-item" data-view="settings">${ICON_SLIDERS}<span>系统设置</span></button>
-        <button type="button" class="nav-item open-about">${ICON_INFO}<span>关于项目</span></button>
     </nav>
 </div>
 <dialog id="confirm-dialog">
@@ -2414,6 +2418,11 @@ export const adminHtml = buildPage({
             }
 
             function updateTrashBadge() {
+                // 侧边栏「回收站」菜单项同步计数徽标（trashTotal 未知时隐藏）
+                document.querySelectorAll('.nav-trash-count').forEach(function (b) {
+                    b.hidden = !(trashTotal > 0);
+                    b.textContent = String(trashTotal || 0);
+                });
                 if (!trashCount) return;
                 if (trashTotal == null) { trashCount.hidden = true; return; }
                 trashCount.hidden = trashTotal === 0;
@@ -2479,6 +2488,10 @@ export const adminHtml = buildPage({
                     }).catch(function () { showToast('复制失败，请手动复制', 'error'); });
                     return;
                 }
+                // 恢复按钮带 row-edit 类（复用样式），必须先于 .row-edit 详情分支判断，
+                // 否则回收站点「恢复」会被详情分支拦截（点击无响应、误开详情弹窗）
+                const restoreBtn = e.target.closest('.row-restore');
+                if (restoreBtn) { doRestore(restoreBtn.dataset.slug); return; }
                 const actBtn = e.target.closest('.row-edit');
                 if (actBtn) {
                     const link = allLinks.find(function (l) { return l.slug === actBtn.dataset.slug; });
@@ -2495,8 +2508,6 @@ export const adminHtml = buildPage({
                     }
                     return;
                 }
-                const restoreBtn = e.target.closest('.row-restore');
-                if (restoreBtn) { doRestore(restoreBtn.dataset.slug); return; }
                 const btn = e.target.closest('.delete-btn');
                 if (btn) requestDelete(btn.dataset.slug, btn.dataset.purge === '1');
             });
@@ -2665,12 +2676,14 @@ export const adminHtml = buildPage({
             scheduleToolbarSync();
 
             // ---------- 回收站切换 ----------
-            trashToggle.addEventListener('click', async function () {
-                viewMode = viewMode === 'list' ? 'trash' : 'list';
+            // 工具栏「回收站」按钮与侧边栏/底部导航的「回收站」菜单项共用同一模式切换；
+            // applyTrashMode 由两处共同调用，切换后 syncTrashNav 保证菜单激活态一致
+            async function applyTrashMode(on) {
+                viewMode = on ? 'trash' : 'list';
                 const label = trashToggle.querySelector('span');
-                if (label) label.textContent = viewMode === 'trash' ? '返回列表' : '回收站';
-                trashToggle.classList.toggle('on', viewMode === 'trash');
-                trashToggle.setAttribute('aria-pressed', viewMode === 'trash' ? 'true' : 'false');
+                if (label) label.textContent = on ? '返回列表' : '回收站';
+                trashToggle.classList.toggle('on', on);
+                trashToggle.setAttribute('aria-pressed', on ? 'true' : 'false');
                 searchInput.value = '';
                 filterText = '';
                 filterStatus = 'all';
@@ -2678,9 +2691,22 @@ export const adminHtml = buildPage({
                 // 切换视图：清空多选并同步批量条按钮显隐
                 clearSelection();
                 // 批量按钮仅回收站视图有意义
-                document.querySelectorAll('.trash-only').forEach(function (b) { b.hidden = viewMode !== 'trash'; });
+                document.querySelectorAll('.trash-only').forEach(function (b) { b.hidden = !on; });
                 scheduleToolbarSync();
                 await getLinks();
+                syncTrashNav();
+            }
+            // 菜单激活态与回收站模式同步：trash 模式下「回收站」菜单点亮、「短链列表」熄灭
+            function syncTrashNav() {
+                const current = viewMode === 'trash' ? 'trash' : currentView;
+                document.querySelectorAll('.nav-item[data-view]').forEach(function (x) {
+                    const active = x.dataset.view === current;
+                    x.classList.toggle('active', active);
+                    if (active) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current');
+                });
+            }
+            trashToggle.addEventListener('click', async function () {
+                await applyTrashMode(viewMode !== 'trash');
             });
 
             // 拉取回收站数量并刷新徽标（数组/截断对象两种形态兼容）；
@@ -3080,9 +3106,14 @@ export const adminHtml = buildPage({
                 }
             }
 
-            // 底部导航切换「短链列表 / 访问统计 / 系统设置」，支持 ?view= 深链直达
+            // 底部导航切换「短链列表 / 回收站 / 访问统计 / 系统设置」，支持 ?view= 深链直达。
+            // 回收站与列表共用视图容器：v='trash' 时显示列表视图并切到回收站模式，
+            // v='list' 时切回列表模式；菜单激活态由 syncTrashNav 在模式切换后校正
+            let currentView = 'list';
             function setView(v) {
-                viewList.hidden = v !== 'list';
+                currentView = v;
+                const showList = v === 'list' || v === 'trash';
+                viewList.hidden = !showList;
                 viewStats.hidden = v !== 'stats';
                 document.getElementById('view-settings').hidden = v !== 'settings';
                 document.querySelectorAll('.nav-item[data-view]').forEach(function (x) {
@@ -3090,6 +3121,10 @@ export const adminHtml = buildPage({
                     x.classList.toggle('active', active);
                     if (active) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current');
                 });
+                // 回收站模式与菜单不一致时统一（菜单点「短链列表」退出回收站、点「回收站」进入）
+                if ((v === 'trash') !== (viewMode === 'trash')) {
+                    applyTrashMode(v === 'trash');
+                }
                 if (v === 'stats' && Date.now() - siteStatsLoadedAt > 60000) {
                     loadSiteStats();
                 }
@@ -3157,7 +3192,7 @@ export const adminHtml = buildPage({
             let initialView = 'list';
             try {
                 const requested = new URLSearchParams(window.location.search).get('view');
-                if (requested === 'stats' || requested === 'settings') initialView = requested;
+                if (requested === 'stats' || requested === 'settings' || requested === 'trash') initialView = requested;
             } catch (err) {}
             setView(initialView);
 

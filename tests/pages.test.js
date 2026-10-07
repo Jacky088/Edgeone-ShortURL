@@ -150,6 +150,36 @@ test('管理后台：API Token 弹窗式生成——名称必填、仅显示一�
   assert.ok(adminHtml.includes('名称必填；Token 仅在生成弹窗中完整显示一次'), '卡片提示应说明新逻辑');
 });
 
+test('管理后台：导航含回收站入口，与工具栏切换状态同步', () => {
+  // 侧边栏 + 底部导航各一个回收站菜单项
+  assert.ok((adminHtml.match(/data-view="trash"/g) || []).length === 2, '侧边栏与底部导航均应有回收站菜单项');
+  assert.ok(adminHtml.includes('<span>回收站</span>'), '菜单项文案应为回收站');
+  // 侧边栏菜单项带计数徽标（与工具栏徽标同步更新）
+  assert.ok(adminHtml.includes('nav-trash-count'), '侧边栏回收站应有计数徽标');
+  assert.ok(adminHtml.includes("querySelectorAll('.nav-trash-count')"), 'updateTrashBadge 应同步导航徽标');
+  // 模式切换统一走 applyTrashMode，菜单激活态由 syncTrashNav 校正
+  assert.ok(adminHtml.includes('async function applyTrashMode'), '回收站模式切换应统一入口');
+  assert.ok(adminHtml.includes('function syncTrashNav'), '应有菜单激活态同步');
+  assert.ok(adminHtml.includes("applyTrashMode(v === 'trash')"), 'setView 应支持 trash 视图切换');
+  // 深链：?view=trash 直达回收站
+  assert.ok(adminHtml.includes("requested === 'stats' || requested === 'settings' || requested === 'trash'"), '?view=trash 应可深链');
+});
+
+test('管理后台：关于入口响应式——宽屏侧边栏、窄屏头部图标（底部导航不含关于）', () => {
+  // 宽屏：侧边栏保留「关于项目」
+  assert.ok((adminHtml.match(/class="nav-item open-about"/g) || []).length === 1, '侧边栏应保留唯一的关于项目菜单项');
+  // 窄屏补位：头部 GitHub 图标后的关于图标按钮（icon-btn 风格一致）
+  assert.ok(adminHtml.includes('class="icon-btn open-about about-top"'), '头部应有关于图标按钮（GitHub 后）');
+  assert.ok(adminHtml.includes('aria-label="关于项目"'), '关于图标按钮应有可访问名');
+  // 底部导航移除关于项：footer-nav 内不含 open-about
+  const footerNav = adminHtml.slice(adminHtml.indexOf('<nav class="footer-nav"'));
+  assert.ok(!footerNav.slice(0, footerNav.indexOf('</nav>')).includes('open-about'), '底部导航不应再有关于项目');
+  // 显隐规则：宽屏隐藏、≤860px 显示（与侧边栏退场断点一致）
+  const css = fs.readFileSync(new URL('../public/app.css', import.meta.url), 'utf8');
+  assert.ok(css.includes('.icon-btn.about-top { display: none; }'), '宽屏应隐藏头部关于按钮');
+  assert.ok(css.includes('@media (max-width: 860px) { .icon-btn.about-top { display: inline-flex; } }'), '≤860px 应显示头部关于按钮');
+});
+
 test('管理后台：审计修复项——时区偏移设置、加载失败禁保存、密码门限流配套', () => {
   assert.ok(adminHtml.includes('id="set-tz"'), '应有统计日界时区偏移设置项');
   assert.ok(adminHtml.includes('tzOffsetMin: Number(document.getElementById(\'set-tz\').value)'), '保存应提交时区偏移');
