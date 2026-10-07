@@ -94,6 +94,9 @@ button, a, input, .nav-item { touch-action: manipulation; }
 .text-btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
 .text-btn svg { width: 16px; height: 16px; }
 .text-btn:disabled { opacity: .6; cursor: not-allowed; }
+/* 蓝底导航按钮（管理后台 / 返回前台）：与「生成短链」主按钮同款蓝色渐变 */
+.text-btn.btn-blue { background: linear-gradient(135deg, var(--primary-2), var(--primary)); color: #fff; border-color: transparent; box-shadow: 0 8px 18px -10px rgba(26, 93, 224, .55); }
+.text-btn.btn-blue:hover { filter: brightness(1.06); color: #fff; border-color: transparent; }
 
 /* 主题图标初始显隐（避免闪烁） */
 html[data-theme="light"] #icon-sun { display: none; }
@@ -109,7 +112,7 @@ html[data-theme="dark"] #icon-moon { display: none; }
 .nav-item.active::before { content: ""; position: absolute; left: 0; top: 20%; bottom: 20%; width: 3px; border-radius: 3px; background: var(--primary); }
 .nav-sep { height: 1px; margin: 6px 10px; background: var(--border); flex: none; }
 /* 侧边栏「回收站」菜单项的计数徽标：推到行尾 */
-.nav-item .nav-trash-count { margin-left: auto; }
+.nav-item .nav-trash-count, .nav-item .nav-list-count { margin-left: auto; }
 
 /* 底部导航（管理后台）：仅小窗口 / 移动端显示（≤860px），图标在上文字在下；
    各项 flex 均分 + 文本省略，不会横向溢出 */
@@ -460,6 +463,8 @@ dialog::backdrop { background: var(--scrim); }
 .row-restore { color: var(--success); border-color: var(--success); }
 .row-restore:hover { color: var(--success); border-color: var(--success); background: var(--success-bg); }
 .trash-toggle.on { color: var(--nav-active-text); border-color: var(--primary); background: var(--nav-active-bg); }
+/* 激活态（返回列表）下徽标底色与按钮底色相同会隐形：改白底保持胶囊观感 */
+.trash-toggle.on .badge { background: var(--surface); color: var(--primary); }
 
 /* 多选列与批量操作条 */
 .col-check { width: 36px; text-align: center; white-space: nowrap; }

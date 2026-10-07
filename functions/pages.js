@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.9.1';
+const ASSET_VERSION = '3.9.2';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -632,7 +632,7 @@ function appFooterHtml() {
 }
 
 // 前台顶栏「管理后台」入口：由服务端按 ADMIN_PATH 是否配置决定渲染（__ADMIN_TOP_BUTTON__ 占位符）
-export const ADMIN_BUTTON_HTML = `<a class="text-btn goto-admin" href="#">${ICON_SHIELD}<span>管理后台</span></a>`;
+export const ADMIN_BUTTON_HTML = `<a class="text-btn btn-blue goto-admin" href="#">${ICON_SHIELD}<span>管理后台</span></a>`;
 
 // 登录页右上角动作区（不设「管理后台」入口：登录成功即进入系统，该入口在登录页只会造成困惑）
 function loginActionsHtml() {
@@ -647,7 +647,7 @@ function loginActionsHtml() {
 // （宽屏由侧边栏的「关于项目」承担，窄屏底部导航已移除关于项，由它补位）
 function authedActionsHtml({ admin = false, backHome = false } = {}) {
   return `<div class="top-actions">
-      ${backHome ? `<a class="text-btn" href="/">${ICON_ARROW}<span>返回前台</span></a>` : ''}
+      ${backHome ? `<a class="text-btn btn-blue" href="/">${ICON_ARROW}<span>返回前台</span></a>` : ''}
       ${admin ? `<a class="text-btn goto-admin" href="#">${ICON_SHIELD}<span>管理后台</span></a>` : ''}
       ${githubHtml()}
       <button type="button" class="icon-btn open-about about-top" aria-label="关于项目">${ICON_INFO}</button>
@@ -1514,7 +1514,7 @@ export const adminHtml = buildPage({
     <div class="app-body">
         <!-- 桌面侧边栏菜单（>860px 显示；小窗口/移动端由页尾 .footer-nav 接管） -->
         <nav class="sidebar" aria-label="主导航">
-            <button type="button" class="nav-item active" aria-current="page" data-view="list">${ICON_LIST}<span>短链列表</span></button>
+            <button type="button" class="nav-item active" aria-current="page" data-view="list">${ICON_LIST}<span>短链列表</span><span class="badge nav-list-count" hidden>0</span></button>
             <button type="button" class="nav-item" data-view="trash">${ICON_TRASH}<span>回收站</span><span class="badge nav-trash-count" hidden>0</span></button>
             <button type="button" class="nav-item" data-view="stats">${ICON_CHART}<span>访问统计</span></button>
             <button type="button" class="nav-item" data-view="settings">${ICON_SLIDERS}<span>系统设置</span></button>
@@ -2121,6 +2121,13 @@ export const adminHtml = buildPage({
                     tbody.appendChild(row);
                 });
                 linkCount.textContent = String(filtered.length);
+                // 侧边栏「短链列表」徽标同步活跃短链总数（回收站模式下 allLinks 是回收站数据，不更新）
+                if (viewMode === 'list') {
+                    document.querySelectorAll('.nav-list-count').forEach(function (b) {
+                        b.hidden = allLinks.length === 0;
+                        b.textContent = String(allLinks.length);
+                    });
+                }
             }
 
             // ---------- 多选与批量操作条 ----------
@@ -2680,6 +2687,7 @@ export const adminHtml = buildPage({
             // applyTrashMode 由两处共同调用，切换后 syncTrashNav 保证菜单激活态一致
             async function applyTrashMode(on) {
                 viewMode = on ? 'trash' : 'list';
+                currentView = viewMode; // 同步视图状态：工具栏切换后 syncTrashNav 不会用旧 currentView 把高亮滞留在回收站
                 const label = trashToggle.querySelector('span');
                 if (label) label.textContent = on ? '返回列表' : '回收站';
                 trashToggle.classList.toggle('on', on);
