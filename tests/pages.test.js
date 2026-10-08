@@ -182,8 +182,10 @@ test('管理后台：窄窗口工具栏溢出收进「更多」菜单；窄屏�
   // 窄屏单条动线：目标链接 → 自定义短链 → 生成按钮（提交键在下方）；自定义框右缘与链接框对齐
   assert.ok(indexHtml.includes('mode-pane pane-single-stack'), '单条面板应有窄屏堆叠类');
   assert.ok(css.includes('.pane-single-stack { display: flex; flex-direction: column; gap: 12px; }'), '窄屏单条应为纵向堆叠（自定义框与链接框同宽）');
-  assert.ok(css.includes('.pane-single-stack #submit-btn { order: 3; width: 100%; height: 48px; }'), '窄屏生成按钮应排到自定义短链下方');
-  assert.ok(css.includes('.pane-single-stack #slug-input { order: 2; width: 100%; min-width: 0; flex: none; }'), '窄屏自定义框应满宽（右缘与链接框自然对齐）');
+  assert.ok(css.includes('.pane-single-stack #submit-btn { order: 4; width: 100%; height: 48px; }'), '窄屏生成按钮应排到自定义短链下方');
+  assert.ok(css.includes('.pane-single-stack #slug-input { order: 3; width: 100%; min-width: 0; flex: none; }'), '窄屏自定义框应满宽（右缘与链接框自然对齐）');
+  // 目标链接标签（桌面在链接框左侧，窄屏为其上方小标题，与自定义短链同构）
+  assert.ok(indexHtml.includes('<label class="slug-label" for="url-input">目标链接</label>'), '链接框前应有「目标链接」标签');
 });
 
 test('管理后台：设置分组标题为卡内竖条组头（不再用 fieldset legend 骑线）', () => {

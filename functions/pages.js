@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.9.14';
+const ASSET_VERSION = '3.9.15';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/EdgeOne-ShortURL';
@@ -911,16 +911,18 @@ export const indexHtml = buildPage({
                     </div>
                 </div>
                 <form id="link-form" novalidate>
-                    <!-- 单条模式面板：窄屏加 pane-single-stack 类切换为 链接→自定义→按钮 三行动线 -->
+                    <!-- 单条模式面板：桌面 链接行→自定义+按钮行 两行；窄屏 stack 类切为
+                         目标链接→自定义短链→生成按钮 三行（与自定义布局同构） -->
                     <div class="mode-pane pane-single-stack" id="pane-single" role="tabpanel" aria-label="单条创建">
                         <div class="url-row">
+                            <label class="slug-label" for="url-input">目标链接</label>
                             <input type="url" id="url-input" placeholder="https://www.example.com/very-long-url" autocomplete="url" enterkeyhint="go" required>
-                            <button type="submit" class="btn-primary" id="submit-btn">${ICON_CHAIN}<span>生成短链</span></button>
                         </div>
                         <div class="slug-row">
                             <label class="slug-label" for="slug-input">自定义短链</label>
                             <input type="text" id="slug-input" maxlength="64" placeholder="留空则随机生成" autocomplete="off" spellcheck="false">
                             <span class="slug-count" id="slug-count"></span>
+                            <button type="submit" class="btn-primary" id="submit-btn">${ICON_CHAIN}<span>生成短链</span></button>
                         </div>
                         <p class="hint-line">仅支持 http/https 开头的完整链接；自定义短链可使用字母、数字、短横线、下划线，最长 64 位。</p>
                     </div>
