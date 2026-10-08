@@ -165,6 +165,20 @@ test('管理后台：导航含回收站入口，与工具栏切换状态同步',
   assert.ok(adminHtml.includes("requested === 'stats' || requested === 'settings' || requested === 'trash'"), '?view=trash 应可深链');
 });
 
+test('管理后台：列表徽标与回收站徽标数据源分离，回收站模式下列表数异步校准', () => {
+  // 列表徽标使用独立的 listTotal 数据源，回收站模式下 allLinks 是回收站数据不得直接上徽标
+  assert.ok(adminHtml.includes('let listTotal = 0;'), '应有列表总数独立状态');
+  assert.ok(adminHtml.includes('if (viewMode === \'list\') listTotal = allLinks.length;'), '仅列表视图用 allLinks 更新 listTotal');
+  assert.ok(adminHtml.includes('async function syncListCount'), '回收站视图应异步校准列表真实数量');
+  assert.ok(adminHtml.includes('function syncListBadges'), '应有列表徽标统一刷新入口');
+  assert.ok(adminHtml.includes("authedFetch('/api/links', { headers: authHeaders })"), 'syncListCount 应拉取列表接口');
+  // 回收站内恢复/彻底删除会改变活跃列表数：listTotal 本地联动 + 徽标即时刷新
+  assert.ok(adminHtml.includes('if (listTotal != null) { listTotal += 1; }'), '恢复后 listTotal 应联动 +1');
+  assert.ok(adminHtml.includes('if (wasPurge && listTotal > 0) { listTotal -= 1; syncListBadges(); }'), '彻底删除后 listTotal 应联动 -1');
+  // 列表徽标同步更新侧边栏（querySelectorAll 覆盖侧边栏与底部导航两处）
+  assert.ok(adminHtml.includes("querySelectorAll('.nav-list-count')"), '列表徽标应同步侧边栏与底部导航');
+});
+
 test('管理后台：关于入口响应式——宽屏侧边栏、窄屏头部图标（底部导航不含关于）', () => {
   // 宽屏：侧边栏保留「关于项目」
   assert.ok((adminHtml.match(/class="nav-item open-about"/g) || []).length === 1, '侧边栏应保留唯一的关于项目菜单项');

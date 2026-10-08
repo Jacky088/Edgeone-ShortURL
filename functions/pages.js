@@ -1865,6 +1865,9 @@ export const adminHtml = buildPage({
             let viewMode = 'list';
             let lastActive = [];
             let trashTotal = null;
+            // 活跃短链总数：回收站模式下 allLinks 承载的是回收站数据，列表徽标用它兜底，
+            // 避免工具栏「返回列表」按钮误用回收站条数
+            let listTotal = 0;
             let settingsLoaded = false;
             // 客户端分页：一次渲染前 PAGE_SIZE 条，「加载更多」追加，避免大列表全量渲染卡顿
             const PAGE_SIZE = 50;
@@ -2121,12 +2124,24 @@ export const adminHtml = buildPage({
                     tbody.appendChild(row);
                 });
                 linkCount.textContent = String(filtered.length);
-                // 侧边栏「短链列表」徽标同步活跃短链总数（回收站模式下 allLinks 是回收站数据，不更新）
-                if (viewMode === 'list') {
-                    document.querySelectorAll('.nav-list-count').forEach(function (b) {
-                        b.hidden = allLinks.length === 0;
-                        b.textContent = String(allLinks.length);
-                    });
+                // 侧边栏「短链列表」徽标：始终用活跃短链总数（回收站模式下 allLinks
+                // 是回收站数据，改用 listTotal 兜底，工具栏「返回列表」徽标同源）
+                if (viewMode === 'list') listTotal = allLinks.length;
+                syncListBadges();
+            }
+
+            // 列表徽标统一刷新入口：侧边栏 + 底部导航的「短链列表」徽标都取 listTotal；
+            // 回收站视图下工具栏按钮是「返回列表」，其徽标也取列表条数（与「回收站」
+            // 按钮徽标取回收站条数对称——徽标始终表示切换目标视图的条数）
+            function syncListBadges() {
+                document.querySelectorAll('.nav-list-count').forEach(function (b) {
+                    b.hidden = listTotal === 0;
+                    b.textContent = String(listTotal);
+                });
+                if (viewMode === 'trash' && trashCount) {
+                    trashCount.hidden = listTotal === 0;
+                    trashCount.textContent = String(listTotal);
+                    scheduleToolbarSync();
                 }
             }
 
@@ -2342,6 +2357,9 @@ export const adminHtml = buildPage({
                     } else {
                         trashTotal = allLinks.length;
                         updateTrashBadge();
+                        // 异步校准列表真实数量：回收站视图不加载列表数据，
+                        // 本地 listTotal 可能因他处新建/删除短链漂移
+                        syncListCount();
                     }
                     renderList();
                     renderStats(lastActive);
@@ -2404,6 +2422,9 @@ export const adminHtml = buildPage({
                         trashTotal = Math.max(0, trashTotal - 1);
                         updateTrashBadge();
                     }
+                    // 彻底删除（任意视图）都会让活跃列表 -1；本地先行校准，
+                    // 随后 getLinks 的 syncListCount 会用服务端数据兜底
+                    if (wasPurge && listTotal > 0) { listTotal -= 1; syncListBadges(); }
                     renderList();
                     renderStats(lastActive);
                     updateNote();
@@ -2421,7 +2442,9 @@ export const adminHtml = buildPage({
                     }
                     allLinks = allLinks.filter(function (l) { return l.slug !== slug; });
                     trashTotal = Math.max(0, trashTotal - 1);
+                    if (listTotal != null) { listTotal += 1; }
                     updateTrashBadge();
+                    syncListBadges();
                     renderList();
                     updateNote();
                     showToast('已恢复 /' + slug);
@@ -2436,9 +2459,13 @@ export const adminHtml = buildPage({
                 });
                 if (!trashCount) return;
                 if (trashTotal == null) { trashCount.hidden = true; return; }
-                trashCount.hidden = trashTotal === 0;
-                trashCount.textContent = String(trashTotal);
-                scheduleToolbarSync(); // 徽标显隐会改变「回收站」按钮宽度，可能触发工具栏溢出
+                // 列表视图：徽标 = 回收站条数；回收站视图（按钮变「返回列表」）：
+                // 徽标由 syncListBadges 按 listTotal 刷新，这里不覆盖
+                if (viewMode !== 'trash') {
+                    trashCount.hidden = trashTotal === 0;
+                    trashCount.textContent = String(trashTotal);
+                }
+                scheduleToolbarSync(); // 徽标显隐会改变按钮宽度，可能触发工具栏溢出
             }
 
             // ---------- 回收站批量操作（恢复全部 / 清空回收站） ----------
@@ -2704,6 +2731,9 @@ export const adminHtml = buildPage({
                 clearSelection();
                 // 批量按钮仅回收站视图有意义
                 document.querySelectorAll('.trash-only').forEach(function (b) { b.hidden = !on; });
+                // 两个视图的工具栏徽标数据源不同（回收站条数 / 列表条数），切换后立即刷新
+                updateTrashBadge();
+                syncListBadges();
                 scheduleToolbarSync();
                 await getLinks();
                 syncTrashNav();
@@ -2730,6 +2760,20 @@ export const adminHtml = buildPage({
                         const payload = await res.json();
                         trashTotal = Array.isArray(payload) ? payload.length : ((payload && payload.links) || []).length;
                         updateTrashBadge();
+                    }
+                } catch (e) {}
+            }
+
+            // 拉取活跃短链数量并刷新列表徽标：回收站视图下工具栏按钮显示「返回列表」，
+            // 其徽标必须反映列表真实条数（本地 listTotal 会因他处操作漂移），与
+            // syncTrashCount 对称
+            async function syncListCount() {
+                try {
+                    const res = await authedFetch('/api/links', { headers: authHeaders });
+                    if (res.ok) {
+                        const payload = await res.json();
+                        listTotal = Array.isArray(payload) ? payload.length : ((payload && payload.links) || []).length;
+                        syncListBadges();
                     }
                 } catch (e) {}
             }
@@ -3439,6 +3483,7 @@ export const adminHtml = buildPage({
                 finally { btn.disabled = false; }
             });
 
+            // 深链 ?view=trash 时首载即回收站视图：列表徽标先置 0，待 syncListCount 校准
             getLinks();
         })();
 `
