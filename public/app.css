@@ -400,13 +400,31 @@ dialog::backdrop { background: var(--scrim); }
 .eye-btn svg { width: 18px; height: 18px; }
 
 /* ---------- 生成结果 + 二维码 ---------- */
+/* 结果卡与创建卡同宽：同在 .content 流内自然等宽，不做限宽居中 */
 .result-flex { display: flex; gap: 14px; align-items: stretch; }
-.result-flex .result-box { flex: 1; min-width: 0; }
-.result-qr { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
-.result-qr canvas { display: block; width: 108px; height: 108px; border-radius: 6px; image-rendering: pixelated; }
+.result-flex .result-box { flex: 1; min-width: 0; flex-direction: column; align-items: stretch; gap: 12px; justify-content: center; padding: 16px 18px; }
+.result-meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.result-label { font-size: .72rem; font-weight: 700; letter-spacing: .04em; color: var(--faint); }
+.result-flex .copy-btn { align-self: flex-end; }
+.result-qr { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 0; box-shadow: var(--shadow-sm); }
+.result-qr canvas { display: block; width: 124px; height: 124px; border-radius: 8px; image-rendering: pixelated; }
 .qr-cap { font-size: .72rem; color: var(--muted); font-weight: 600; white-space: nowrap; }
 .qr-dl-btn { height: 30px; padding: 0 10px; font-size: .76rem; border-radius: 9px; }
 .qr-dl-btn svg { width: 13px; height: 13px; }
+
+/* 批量结果行：行内二维码缩略图 + 短链 + 复制，卡片式行块（区别于旧版裸分隔线） */
+.batch-result-row { display: flex; align-items: center; gap: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; }
+.batch-result-row + .batch-result-row { margin-top: 10px; }
+.batch-result-row.batch-err-row { background: var(--error-bg); border-color: var(--error-border); }
+.batch-result-row.batch-all-row { background: transparent; border: 0; padding-top: 4px; justify-content: flex-end; }
+.batch-qr { flex: none; width: 56px; height: 56px; padding: 4px; border: 1px solid var(--border-strong); border-radius: 10px; background: #fff; cursor: zoom-in; transition: border-color .16s, transform .12s; }
+.batch-qr:hover { border-color: var(--primary); }
+.batch-qr:active { transform: scale(.95); }
+.batch-qr canvas { display: block; width: 100%; height: 100%; border-radius: 6px; image-rendering: pixelated; }
+.batch-result-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.batch-result-main .result-url { flex: 1; }
+.batch-result-main .copy-btn { height: 36px; padding: 0 13px; font-size: .8rem; }
+.batch-err { color: var(--error); font-size: .82rem; line-height: 1.5; word-break: break-all; }
 
 /* 自定义短链实时反馈 */
 #slug-input.invalid { border-color: var(--error); box-shadow: 0 0 0 4px var(--error-bg); }
@@ -470,10 +488,6 @@ dialog::backdrop { background: var(--scrim); }
 }
 .batch-ops { display: flex; gap: 8px; flex-wrap: wrap; }
 .batch-op { height: 36px; padding: 0 12px; font-size: .8rem; }
-.batch-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
-.batch-row:last-child { border-bottom: 0; }
-.batch-row .copy-btn { height: 34px; padding: 0 12px; }
-.batch-err { color: var(--error); font-size: .82rem; line-height: 1.5; word-break: break-all; }
 .cell-note { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; color: var(--faint); margin-top: 2px; }
 .cell-badge { display: inline-flex; margin-left: 6px; height: 18px; padding: 0 7px; align-items: center; border-radius: 999px; font-size: .68rem; font-weight: 700; background: var(--surface-3); color: var(--muted); vertical-align: middle; }
 .cell-badge.warn { background: var(--error-bg); color: var(--error); }
@@ -596,6 +610,11 @@ html.theme-anim * { transition: background-color .3s ease, color .3s ease, borde
   .footer-nav .nav-item.active::before { left: 0; top: 20%; bottom: 20%; width: 3px; height: auto; border-radius: 3px; }
   .chart-grid { grid-template-columns: 1fr; }
 }
+@media (max-width: 860px) {
+  /* 小窗口/移动端单条结果：上下结构——短链框在上，二维码+复制按钮在下 */
+  .result-flex { flex-direction: column; }
+  .result-flex .result-qr { cursor: zoom-in; }
+}
 @media (max-width: 620px) {
   .app { padding-left: 14px; padding-right: 14px; }
   .brand-sub { display: none; }
@@ -605,10 +624,17 @@ html.theme-anim * { transition: background-color .3s ease, color .3s ease, borde
   .card-title-row { flex-wrap: wrap; }
   .mode-switch { width: 100%; }
   .mode-btn { flex: 1; }
-  .result-box { flex-direction: column; align-items: stretch; }
-  .result-flex { flex-direction: column; }
-  .result-qr { flex-direction: row; align-self: center; }
+  /* 小窗口/移动端单条结果：上下结构——短链框在上，二维码+复制按钮一行在下 */
+  .result-flex .result-box { flex-direction: column; align-items: stretch; padding: 14px 16px; }
+  .result-flex .copy-btn { align-self: stretch; }
+  /* 小窗/移动端二维码放大提示与弹窗内 canvas 可长按保存（不阻断默认呼出菜单） */
+  .result-flex .result-qr { margin: 0; align-self: stretch; flex-direction: row; justify-content: center; padding: 12px; }
+  .result-flex .result-qr canvas { width: 140px; height: 140px; }
+  /* 批量结果行窄屏：二维码缩略图保持左侧，短链+复制换行排布；缩略图同样点击放大 */
+  .batch-result-main { flex-wrap: wrap; }
+  .batch-result-main .result-url { flex: 1 1 100%; }
   .copy-btn { justify-content: center; height: 42px; }
+  .batch-result-main .copy-btn { height: 38px; }
   /* 移动端隐藏「原始链接」「创建时间」「访问次数」列（按列类名隐藏，列序调整时不会错位），
      换取「操作」列完整进入首屏；访问次数可在访问详情弹窗查看 */
   .col-orig { display: none; }

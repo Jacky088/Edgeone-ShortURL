@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.9.6';
+const ASSET_VERSION = '3.9.8';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -976,19 +976,24 @@ export const indexHtml = buildPage({
 
             <section class="card" id="result-card" hidden>
                 <h2 class="card-title">${ICON_CHECK}<span>生成结果</span></h2>
+                <!-- 单条结果：链接框 + 二维码并排（窄屏自动改为上下结构）；仅单条模式创建后显示 -->
                 <div class="result-flex" id="result-single">
                     <div class="result-box">
-                        <a href="#" target="_blank" rel="noopener noreferrer" class="result-url" id="result-link"></a>
+                        <div class="result-meta">
+                            <span class="result-label">短链地址</span>
+                            <a href="#" target="_blank" rel="noopener noreferrer" class="result-url" id="result-link"></a>
+                        </div>
                         <button type="button" class="copy-btn" id="copy-btn">${ICON_COPY}<span>复制</span></button>
                     </div>
-                    <div class="result-qr" id="result-qr" hidden>
-                        <canvas id="qr-canvas" aria-label="短链二维码"></canvas>
-                        <span class="qr-cap">扫码访问</span>
+                    <figure class="result-qr" id="result-qr" hidden>
+                        <canvas id="qr-canvas" aria-label="短链二维码，点击放大"></canvas>
+                        <figcaption class="qr-cap">扫码访问</figcaption>
                         <button type="button" class="btn-ghost qr-dl-btn" id="qr-download" hidden>${ICON_DOWNLOAD}<span>下载</span></button>
-                    </div>
+                    </figure>
                 </div>
+                <!-- 批量结果：每行 短链 + 行内二维码 + 复制；仅批量模式创建后显示 -->
                 <div id="result-list" hidden></div>
-                <p class="hint-line">短链已创建成功，点击链接可跳转原文并累计访问次数；也可扫码在手机上打开。</p>
+                <p class="hint-line" id="result-hint">短链已创建成功，点击链接可跳转原文并累计访问次数；也可扫码在手机上打开。</p>
             </section>
 
         </main>
@@ -999,6 +1004,16 @@ export const indexHtml = buildPage({
     <p class="dialog-text" id="slug-warn-text"></p>
     <div class="row-btns single">
         <button type="button" class="btn-primary" id="slug-warn-ok">好的，我来修改</button>
+    </div>
+</dialog>
+<dialog id="qr-zoom-dialog">
+    <h2>${ICON_QR}<span>短链二维码</span></h2>
+    <p class="dialog-text" id="qr-zoom-label"></p>
+    <div class="qr-view"><canvas id="qr-zoom-canvas" aria-label="短链二维码"></canvas></div>
+    <div class="row-btns">
+        <button type="button" class="btn-primary" id="qr-zoom-download">${ICON_DOWNLOAD}<span>下载 PNG</span></button>
+        <button type="button" class="btn-ghost" id="qr-zoom-copy">复制链接</button>
+        <button type="button" class="btn-ghost" id="qr-zoom-close">关闭</button>
     </div>
 </dialog>
 `,
@@ -1309,6 +1324,10 @@ export const indexHtml = buildPage({
                 }
             }
             slugWarnOk.addEventListener('click', function () { slugWarnDialog.close(); });
+            // 批量二维码放大弹窗：关闭按钮 + 点击遮罩关闭
+            const qrZoomDialog = document.getElementById('qr-zoom-dialog');
+            document.getElementById('qr-zoom-close').addEventListener('click', function () { qrZoomDialog.close(); });
+            qrZoomDialog.addEventListener('click', function (e) { if (e.target === qrZoomDialog) qrZoomDialog.close(); });
             slugWarnDialog.addEventListener('click', function (e) { if (e.target === slugWarnDialog) slugWarnDialog.close(); });
             slugWarnDialog.addEventListener('close', function () {
                 if (slugWarnSource) { slugWarnSource.focus(); slugWarnSource = null; }
@@ -1348,45 +1367,83 @@ export const indexHtml = buildPage({
                 } catch (err) { qrBox.hidden = true; if (qrDownload) qrDownload.hidden = true; }
             }
 
+            // 通用：把二维码画到任意 canvas（批量行内缩略图用），返回是否成功
+            function drawQrInto(canvas, text) {
+                try {
+                    if (typeof window.drawQrResult !== 'function') return false;
+                    return window.drawQrResult(canvas, text);
+                } catch (err) { return false; }
+            }
+
+            // 单条结果二维码点击放大：小窗/移动端无 hover 下载按钮不便触达，
+            // 点二维码本身弹大图，右键/长按 canvas 即可保存
+            qrBox.addEventListener('click', function () {
+                if (qrBox.hidden || !resultLink.href) return;
+                openQrZoom(resultLink.href, '');
+            });
+
             function showSuccess(newLink) {
+                // 单条结果：只显示单条块，清掉批量块（两模式结果互斥，跟随当前模式）
                 resultList.hidden = true;
+                resultList.textContent = '';
                 resultSingle.hidden = false;
                 const shortUrl = window.location.origin + '/' + newLink.slug;
                 resultLink.href = shortUrl;
                 resultLink.textContent = shortUrl.replace(/^https?:\\/\\//, '');
                 copyBtn.dataset.url = shortUrl;
+                document.getElementById('result-hint').textContent = '短链已创建成功，点击链接可跳转原文并累计访问次数；也可扫码在手机上打开。';
                 resultCard.hidden = false;
                 drawQr(shortUrl);
                 resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
 
-            // 批量创建结果：成功行（短链 + 复制）与失败行（原因）分区展示，支持一键全部复制
+            // 批量结果行：短链 + 行内二维码（点击放大）+ 复制；失败行显示原因
+            function buildBatchRow(shortUrl, original) {
+                const row = document.createElement('div');
+                row.className = 'batch-result-row';
+                const qrBtn = document.createElement('button');
+                qrBtn.type = 'button';
+                qrBtn.className = 'batch-qr';
+                const qrCanvas = document.createElement('canvas');
+                qrCanvas.setAttribute('aria-label', shortUrl + ' 的二维码');
+                const drawn = drawQrInto(qrCanvas, shortUrl);
+                qrBtn.appendChild(qrCanvas);
+                qrBtn.hidden = !drawn;
+                qrBtn.title = '查看大二维码';
+                qrBtn.setAttribute('aria-label', '查看 ' + shortUrl + ' 的大二维码');
+                qrBtn.addEventListener('click', function () { openQrZoom(shortUrl, original); });
+                const main = document.createElement('div');
+                main.className = 'batch-result-main';
+                const a = document.createElement('a');
+                a.className = 'result-url';
+                a.href = shortUrl;
+                a.target = '_blank'; a.rel = 'noopener noreferrer';
+                a.textContent = shortUrl.replace(/^https?:\\/\\//, '');
+                if (original) a.title = original;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'copy-btn';
+                btn.dataset.url = shortUrl;
+                btn.innerHTML = ICON_COPY_SVG + '<span>复制</span>';
+                btn.setAttribute('aria-label', '复制 ' + shortUrl);
+                main.append(a, btn);
+                row.append(qrBtn, main);
+                return row;
+            }
+
+            // 批量创建结果：成功行（二维码 + 短链 + 复制）与失败行（原因）分区展示，支持一键全部复制
             function showBatchSuccess(results, errors) {
+                // 批量结果：只显示批量块，清掉单条块（两模式结果互斥，跟随当前模式）
                 resultSingle.hidden = true;
+                qrBox.hidden = true;
                 resultList.hidden = false;
                 resultList.textContent = '';
                 results.forEach(function (r) {
-                    const shortUrl = window.location.origin + '/' + r.slug;
-                    const row = document.createElement('div');
-                    row.className = 'batch-row';
-                    const a = document.createElement('a');
-                    a.className = 'result-url';
-                    a.href = shortUrl;
-                    a.target = '_blank'; a.rel = 'noopener noreferrer';
-                    a.textContent = shortUrl.replace(/^https?:\\/\\//, '');
-                    a.title = r.original || '';
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'copy-btn';
-                    btn.dataset.url = shortUrl;
-                    btn.innerHTML = ICON_COPY_SVG;
-                    btn.setAttribute('aria-label', '复制 ' + shortUrl);
-                    row.append(a, btn);
-                    resultList.appendChild(row);
+                    resultList.appendChild(buildBatchRow(window.location.origin + '/' + r.slug, r.original || ''));
                 });
                 (errors || []).forEach(function (err) {
                     const row = document.createElement('div');
-                    row.className = 'batch-row';
+                    row.className = 'batch-result-row batch-err-row';
                     const msg = document.createElement('div');
                     msg.className = 'batch-err';
                     msg.textContent = '✕ ' + err.url + '：' + err.error;
@@ -1395,7 +1452,7 @@ export const indexHtml = buildPage({
                 });
                 if (results.length > 1) {
                     const allRow = document.createElement('div');
-                    allRow.className = 'batch-row';
+                    allRow.className = 'batch-result-row batch-all-row';
                     const allBtn = document.createElement('button');
                     allBtn.type = 'button';
                     allBtn.className = 'copy-btn';
@@ -1411,8 +1468,29 @@ export const indexHtml = buildPage({
                     allRow.appendChild(allBtn);
                     resultList.appendChild(allRow);
                 }
+                document.getElementById('result-hint').textContent = results.length + ' 条短链已创建成功，逐行扫码或复制使用；失败行已标红给出原因。';
                 resultCard.hidden = false;
                 resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            // 批量行内二维码放大弹窗：大图 + 下载 PNG + 复制链接（主页版二维码弹窗）
+            function openQrZoom(shortUrl, original) {
+                const dlg = document.getElementById('qr-zoom-dialog');
+                const canvas = document.getElementById('qr-zoom-canvas');
+                const okDrawn = window.drawQrDialog ? window.drawQrDialog(canvas, shortUrl) : drawQrInto(canvas, shortUrl);
+                canvas.hidden = !okDrawn;
+                document.getElementById('qr-zoom-label').textContent = '扫码访问：' + shortUrl.replace(/^https?:\\/\\//, '') + (original ? '（' + original + '）' : '');
+                document.getElementById('qr-zoom-download').onclick = function () {
+                    const a = document.createElement('a');
+                    a.href = canvas.toDataURL('image/png');
+                    a.download = 'qrcode' + shortUrl.replace(/^https?:\\/\\//, '').replace(/[\\/]/g, '-') + '.png';
+                    a.click();
+                };
+                document.getElementById('qr-zoom-copy').onclick = async function () {
+                    try { await navigator.clipboard.writeText(shortUrl); showToast('已复制'); }
+                    catch (e) { showToast('复制失败，请手动复制', 'error'); }
+                };
+                if (typeof dlg.showModal === 'function') dlg.showModal();
             }
 
             // 会话过期时保存草稿（单条保存 URL/slug；批量保存整个文本框）

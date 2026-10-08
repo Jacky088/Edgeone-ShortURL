@@ -111,6 +111,30 @@ test('主页：单条/批量互斥模式切换——tablist 语义、显式 mode
   assert.ok(css.includes('.mode-switch { width: 100%; }'), '手机上模式切换应占满一行');
 });
 
+test('主页：生成结果跟随模式显示，批量行带二维码，结果卡限宽居中', () => {
+  const css = fs.readFileSync(new URL('../public/app.css', import.meta.url), 'utf8');
+  // 单条/批量结果互斥：showSuccess 清空批量块，showBatchSuccess 隐藏单条块并清空
+  assert.ok(indexHtml.includes("resultList.hidden = true;\n                resultList.textContent = '';"), '单条成功应隐藏并清空批量结果块');
+  assert.ok(indexHtml.includes('resultSingle.hidden = true;'), '批量成功应隐藏单条结果块');
+  assert.ok(indexHtml.includes("qrBox.hidden = true;"), '批量成功应隐藏单条二维码区');
+  // 批量结果行：每行行内二维码缩略图 + 点击放大弹窗
+  assert.ok(indexHtml.includes('function buildBatchRow'), '应有批量结果行构建函数');
+  assert.ok(indexHtml.includes("drawQrInto(qrCanvas, shortUrl)"), '批量行应绘制行内二维码');
+  assert.ok(indexHtml.includes('function openQrZoom'), '应有二维码放大弹窗');
+  assert.ok(indexHtml.includes('id="qr-zoom-dialog"'), '应有二维码放大弹窗结构');
+  assert.ok(indexHtml.includes("id=\"qr-zoom-download\""), '放大弹窗应可下载 PNG');
+  // 布局：结果卡与创建卡同宽（无限宽居中），批量行为卡片式行块
+  assert.ok(!css.includes('.result-card { max-width: 720px;'), '结果卡不应限宽（需与创建卡同宽）');
+  assert.ok(css.includes('.batch-result-row {'), '批量结果行应有卡片式样式');
+  assert.ok(css.includes('.batch-qr {'), '批量行内二维码应有缩略图样式');
+  assert.ok(!css.includes('.batch-row {'), '旧裸分隔线批量行样式应移除');
+  // 小窗/移动端：单条结果上下结构（短链在上，二维码+复制在下）；二维码点击放大可保存
+  assert.ok(css.includes('@media (max-width: 860px) {\n  /* 小窗口/移动端单条结果：上下结构——短链框在上，二维码+复制按钮在下 */\n  .result-flex { flex-direction: column; }'), '小窗口起单条结果应为上下结构');
+  assert.ok(css.includes('.result-flex .result-qr { margin: 0; align-self: stretch; flex-direction: row;'), '窄屏二维码应横排铺满');
+  assert.ok(indexHtml.includes('qrBox.addEventListener(\'click\''), '单条二维码应可点击放大');
+  assert.ok(indexHtml.includes('aria-label="短链二维码，点击放大"'), '二维码应有点击放大提示');
+});
+
 test('主页：自定义短链输入检测——超出四类字符弹窗警告且不能生成短链', () => {
   assert.ok(indexHtml.includes('id="slug-warn-dialog"'), '应有格式警告弹窗');
   assert.ok(indexHtml.includes('const SLUG_BAD_RE = /[^a-zA-Z0-9_-]/'), '应有四类之外字符的检测正则');
