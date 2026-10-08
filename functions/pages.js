@@ -6,10 +6,10 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.9.12';
+const ASSET_VERSION = '3.9.14';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
-const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
+const REPO_URL = 'https://github.com/Jacky088/EdgeOne-ShortURL';
 const ISSUES_URL = REPO_URL + '/issues';
 // 统一设计系统（深科技蓝 + 青绿、日间/夜间模式、桌面/移动端响应式）在此维护一份，
 // 由 buildPage() 组装；页面私有内容通过参数注入。
@@ -607,12 +607,12 @@ function themeToggleHtml() {
 }
 
 function githubHtml() {
-  return `<a class="icon-btn" href="https://github.com/Jacky088/Edgeone-ShortURL" target="_blank" rel="noopener noreferrer" title="GitHub: Jacky088/Edgeone-ShortURL">${ICON_GITHUB}</a>`;
+  return `<a class="icon-btn" href="https://github.com/Jacky088/EdgeOne-ShortURL" target="_blank" rel="noopener noreferrer" title="GitHub: Jacky088/EdgeOne-ShortURL">${ICON_GITHUB}</a>`;
 }
 
 function brandHtml() {
   return `<div class="brand">${logoHtml('brand-logo')}
-      <div class="brand-text"><span class="brand-name">Edgeone-ShortURL</span><span class="brand-sub">基于 EO 的一个短链接转换服务</span></div>
+      <div class="brand-text"><span class="brand-name">EdgeOne-ShortURL</span><span class="brand-sub">基于 EO 的一个短链接转换服务</span></div>
     </div>`;
 }
 
@@ -772,7 +772,7 @@ function aboutDialogHtml() {
     <button type="button" class="about-close" data-close-about aria-label="关闭">${ICON_X}</button>
     <div class="about-card">
         ${logoHtml('about-logo')}
-        <h2>Edgeone-ShortURL</h2>
+        <h2>EdgeOne-ShortURL</h2>
         <p class="about-sub">基于 EO 的无服务器短链接转换服务</p>
         <span class="version-badge">v${APP_VERSION}</span>
         <p class="about-desc">基于腾讯云 EdgeOne Pages 无服务器函数与 KV 存储打造的短链接生成与跳转服务。免费开源、无需维护服务器，支持自定义短链、访问统计、日间 / 夜间主题与移动端自适应。</p>
@@ -816,7 +816,7 @@ export const loginHtml = buildPage({
 <div class="auth-wrap">
     <div class="auth-card">
         ${logoHtml('auth-logo')}
-        <h1>Edgeone-ShortURL</h1>
+        <h1>EdgeOne-ShortURL</h1>
         <p class="auth-sub">基于 EO 的一个短链接转换服务</p>
         <div class="auth-divider"></div>
         <p class="auth-label">请输入访问口令</p>
@@ -911,8 +911,8 @@ export const indexHtml = buildPage({
                     </div>
                 </div>
                 <form id="link-form" novalidate>
-                    <!-- 单条模式面板 -->
-                    <div class="mode-pane" id="pane-single" role="tabpanel" aria-label="单条创建">
+                    <!-- 单条模式面板：窄屏加 pane-single-stack 类切换为 链接→自定义→按钮 三行动线 -->
+                    <div class="mode-pane pane-single-stack" id="pane-single" role="tabpanel" aria-label="单条创建">
                         <div class="url-row">
                             <input type="url" id="url-input" placeholder="https://www.example.com/very-long-url" autocomplete="url" enterkeyhint="go" required>
                             <button type="submit" class="btn-primary" id="submit-btn">${ICON_CHAIN}<span>生成短链</span></button>
@@ -3640,7 +3640,7 @@ export const adminHtml = buildPage({
 // ==========================================
 export function passwordHtml({ slug, error = '' } = {}) {
   return buildPage({
-    title: '访问验证 · Edgeone-ShortURL',
+    title: '访问验证 · EdgeOne-ShortURL',
     scripts: [`/ui.js?v=${ASSET_VERSION}`],
     body: decoHtml() + `
 <div class="auth-wrap">
@@ -3668,7 +3668,7 @@ export function passwordHtml({ slug, error = '' } = {}) {
 // ==========================================
 export function errorPageHtml({ code = '404', title = '链接不存在', message = '该短链接不存在或已被删除。' } = {}) {
   return buildPage({
-    title: `${title} · Edgeone-ShortURL`,
+    title: `${title} · EdgeOne-ShortURL`,
     scripts: [`/ui.js?v=${ASSET_VERSION}`],
     css: `
       a.btn-primary { text-decoration: none; }

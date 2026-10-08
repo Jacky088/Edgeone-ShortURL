@@ -174,8 +174,16 @@ test('管理后台：窄窗口工具栏溢出收进「更多」菜单；窄屏�
   assert.ok(adminHtml.includes('scheduleToolbarSync()'), '视图/回收站/徽标变化应触发重新测量');
   const css = fs.readFileSync(new URL('../public/app.css', import.meta.url), 'utf8');
   assert.ok(css.includes('.table-toolbar.overflowing .more-wrap'), 'CSS 应在 overflowing 时显示「更多」按钮');
-  assert.ok(css.includes('"idx url url del" "slug slug note note"'), '窄屏批量行第二行 短链+备注 满宽同行');
+  // 窄屏批量行：序号+删除钮上调为头条行（链接框上方），两钮等尺寸 28px；链接满宽，短链+备注同行
+  assert.ok(css.includes('"idx del" "url url" "slug note"'), '窄屏批量行应为三行网格（头条行 序号+删除）');
+  assert.ok(css.includes('.batch-row-edit .bre-idx { width: 28px; height: 28px;'), '序号徽章应与删除钮等尺寸');
+  assert.ok(css.includes('.batch-row-edit .bre-del { width: 28px; min-height: 28px; }'), '删除钮窄屏应为 28px');
   assert.ok(css.includes('.bre-del:hover') && /bre-del \{[^}]*var\(--error\)[^}]*\}/.test(css), '删除钮应保持红色实心样式');
+  // 窄屏单条动线：目标链接 → 自定义短链 → 生成按钮（提交键在下方）；自定义框右缘与链接框对齐
+  assert.ok(indexHtml.includes('mode-pane pane-single-stack'), '单条面板应有窄屏堆叠类');
+  assert.ok(css.includes('.pane-single-stack { display: flex; flex-direction: column; gap: 12px; }'), '窄屏单条应为纵向堆叠（自定义框与链接框同宽）');
+  assert.ok(css.includes('.pane-single-stack #submit-btn { order: 3; width: 100%; height: 48px; }'), '窄屏生成按钮应排到自定义短链下方');
+  assert.ok(css.includes('.pane-single-stack #slug-input { order: 2; width: 100%; min-width: 0; flex: none; }'), '窄屏自定义框应满宽（右缘与链接框自然对齐）');
 });
 
 test('管理后台：设置分组标题为卡内竖条组头（不再用 fieldset legend 骑线）', () => {

@@ -1,4 +1,4 @@
-# 📦 Edgeone-ShortURL
+# 📦 EdgeOne-ShortURL
 
 基于 **腾讯云 EdgeOne Pages** 的无服务器短链接服务：创建 / 统计 / 管理后台 / 日间夜间主题，桌面与移动端自适应。
 
@@ -20,7 +20,7 @@
 
 ## 📸 预览
 
-![Edgeone-ShortURL 预览（日间 / 夜间模式）](preview.png)
+![EdgeOne-ShortURL 预览（日间 / 夜间模式）](preview.png)
 
 ---
 
@@ -28,9 +28,9 @@
 
 1. Fork 本仓库，在 EdgeOne Pages 控制台绑定该仓库（或点下方一键部署）。
 
-   [![使用国内版 EdgeOne Pages 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://console.cloud.tencent.com/edgeone/pages/new?repository-url=https%3A%2F%2Fgithub.com%2FJacky088%2FEdgeone-ShortURL)（国内版）
+   [![使用国内版 EdgeOne Pages 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://console.cloud.tencent.com/edgeone/pages/new?repository-url=https%3A%2F%2Fgithub.com%2FJacky088%2FEdgeOne-ShortURL)（国内版）
 
-   [![使用国际版 EdgeOne Pages 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2FJacky088%2FEdgeone-ShortURL)（国际版）
+   [![使用国际版 EdgeOne Pages 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2FJacky088%2FEdgeOne-ShortURL)（国际版）
 1. Pages 项目 → **设置 → KV 存储**新建命名空间，绑定变量名 `my_kv`（兼容 `MY_KV`），重新部署。
 1. 可选环境变量：`ADMIN_PATH`（后台路径，未设则无后台入口）、`PASSWORD`（访问口令，可在后台在线修改覆盖）。
 

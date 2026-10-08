@@ -492,14 +492,18 @@ dialog::backdrop { background: var(--scrim); }
 .bre-del:active { transform: scale(.94); }
 .bre-del svg { width: 14px; height: 14px; }
 @media (max-width: 820px) {
-  /* 窄屏两行布局：第一行 序号徽章+链接+删除（三者同高对齐），
-     第二行 短链+备注 满宽铺到删除钮右缘，不再预留空列 */
-  .batch-row-edit { grid-template-columns: auto 1fr 1fr 38px; grid-template-areas: "idx url url del" "slug slug note note"; }
-  .bre-idx { grid-area: idx; }
+  /* 窄屏三行布局：第一行 序号徽章+删除钮（头条行，两钮等尺寸 28px，右对齐），
+     第二行 目标链接满宽，第三行 短链+备注 —— 数字与关闭钮不再挤在链接框两侧 */
+  .batch-row-edit { grid-template-columns: 1fr 1fr; grid-template-areas: "idx del" "url url" "slug note"; row-gap: 8px; }
+  .bre-idx { grid-area: idx; justify-self: start; }
+  .bre-del { grid-area: del; justify-self: end; }
   .br-url { grid-area: url; }
   .br-slug { grid-area: slug; }
   .br-note { grid-area: note; }
-  .bre-del { grid-area: del; }
+  /* 头条行两钮统一尺寸：序号徽章加大到与删除钮同高（28px 圆形），视觉平衡 */
+  .batch-row-edit .bre-idx { width: 28px; height: 28px; font-size: .78rem; }
+  .batch-row-edit .bre-del { width: 28px; min-height: 28px; }
+  .batch-row-edit .bre-del svg { width: 12px; height: 12px; }
 }
 .batch-ops { display: flex; gap: 8px; flex-wrap: wrap; }
 .batch-op { height: 36px; padding: 0 12px; font-size: .8rem; }
@@ -630,15 +634,24 @@ html.theme-anim * { transition: background-color .3s ease, color .3s ease, borde
   .result-flex { flex-direction: column; }
   .result-flex .result-qr { cursor: zoom-in; }
 }
-@media (max-width: 620px) {
-  .app { padding-left: 14px; padding-right: 14px; }
-  .brand-sub { display: none; }
-  .url-row { flex-direction: column; }
-  .url-row .btn-primary { width: 100%; }
+@media (max-width: 820px) {
+  /* 小窗/移动端单条动线：目标链接 → 自定义短链 → 生成按钮（提交键在表单末尾更顺手）。
+     自定义短链整行满宽（与链接框同宽同缘），标签悬浮为行内小标题 */
+  .pane-single-stack { display: flex; flex-direction: column; gap: 12px; }
+  .pane-single-stack .url-row { display: contents; }
+  .pane-single-stack .slug-row { margin-top: 0; display: contents; }
+  .pane-single-stack #url-input { width: 100%; }
+  .pane-single-stack #submit-btn { order: 3; width: 100%; height: 48px; }
+  .pane-single-stack .slug-label { order: 1; font-size: .78rem; }
+  .pane-single-stack #slug-input { order: 2; width: 100%; min-width: 0; flex: none; }
+  .pane-single-stack .slug-count { display: none; }
+  .pane-single-stack .hint-line { order: 4; }
   /* 手机上模式切换移到标题下方独立一行，占满宽度方便点按 */
   .card-title-row { flex-wrap: wrap; }
   .mode-switch { width: 100%; }
   .mode-btn { flex: 1; }
+  .url-row { flex-direction: column; }
+  .url-row .btn-primary { width: 100%; }
   /* 小窗口/移动端单条结果：上下结构——短链框在上，二维码+复制按钮一行在下 */
   .result-flex .result-box { flex-direction: column; align-items: stretch; padding: 14px 16px; }
   .result-flex .copy-btn { align-self: stretch; }
