@@ -147,6 +147,51 @@ export async function onRequest({ request, env = {} }) {
 
   const results = [];
   const errors = [];
+  // 长链重复预检：任何模式（单条/批量）下，目标长链已存在（活跃短链指向它）且本次
+  // 不会走 dedup 复用时，阻止创建并返回 conflicts，由前端弹窗提醒用户修改。
+  // 修改后（换链接或换短链）重新提交才可能创建——「不修改不得创建」。
+  const urlHashesSeen = new Map(); // 本批次内 url -> 首次出现的 index（批量内部互查）
+  const conflicts = [];
+  if (!entries.some(e => !e.url)) {
+    for (const [index, entry] of entries.entries()) {
+      if (!isAllowedUrl(entry.url)) continue;
+      const urlHash = await sha256(entry.url);
+      // 批内互查：同一次提交里出现相同长链（且都会真实创建）也算重复
+      if (urlHashesSeen.has(urlHash)) {
+        conflicts.push({ index, url: entry.url, type: 'url', existingSlug: null, firstIndex: urlHashesSeen.get(urlHash) });
+        continue;
+      }
+      urlHashesSeen.set(urlHash, index);
+      const existingSlug = await DB.get(`hash:${urlHash}`).catch(() => null);
+      if (!existingSlug) continue;
+      const existingRaw = await DB.get(existingSlug).catch(() => null);
+      try {
+        const parsed = existingRaw ? JSON.parse(existingRaw) : null;
+        if (parsed && parsed.original && !parsed.deletedAt) {
+          // dedup 复用场景（单条+未指定短链+开关开）不算冲突：服务端会复用现有短链
+          if (!(settings.dedupHash && !isBatch && !entry.slug)) {
+            conflicts.push({ index, url: entry.url, type: 'url', existingSlug });
+          }
+        }
+      } catch (e) {}
+    }
+  }
+  // 任何冲突：整单拒绝，不创建任何行（「不修改不得创建」）
+  if (conflicts.length) {
+    if (settings.dailyCreateLimit > 0 && createdToday > 0) {
+      const ipHash = await sha256(ip);
+      const dcKey = `dc:${new Date().toISOString().slice(0, 10).replace(/-/g, '')}:${ipHash}`;
+      const raw = await DB.get(dcKey).catch(() => null);
+      try {
+        if (raw) {
+          const counter = JSON.parse(raw);
+          counter.count = Math.max(0, (counter.count || 0) - createdToday);
+          await DB.put(dcKey, JSON.stringify(counter));
+        }
+      } catch (e) {}
+    }
+    return jsonResponse({ conflict: true, conflicts }, 409);
+  }
 
   for (const [index, entry] of entries.entries()) {
     const url = entry.url;

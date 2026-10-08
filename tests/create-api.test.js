@@ -5,6 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { onRequest } from '../functions/api/create/index.js';
+import { sha256 } from '../functions/utils.js';
 
 function mockKV(store) {
   return {
@@ -108,4 +109,78 @@ test('create API：超过 20 条拒绝', async () => {
   const items = Array.from({ length: 21 }, (_, i) => ({ url: 'https://x.example/' + i }));
   const res = await call(store, { items });
   assert.equal(res.status, 400);
+});
+
+// ---------- 长链重复校验（不修改不得创建） ----------
+
+test('create API：长链已存在（非 dedup 场景）返回 409 conflicts，不创建', async () => {
+  // 已有短链 beta 指向该长链；批量形态不走 dedup 复用 → 必须拒绝
+  const url = 'https://a.example/one';
+  const store = {
+    beta: JSON.stringify({ original: url, visits: 0, createdAt: 1 }),
+    ['hash:' + await sha256(url)]: 'beta'
+  };
+  const res = await call(store, { items: [{ url, slug: 'newone' }] });
+  assert.equal(res.status, 409);
+  const data = await res.json();
+  assert.equal(data.conflict, true);
+  assert.equal(data.conflicts.length, 1);
+  assert.equal(data.conflicts[0].type, 'url');
+  assert.equal(data.conflicts[0].existingSlug, 'beta');
+  // 未创建任何行
+  assert.ok(!store.newone, '冲突时不得写入新短链');
+});
+
+test('create API：同批次内长链互重返回 409（批内互查），不创建', async () => {
+  const store = {};
+  const res = await call(store, {
+    items: [
+      { url: 'https://same.example/x', slug: 'first' },
+      { url: 'https://same.example/x', slug: 'second' }
+    ]
+  });
+  assert.equal(res.status, 409);
+  const data = await res.json();
+  assert.equal(data.conflicts.length, 1);
+  assert.ok(data.conflicts[0].firstIndex === 0, '应指出与第 1 行重复');
+  assert.ok(!store.first && !store.second, '冲突时整单不创建');
+});
+
+test('create API：单条未指定短链 + dedup 开启时复用现有短链（不算冲突）', async () => {
+  const url = 'https://reuse.example/a';
+  const store = {
+    old: JSON.stringify({ original: url, visits: 3, createdAt: 1 }),
+    ['hash:' + await sha256(url)]: 'old'
+  };
+  const res = await call(store, { url });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.slug, 'old');
+  assert.equal(data.deduped, true, '应走 dedup 复用而非冲突');
+});
+
+test('create API：单条指定了自定义短链时即使长链重复也拒绝（dedup 不适用）', async () => {
+  const url = 'https://reuse.example/a';
+  const store = {
+    old: JSON.stringify({ original: url, visits: 0, createdAt: 1 }),
+    ['hash:' + await sha256(url)]: 'old'
+  };
+  const res = await call(store, { url, slug: 'mine' });
+  assert.equal(res.status, 409);
+  const data = await res.json();
+  assert.equal(data.conflict, true);
+  assert.ok(!store.mine, '冲突时不得写入');
+});
+
+test('create API：回收站中的同长链不算冲突（deletedAt 跳过）', async () => {
+  const url = 'https://trash.example/a';
+  const store = {
+    trashed: JSON.stringify({ original: url, visits: 0, createdAt: 1, deletedAt: 2 }),
+    ['hash:' + await sha256(url)]: 'trashed'
+  };
+  const res = await call(store, { items: [{ url, slug: 'fresh' }] });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.results.length, 1);
+  assert.equal(data.results[0].slug, 'fresh');
 });

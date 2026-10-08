@@ -375,6 +375,15 @@ dialog::backdrop { background: var(--scrim); }
 .about-close { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: background-color .16s, color .16s; }
 .about-close:hover { background: var(--surface-2); color: var(--text); }
 .about-close svg { width: 16px; height: 16px; }
+/* 弹窗右上角 X 关闭钮：qr-zoom 等无底部关闭键的弹窗共用（与 about-close 同款手感）。
+   桌面 32px；移动端命中区扩大到 44px（点按舒适），并适当加大图标 */
+.dialog-x { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: background-color .16s, color .16s; }
+.dialog-x:hover { background: var(--surface-2); color: var(--text); }
+.dialog-x svg { width: 16px; height: 16px; }
+@media (pointer: coarse), (max-width: 620px) {
+  .dialog-x { width: 44px; height: 44px; top: 6px; right: 6px; border-radius: 12px; }
+  .dialog-x svg { width: 20px; height: 20px; }
+}
 .about-card { text-align: center; }
 .about-card h2 { margin: 0; justify-content: center; font-size: 1.2rem; }
 .about-logo { width: 54px; height: 54px; border-radius: 13px; margin: 0 auto 12px; box-shadow: 0 12px 26px -10px rgba(26, 93, 224, .6); }
@@ -425,6 +434,12 @@ dialog::backdrop { background: var(--scrim); }
 .batch-result-main .result-url { flex: 1; }
 .batch-result-main .copy-btn { height: 36px; padding: 0 13px; font-size: .8rem; }
 .batch-err { color: var(--error); font-size: .82rem; line-height: 1.5; word-break: break-all; }
+
+/* 长链重复提醒弹窗：冲突项列表（URL + 原因），红色调警示 */
+.conflict-list { display: flex; flex-direction: column; gap: 8px; max-height: 40vh; overflow-y: auto; margin-bottom: 18px; }
+.conflict-item { background: var(--error-bg); border: 1px solid var(--error-border); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+.conflict-url { font-family: var(--mono); font-size: .84rem; color: var(--text); word-break: break-all; font-weight: 600; }
+.conflict-reason { font-size: .76rem; color: var(--error); line-height: 1.5; }
 
 /* 自定义短链实时反馈 */
 #slug-input.invalid { border-color: var(--error); box-shadow: 0 0 0 4px var(--error-bg); }
@@ -630,11 +645,11 @@ html.theme-anim * { transition: background-color .3s ease, color .3s ease, borde
   /* 小窗/移动端二维码放大提示与弹窗内 canvas 可长按保存（不阻断默认呼出菜单） */
   .result-flex .result-qr { margin: 0; align-self: stretch; flex-direction: row; justify-content: center; padding: 12px; }
   .result-flex .result-qr canvas { width: 140px; height: 140px; }
-  /* 批量结果行窄屏：二维码缩略图保持左侧，短链+复制换行排布；缩略图同样点击放大 */
-  .batch-result-main { flex-wrap: wrap; }
-  .batch-result-main .result-url { flex: 1 1 100%; }
-  .copy-btn { justify-content: center; height: 42px; }
-  .batch-result-main .copy-btn { height: 38px; }
+  /* 批量结果行窄屏：二维码缩略图 + 短链 + 纯图标复制钮一行排开（不换行、不占整行） */
+  .batch-result-main { flex-wrap: nowrap; }
+  .batch-result-main .result-url { flex: 1 1 auto; }
+  .batch-result-main .copy-btn { width: 38px; height: 38px; padding: 0; justify-content: center; flex: none; }
+  .batch-result-main .copy-btn span { display: none; }
   /* 移动端隐藏「原始链接」「创建时间」「访问次数」列（按列类名隐藏，列序调整时不会错位），
      换取「操作」列完整进入首屏；访问次数可在访问详情弹窗查看 */
   .col-orig { display: none; }

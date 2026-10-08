@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.9.8';
+const ASSET_VERSION = '3.9.12';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -976,21 +976,8 @@ export const indexHtml = buildPage({
 
             <section class="card" id="result-card" hidden>
                 <h2 class="card-title">${ICON_CHECK}<span>生成结果</span></h2>
-                <!-- 单条结果：链接框 + 二维码并排（窄屏自动改为上下结构）；仅单条模式创建后显示 -->
-                <div class="result-flex" id="result-single">
-                    <div class="result-box">
-                        <div class="result-meta">
-                            <span class="result-label">短链地址</span>
-                            <a href="#" target="_blank" rel="noopener noreferrer" class="result-url" id="result-link"></a>
-                        </div>
-                        <button type="button" class="copy-btn" id="copy-btn">${ICON_COPY}<span>复制</span></button>
-                    </div>
-                    <figure class="result-qr" id="result-qr" hidden>
-                        <canvas id="qr-canvas" aria-label="短链二维码，点击放大"></canvas>
-                        <figcaption class="qr-cap">扫码访问</figcaption>
-                        <button type="button" class="btn-ghost qr-dl-btn" id="qr-download" hidden>${ICON_DOWNLOAD}<span>下载</span></button>
-                    </figure>
-                </div>
+                <!-- 单条结果：与批量结果同款行样式（行内二维码缩略图 + 短链 + 复制），由 JS 填充 -->
+                <div id="result-single" hidden></div>
                 <!-- 批量结果：每行 短链 + 行内二维码 + 复制；仅批量模式创建后显示 -->
                 <div id="result-list" hidden></div>
                 <p class="hint-line" id="result-hint">短链已创建成功，点击链接可跳转原文并累计访问次数；也可扫码在手机上打开。</p>
@@ -1006,14 +993,22 @@ export const indexHtml = buildPage({
         <button type="button" class="btn-primary" id="slug-warn-ok">好的，我来修改</button>
     </div>
 </dialog>
+<dialog id="conflict-dialog">
+    <h2 class="danger-title">${ICON_WARN}<span>链接已存在，请修改后重试</span></h2>
+    <p class="dialog-text" id="conflict-text"></p>
+    <div class="conflict-list" id="conflict-list"></div>
+    <div class="row-btns single">
+        <button type="button" class="btn-primary" id="conflict-ok">好的，我来修改</button>
+    </div>
+</dialog>
 <dialog id="qr-zoom-dialog">
+    <button type="button" class="dialog-x" id="qr-zoom-close" aria-label="关闭">${ICON_X}</button>
     <h2>${ICON_QR}<span>短链二维码</span></h2>
     <p class="dialog-text" id="qr-zoom-label"></p>
     <div class="qr-view"><canvas id="qr-zoom-canvas" aria-label="短链二维码"></canvas></div>
     <div class="row-btns">
         <button type="button" class="btn-primary" id="qr-zoom-download">${ICON_DOWNLOAD}<span>下载 PNG</span></button>
         <button type="button" class="btn-ghost" id="qr-zoom-copy">复制链接</button>
-        <button type="button" class="btn-ghost" id="qr-zoom-close">关闭</button>
     </div>
 </dialog>
 `,
@@ -1032,10 +1027,6 @@ export const indexHtml = buildPage({
             const submitBtn = document.getElementById('submit-btn');
             const errorMessage = document.getElementById('error-message');
             const resultCard = document.getElementById('result-card');
-            const resultLink = document.getElementById('result-link');
-            const copyBtn = document.getElementById('copy-btn');
-            const qrBox = document.getElementById('result-qr');
-            const qrDownload = document.getElementById('qr-download');
             const urlRow = document.querySelector('.url-row');
             const slugRowEl = document.querySelector('.slug-row');
             const optsToggle = document.getElementById('opts-toggle');
@@ -1333,6 +1324,54 @@ export const indexHtml = buildPage({
                 if (slugWarnSource) { slugWarnSource.focus(); slugWarnSource = null; }
             });
 
+            // 长链重复提醒弹窗：后端 409 conflicts 渲染成列表（含已存在的短链），
+            // 点「好的，我来修改」关闭并聚焦第一个冲突行——不修改重新提交仍会被拒绝
+            const conflictDialog = document.getElementById('conflict-dialog');
+            function showConflictDialog(conflicts, mode, rowEls) {
+                const list = document.getElementById('conflict-list');
+                list.textContent = '';
+                conflicts.forEach(function (c) {
+                    const item = document.createElement('div');
+                    item.className = 'conflict-item';
+                    const urlDiv = document.createElement('div');
+                    urlDiv.className = 'conflict-url';
+                    urlDiv.textContent = c.url;
+                    const reason = document.createElement('div');
+                    reason.className = 'conflict-reason';
+                    if (c.type === 'url' && c.existingSlug) {
+                        reason.textContent = '已存在相同长链，指向短链 /' + c.existingSlug;
+                    } else if (c.type === 'url') {
+                        reason.textContent = c.firstIndex !== undefined && c.firstIndex !== c.index
+                            ? '与本次填写第 ' + (c.firstIndex + 1) + ' 行的长链重复'
+                            : '本次填写中长链重复';
+                    } else {
+                        reason.textContent = '该自定义短链已被占用';
+                    }
+                    item.append(urlDiv, reason);
+                    list.appendChild(item);
+                });
+                document.getElementById('conflict-text').textContent = conflicts.length > 1
+                    ? '检测到 ' + conflicts.length + ' 条重复的长链接，未创建任何短链。请修改后重新提交。'
+                    : '该长链接已存在，未创建短链。请修改后重新提交。';
+                if (typeof conflictDialog.showModal === 'function') {
+                    if (!conflictDialog.open) conflictDialog.showModal();
+                } else {
+                    window.alert(document.getElementById('conflict-text').textContent + '\\n' + conflicts.map(c => c.url).join('\\n'));
+                }
+                // 关闭后把焦点带回第一个冲突位置（批量=冲突行，单条=URL 框）
+                conflictDialog.dataset.conflictMode = mode;
+            }
+            document.getElementById('conflict-ok').addEventListener('click', function () {
+                conflictDialog.close();
+            });
+            conflictDialog.addEventListener('click', function (e) { if (e.target === conflictDialog) conflictDialog.close(); });
+            conflictDialog.addEventListener('close', function () {
+                if (conflictDialog.dataset.conflictMode === 'single') {
+                    urlInput.classList.add('invalid');
+                    urlInput.focus();
+                }
+            });
+
             urlInput.addEventListener('input', () => urlInput.classList.remove('invalid'));
             slugInput.addEventListener('input', function () {
                 slugInput.classList.remove('invalid');
@@ -1357,17 +1396,7 @@ export const indexHtml = buildPage({
                 errorMessage.style.display = 'block';
             }
 
-            // 将短链绘制为二维码（qr-draw.js 的 drawQrResult，白底保证任何主题下都可扫描）
-            function drawQr(text) {
-                try {
-                    if (typeof window.drawQrResult !== 'function') { qrBox.hidden = true; if (qrDownload) qrDownload.hidden = true; return; }
-                    const ok = window.drawQrResult(document.getElementById('qr-canvas'), text);
-                    qrBox.hidden = !ok;
-                    if (qrDownload) qrDownload.hidden = !ok;
-                } catch (err) { qrBox.hidden = true; if (qrDownload) qrDownload.hidden = true; }
-            }
-
-            // 通用：把二维码画到任意 canvas（批量行内缩略图用），返回是否成功
+            // 通用：把二维码画到任意 canvas（单条/批量行内缩略图用），返回是否成功
             function drawQrInto(canvas, text) {
                 try {
                     if (typeof window.drawQrResult !== 'function') return false;
@@ -1375,25 +1404,15 @@ export const indexHtml = buildPage({
                 } catch (err) { return false; }
             }
 
-            // 单条结果二维码点击放大：小窗/移动端无 hover 下载按钮不便触达，
-            // 点二维码本身弹大图，右键/长按 canvas 即可保存
-            qrBox.addEventListener('click', function () {
-                if (qrBox.hidden || !resultLink.href) return;
-                openQrZoom(resultLink.href, '');
-            });
-
             function showSuccess(newLink) {
-                // 单条结果：只显示单条块，清掉批量块（两模式结果互斥，跟随当前模式）
+                // 单条结果：与批量同款行样式（buildBatchRow 复用），只显示单条块并清掉批量块
                 resultList.hidden = true;
                 resultList.textContent = '';
+                resultSingle.textContent = '';
+                resultSingle.appendChild(buildBatchRow(window.location.origin + '/' + newLink.slug, ''));
                 resultSingle.hidden = false;
-                const shortUrl = window.location.origin + '/' + newLink.slug;
-                resultLink.href = shortUrl;
-                resultLink.textContent = shortUrl.replace(/^https?:\\/\\//, '');
-                copyBtn.dataset.url = shortUrl;
-                document.getElementById('result-hint').textContent = '短链已创建成功，点击链接可跳转原文并累计访问次数；也可扫码在手机上打开。';
+                document.getElementById('result-hint').textContent = '短链已创建成功，点击链接可跳转原文并累计访问次数；二维码可点击放大后右键/长按保存。';
                 resultCard.hidden = false;
-                drawQr(shortUrl);
                 resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
 
@@ -1435,7 +1454,7 @@ export const indexHtml = buildPage({
             function showBatchSuccess(results, errors) {
                 // 批量结果：只显示批量块，清掉单条块（两模式结果互斥，跟随当前模式）
                 resultSingle.hidden = true;
-                qrBox.hidden = true;
+                resultSingle.textContent = '';
                 resultList.hidden = false;
                 resultList.textContent = '';
                 results.forEach(function (r) {
@@ -1544,6 +1563,11 @@ export const indexHtml = buildPage({
                         }
                         if (!res.ok) {
                             const data = await res.json().catch(() => ({}));
+                            // 长链重复：整单 409，弹窗列出冲突行，不修改不得创建
+                            if (res.status === 409 && data.conflict && Array.isArray(data.conflicts)) {
+                                showConflictDialog(data.conflicts, 'batch', rowEls);
+                                return;
+                            }
                             throw new Error(data.error || '创建链接失败。');
                         }
                         const data = await res.json();
@@ -1580,6 +1604,11 @@ export const indexHtml = buildPage({
                     }
                     if (!res.ok) {
                         const data = await res.json().catch(() => ({}));
+                        // 长链重复：409 弹窗提醒，不修改不得创建
+                        if (res.status === 409 && data.conflict && Array.isArray(data.conflicts)) {
+                            showConflictDialog(data.conflicts, 'single');
+                            return;
+                        }
                         throw new Error(data.error || '创建链接失败。');
                     }
                     const newLink = await res.json();
@@ -1590,45 +1619,28 @@ export const indexHtml = buildPage({
                 } catch (err) { showError(err.message); } finally { setLoading(false); }
             }
 
-            copyBtn.addEventListener('click', async () => {
-                const url = copyBtn.dataset.url;
-                if (!url) return;
-                const label = copyBtn.querySelector('span');
-                try {
-                    await navigator.clipboard.writeText(url);
-                    copyBtn.classList.add('copied');
-                    label.textContent = '已复制';
-                    setTimeout(() => { copyBtn.classList.remove('copied'); label.textContent = '复制'; }, 1600);
-                } catch (err) { showToast('复制失败，请手动复制'); }
-            });
-
             form.addEventListener('submit', createLink);
 
-            // 批量结果行的复制按钮（事件委托）
-            resultList.addEventListener('click', async (e) => {
-                const btn = e.target.closest('.copy-btn');
-                if (!btn || !btn.dataset.url) return;
-                try {
-                    await navigator.clipboard.writeText(btn.dataset.url);
-                    btn.classList.add('copied');
-                    setTimeout(() => btn.classList.remove('copied'), 1500);
-                } catch (err) { showToast('复制失败，请手动复制'); }
-            });
-
-            // 二维码下载：画布导出 PNG
-            if (qrDownload) qrDownload.addEventListener('click', function () {
-                const canvas = document.getElementById('qr-canvas');
-                if (!canvas || !canvas.width) return;
-                try {
-                    const slugPart = (copyBtn.dataset.url || '').split('/').pop() || 'code';
-                    const a = document.createElement('a');
-                    a.href = canvas.toDataURL('image/png');
-                    a.download = 'shorturl-qr-' + slugPart + '.png';
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                } catch (err) { showToast('二维码下载失败，请截图保存'); }
-            });
+            // 结果行复制按钮（单条与批量共用 buildBatchRow，事件委托覆盖两块）
+            function bindResultCopy(container) {
+                container.addEventListener('click', async (e) => {
+                    const btn = e.target.closest('.copy-btn');
+                    if (!btn || !btn.dataset.url) return;
+                    try {
+                        await navigator.clipboard.writeText(btn.dataset.url);
+                        btn.classList.add('copied');
+                        const label = btn.querySelector('span');
+                        if (label) {
+                            label.textContent = '已复制';
+                            setTimeout(() => { btn.classList.remove('copied'); label.textContent = '复制'; }, 1500);
+                        } else {
+                            setTimeout(() => btn.classList.remove('copied'), 1500);
+                        }
+                    } catch (err) { showToast('复制失败，请手动复制'); }
+                });
+            }
+            bindResultCopy(resultSingle);
+            bindResultCopy(resultList);
         })();
 `
 });

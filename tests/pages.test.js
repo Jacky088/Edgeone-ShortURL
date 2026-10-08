@@ -55,7 +55,7 @@ test('主页：专注创建（无侧边栏 / 统计卡 / 关于入口），管�
   assert.ok(!indexHtml.includes('loadIndexStats'), '统计拉取脚本应移除');
   assert.ok(!indexHtml.includes('id="about-dialog"'), '关于弹窗入口应移至管理后台（样式为全站共用保留）');
   assert.ok(indexHtml.includes('__ADMIN_TOP_BUTTON__'), '管理入口应交由服务端按 ADMIN_PATH 条件渲染');
-  assert.ok(indexHtml.includes('id="qr-download"'), '结果卡应提供二维码下载');
+  assert.ok(indexHtml.includes("id=\"qr-zoom-download\""), '结果二维码下载应走放大弹窗（qr-zoom-download）');
   assert.ok(indexHtml.includes('pending_create_url'), '401 后应保存已填内容');
   assert.ok(indexHtml.includes('已恢复上次填写的内容'), '登录后应提示恢复');
   assert.ok(indexHtml.includes('运行在 EdgeOne Pages'), '应包含统一页脚');
@@ -116,23 +116,33 @@ test('主页：生成结果跟随模式显示，批量行带二维码，结果�
   // 单条/批量结果互斥：showSuccess 清空批量块，showBatchSuccess 隐藏单条块并清空
   assert.ok(indexHtml.includes("resultList.hidden = true;\n                resultList.textContent = '';"), '单条成功应隐藏并清空批量结果块');
   assert.ok(indexHtml.includes('resultSingle.hidden = true;'), '批量成功应隐藏单条结果块');
-  assert.ok(indexHtml.includes("qrBox.hidden = true;"), '批量成功应隐藏单条二维码区');
+  assert.ok(indexHtml.includes("resultSingle.textContent = '';"), '批量成功应清空单条结果块');
+  // 单条结果与批量同款行样式：showSuccess 复用 buildBatchRow
+  assert.ok(indexHtml.includes("resultSingle.appendChild(buildBatchRow("), '单条成功应复用批量行构建（样式统一）');
   // 批量结果行：每行行内二维码缩略图 + 点击放大弹窗
   assert.ok(indexHtml.includes('function buildBatchRow'), '应有批量结果行构建函数');
   assert.ok(indexHtml.includes("drawQrInto(qrCanvas, shortUrl)"), '批量行应绘制行内二维码');
   assert.ok(indexHtml.includes('function openQrZoom'), '应有二维码放大弹窗');
   assert.ok(indexHtml.includes('id="qr-zoom-dialog"'), '应有二维码放大弹窗结构');
   assert.ok(indexHtml.includes("id=\"qr-zoom-download\""), '放大弹窗应可下载 PNG');
+  // 放大弹窗关闭：右上角 X 按钮（无底部关闭钮）
+  assert.ok(indexHtml.includes('class="dialog-x" id="qr-zoom-close" aria-label="关闭"'), '放大弹窗应有右上角 X 关闭钮');
+  assert.ok(!indexHtml.includes('id="qr-zoom-close">关闭'), '放大弹窗不应再有底部「关闭」文字按钮');
+  assert.ok(css.includes('.dialog-x { position: absolute; top: 12px; right: 12px;'), '应有右上角 X 样式');
+  // 长链重复校验：conflict 弹窗 + 409 拦截 + 移动端命中区
+  assert.ok(indexHtml.includes('id="conflict-dialog"'), '应有长链重复提醒弹窗');
+  assert.ok(indexHtml.includes('function showConflictDialog'), '应有冲突弹窗渲染函数');
+  assert.ok(indexHtml.includes("res.status === 409 && data.conflict"), '创建响应应拦截 409 冲突');
+  assert.ok(css.includes('@media (pointer: coarse), (max-width: 620px) {\n  .dialog-x { width: 44px; height: 44px;'), '移动端 X 命中区应 44px');
   // 布局：结果卡与创建卡同宽（无限宽居中），批量行为卡片式行块
   assert.ok(!css.includes('.result-card { max-width: 720px;'), '结果卡不应限宽（需与创建卡同宽）');
   assert.ok(css.includes('.batch-result-row {'), '批量结果行应有卡片式样式');
   assert.ok(css.includes('.batch-qr {'), '批量行内二维码应有缩略图样式');
   assert.ok(!css.includes('.batch-row {'), '旧裸分隔线批量行样式应移除');
-  // 小窗/移动端：单条结果上下结构（短链在上，二维码+复制在下）；二维码点击放大可保存
-  assert.ok(css.includes('@media (max-width: 860px) {\n  /* 小窗口/移动端单条结果：上下结构——短链框在上，二维码+复制按钮在下 */\n  .result-flex { flex-direction: column; }'), '小窗口起单条结果应为上下结构');
-  assert.ok(css.includes('.result-flex .result-qr { margin: 0; align-self: stretch; flex-direction: row;'), '窄屏二维码应横排铺满');
-  assert.ok(indexHtml.includes('qrBox.addEventListener(\'click\''), '单条二维码应可点击放大');
-  assert.ok(indexHtml.includes('aria-label="短链二维码，点击放大"'), '二维码应有点击放大提示');
+  // 单条结果旧版结构应移除（统一为批量行样式，天然适配窄屏）
+  assert.ok(!indexHtml.includes('id="result-qr"'), '旧单条二维码 figure 应移除');
+  assert.ok(!indexHtml.includes('id="result-link"'), '旧单条结果链接应移除');
+  assert.ok(!indexHtml.includes('id="copy-btn"'), '旧单条独立复制按钮应移除（委托到结果行）');
 });
 
 test('主页：自定义短链输入检测——超出四类字符弹窗警告且不能生成短链', () => {
@@ -279,12 +289,12 @@ test('UI 走查优化落地：弹窗图标语义化、内联样式清理、批�
   assert.ok(css.includes('.danger-title svg { color: var(--error); }'), '危险弹窗应有 danger-title 修饰');
   assert.ok(!adminHtml.includes('style="color: var(--primary)"'), '管理弹窗不应再有内联主色覆盖');
   assert.ok((adminHtml.match(/class="danger-title"/g) || []).length === 1, '删除确认弹窗应加 danger-title（后台）');
-  assert.ok((indexHtml.match(/class="danger-title"/g) || []).length === 1, 'slug 警告弹窗应加 danger-title（主页）');
+  assert.ok((indexHtml.match(/class="danger-title"/g) || []).length === 2, 'slug 警告 + 长链重复弹窗应加 danger-title（主页）');
   // 单按钮弹窗行：.row-btns.single 替代内联 grid-template-columns
   assert.ok(css.includes('.row-btns.single { grid-template-columns: 1fr; }'), '应有单按钮行修饰类');
   assert.ok(!adminHtml.includes('style="grid-template-columns: 1fr;"'), '弹窗底部不应再有内联单列样式');
   assert.ok((adminHtml.match(/class="row-btns single"/g) || []).length === 1, 'Token 弹窗应为 single 行（后台）');
-  assert.ok((indexHtml.match(/class="row-btns single"/g) || []).length === 1, 'slug 警告弹窗应为 single 行（主页）');
+  assert.ok((indexHtml.match(/class="row-btns single"/g) || []).length === 2, 'slug 警告 + 长链重复弹窗应为 single 行（主页）');
   // 页脚链接 hover 反馈
   assert.ok(css.includes('.app-footer a:hover'), '页脚链接应有 hover 反馈');
   // 登录页眼睛按钮命中区 ≥44px
