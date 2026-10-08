@@ -77,6 +77,40 @@ test('主页 + 登录页的 __ADMIN_PATH_STATUS__ 占位符可被服务端完整
   }
 });
 
+test('主页：单条/批量互斥模式切换——tablist 语义、显式 mode 状态、切模式不丢值', () => {
+  const css = fs.readFileSync(new URL('../public/app.css', import.meta.url), 'utf8');
+  // 卡片标题行右侧 segmented control：两个 tab 按钮 + 两个面板
+  assert.ok(indexHtml.includes('class="mode-switch" id="mode-switch" role="tablist"'), '应有模式切换 tablist');
+  assert.ok(indexHtml.includes('id="mode-single"') && indexHtml.includes('id="mode-batch"'), '应有单条/批量两个模式按钮');
+  assert.ok(indexHtml.includes('id="pane-single"') && indexHtml.includes('id="pane-batch"'), '应有单条/批量两个面板');
+  // 显式 mode 状态：提交分支与草稿恢复都走 setCreateMode，不再靠 hidden 面板推断
+  assert.ok(indexHtml.includes("let createMode = 'single';"), '应有显式模式状态');
+  assert.ok(indexHtml.includes('function setCreateMode(mode)'), '应有统一模式切换入口');
+  assert.ok(indexHtml.includes("if (createMode === 'batch') {"), '提交应按 mode 分支');
+  assert.ok(indexHtml.includes("setCreateMode('batch');"), '批量草稿恢复应切到批量模式');
+  // 切换不丢值：不得再隐藏单条输入行（旧实现 urlRow.hidden / slugRow.hidden）
+  assert.ok(!indexHtml.includes('urlRow.hidden'), '切换模式不应隐藏 url 行（值保留在各自面板）');
+  assert.ok(!indexHtml.includes('slugRowEl.hidden'), '切换模式不应隐藏自定义短链行');
+  assert.ok(!indexHtml.includes('id="batch-toggle"'), '旧的批量折叠开关应移除');
+  // 滑块胶囊跟随高亮：真实 .mode-thumb 元素按按钮几何定位（伪元素 transform 在部分环境不生效）
+  assert.ok(indexHtml.includes('class="mode-thumb"'), '应有真实滑块元素');
+  assert.ok(indexHtml.includes('function syncModeThumb'), '应有滑块同步函数');
+  assert.ok(indexHtml.includes("modeThumb.style.transform = 'translateX(' + btn.offsetLeft + 'px)'"), '滑块应按按钮 offsetLeft 像素对齐');
+  assert.ok(indexHtml.includes("window.addEventListener('resize', syncModeThumb)"), 'resize 应重算滑块位置');
+  assert.ok(css.includes('.mode-switch .mode-thumb'), 'CSS 应有滑块元素样式');
+  // 「更多选项」为两模式共享：opts 面板与入口位于两个模式面板之外
+  assert.ok(indexHtml.includes('class="form-toggles opts-shared"'), '应有共享的更多选项入口');
+  const paneSingleIdx = indexHtml.indexOf('id="pane-single"');
+  const optsPanelIdx = indexHtml.indexOf('id="opts-panel"');
+  const paneBatchIdx = indexHtml.indexOf('id="pane-batch"');
+  assert.ok(optsPanelIdx > paneBatchIdx && paneBatchIdx > paneSingleIdx, 'opts 面板应在两个模式面板之外（之后）');
+  assert.ok(indexHtml.includes("e.target === document.getElementById('mode-switch')") || indexHtml.includes("querySelector('.mode-switch').addEventListener('keydown'"), '键盘导航应绑定在 mode-switch 上');
+  // 样式与键盘可达性
+  assert.ok(css.includes('.mode-switch') && css.includes('.mode-btn[aria-selected="true"]'), '应有 segmented 样式与选中态');
+  assert.ok(indexHtml.includes("e.key !== 'ArrowLeft' && e.key !== 'ArrowRight'"), 'tablist 应支持左右方向键');
+  assert.ok(css.includes('.mode-switch { width: 100%; }'), '手机上模式切换应占满一行');
+});
+
 test('主页：自定义短链输入检测——超出四类字符弹窗警告且不能生成短链', () => {
   assert.ok(indexHtml.includes('id="slug-warn-dialog"'), '应有格式警告弹窗');
   assert.ok(indexHtml.includes('const SLUG_BAD_RE = /[^a-zA-Z0-9_-]/'), '应有四类之外字符的检测正则');

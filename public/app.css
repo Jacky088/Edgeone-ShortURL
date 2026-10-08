@@ -412,7 +412,25 @@ dialog::backdrop { background: var(--scrim); }
 #slug-input.invalid { border-color: var(--error); box-shadow: 0 0 0 4px var(--error-bg); }
 .slug-count { font-size: .76rem; color: var(--faint); font-variant-numeric: tabular-nums; }
 
-/* ---------- 创建表单扩展（更多选项 / 批量创建） ---------- */
+/* ---------- 创建表单扩展（单条/批量模式切换 + 更多选项） ---------- */
+/* 卡片标题行右侧的模式切换（segmented control）：单条/批量互斥，
+   滑块高亮当前模式，替代原先两个独立折叠开关（主动线不再被批量入口打断） */
+.mode-switch { position: relative; display: inline-flex; flex: none; padding: 3px; gap: 2px; border: 1px solid var(--border-strong); border-radius: 11px; background: var(--surface-2); }
+.mode-btn { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 64px; height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: .82rem; font-weight: 700; font-family: inherit; cursor: pointer; transition: color .18s; -webkit-tap-highlight-color: transparent; }
+.mode-btn svg { width: 14px; height: 14px; }
+.mode-btn:hover { color: var(--text); }
+.mode-btn[aria-selected="true"] { color: var(--nav-active-text); }
+.mode-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 8px; }
+/* 滑块：真实元素（.mode-thumb）而非伪元素 —— 伪元素方案在此环境实测 transform 不生效；
+   JS 按目标按钮的 offsetLeft/offsetWidth 设置像素位移动画，两按钮不等宽也能精确对齐。
+   不加 transition：部分内嵌浏览器对 transform 过渡的合成动画不推进，滑块会卡在旧位置 */
+.mode-switch .mode-thumb { position: absolute; z-index: 0; top: 3px; bottom: 3px; left: 0; width: 64px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(30, 70, 180, .14); }
+/* 模式面板：同一时间只显示一个 */
+.mode-pane[hidden] { display: none; }
+.mode-pane { animation: fade-slide .22s ease; }
+/* 「更多选项」共享位：位于两个模式面板下方（面板外），对两种模式都生效 */
+.opts-shared { margin-top: 14px; }
+.opts-shared + .opts-panel { margin-top: 0; }
 .form-toggles { display: flex; gap: 4px 16px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
 .opts-panel { margin-top: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px; animation: fade-slide .22s ease; }
 .opts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 16px; }
@@ -423,6 +441,8 @@ dialog::backdrop { background: var(--scrim); }
 #batch-import:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
 .batch-import-wrap { display: flex; flex-direction: column; gap: 8px; }
 .batch-import-ops { display: flex; gap: 8px; flex-wrap: wrap; }
+/* 批量面板内边距：批量模式无 url-row 在上，面板与工具行保持呼吸感 */
+#pane-batch { display: flex; flex-direction: column; gap: 12px; }
 .batch-submit { align-self: stretch; width: 100%; }
 /* 批量逐行编辑器：≥820px 一行排开（序号 + 三个输入框 + 删除）；
    窄屏切换为固定两档网格（序号左栏贯穿，右侧三行），任何宽度都不会错位 */
@@ -581,6 +601,10 @@ html.theme-anim * { transition: background-color .3s ease, color .3s ease, borde
   .brand-sub { display: none; }
   .url-row { flex-direction: column; }
   .url-row .btn-primary { width: 100%; }
+  /* 手机上模式切换移到标题下方独立一行，占满宽度方便点按 */
+  .card-title-row { flex-wrap: wrap; }
+  .mode-switch { width: 100%; }
+  .mode-btn { flex: 1; }
   .result-box { flex-direction: column; align-items: stretch; }
   .result-flex { flex-direction: column; }
   .result-qr { flex-direction: row; align-self: center; }

@@ -6,7 +6,7 @@ import { QR_LIB_SRC } from './qr-src.js';
 // 页脚、「关于项目」弹窗、登录页入口均从此常量读取。
 // 静态资源版本：改 public/app.css|ui.js|qr-*.js 后同步 +1，使 <link>/<script src> 引用即时更新。
 const APP_VERSION = '3.6.0';
-const ASSET_VERSION = '3.9.3';
+const ASSET_VERSION = '3.9.6';
 
 // GitHub 仓库与反馈入口（页脚、「关于项目」弹窗共用）
 const REPO_URL = 'https://github.com/Jacky088/Edgeone-ShortURL';
@@ -901,20 +901,52 @@ export const indexHtml = buildPage({
     </header>
     <main class="content">
             <section class="card">
-                <h2 class="card-title">${ICON_CHAIN}<span>输入长链接</span></h2>
+                <div class="card-title-row">
+                    <h2 class="card-title">${ICON_CHAIN}<span>创建短链</span></h2>
+                    <!-- 单条 / 批量互斥模式切换：真实滑块元素随选中项移动 -->
+                    <div class="mode-switch" id="mode-switch" role="tablist" aria-label="创建方式">
+                        <span class="mode-thumb" aria-hidden="true"></span>
+                        <button type="button" class="mode-btn" id="mode-single" role="tab" aria-selected="true" aria-controls="pane-single">单条</button>
+                        <button type="button" class="mode-btn" id="mode-batch" role="tab" aria-selected="false" aria-controls="pane-batch" tabindex="-1">${ICON_LIST}<span>批量</span></button>
+                    </div>
+                </div>
                 <form id="link-form" novalidate>
-                    <div class="url-row">
-                        <input type="url" id="url-input" placeholder="https://www.example.com/very-long-url" autocomplete="url" enterkeyhint="go" required>
-                        <button type="submit" class="btn-primary" id="submit-btn">${ICON_CHAIN}<span>生成短链</span></button>
+                    <!-- 单条模式面板 -->
+                    <div class="mode-pane" id="pane-single" role="tabpanel" aria-label="单条创建">
+                        <div class="url-row">
+                            <input type="url" id="url-input" placeholder="https://www.example.com/very-long-url" autocomplete="url" enterkeyhint="go" required>
+                            <button type="submit" class="btn-primary" id="submit-btn">${ICON_CHAIN}<span>生成短链</span></button>
+                        </div>
+                        <div class="slug-row">
+                            <label class="slug-label" for="slug-input">自定义短链</label>
+                            <input type="text" id="slug-input" maxlength="64" placeholder="留空则随机生成" autocomplete="off" spellcheck="false">
+                            <span class="slug-count" id="slug-count"></span>
+                        </div>
+                        <p class="hint-line">仅支持 http/https 开头的完整链接；自定义短链可使用字母、数字、短横线、下划线，最长 64 位。</p>
                     </div>
-                    <div class="form-toggles">
+                    <!-- 批量模式面板：同一时间只显示一个，切换不丢已填内容 -->
+                    <div class="mode-pane" id="pane-batch" role="tabpanel" aria-label="批量创建" hidden>
+                        <div class="batch-rows" id="batch-rows"></div>
+                        <div class="batch-ops">
+                            <button type="button" class="btn-ghost batch-op" id="batch-add">${ICON_PLUS}<span>添加一行</span></button>
+                            <button type="button" class="btn-ghost batch-op" id="batch-import-toggle" aria-expanded="false" aria-controls="batch-import">${ICON_PENCIL}<span>从文本导入</span></button>
+                            <button type="button" class="btn-ghost batch-op" id="batch-clear">${ICON_TRASH}<span>清空</span></button>
+                        </div>
+                        <div class="batch-import-wrap" id="batch-import-wrap" hidden>
+                            <p class="settings-hint">支持两种方式导入：① 将文本内容粘贴到下方输入框，每行一条；② 直接选择 .txt / .csv 文件导入，每行一条，一次最多 20 条。格式：链接 [自定义短链] [备注]（空格分隔）</p>
+                            <textarea id="batch-import" rows="3" placeholder="https://example.com/a my-link&#10;https://example.com/b"></textarea>
+                            <div class="batch-import-ops">
+                                <label class="btn-ghost batch-op">选择 .txt / .csv 文件<input type="file" id="batch-import-file" accept=".txt,.csv,text/plain,text/csv" hidden></label>
+                                <button type="button" class="btn-ghost batch-op" id="batch-import-go">确认导入</button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary batch-submit">${ICON_CHAIN}<span>生成短链</span></button>
+                        <p class="hint-line">每行生成一条短链，「自定义短链 / 备注」可逐行填写（留空则随机生成）；「更多选项」将应用到全部，一次最多 20 条。</p>
+                    </div>
+                    <!-- 更多选项：两种模式共享（单条作用于本条，批量应用到全部），
+                         置于两个面板之外，切换模式时保持展开状态与已填值 -->
+                    <div class="form-toggles opts-shared">
                         <button type="button" class="slug-toggle" id="opts-toggle" aria-expanded="false" aria-controls="opts-panel">${ICON_SLIDERS}<span>更多选项</span></button>
-                        <button type="button" class="slug-toggle" id="batch-toggle" aria-expanded="false" aria-controls="batch-panel">${ICON_LIST}<span>批量创建</span></button>
-                    </div>
-                    <div class="slug-row">
-                        <label class="slug-label" for="slug-input">自定义短链</label>
-                        <input type="text" id="slug-input" maxlength="64" placeholder="留空则随机生成" autocomplete="off" spellcheck="false">
-                        <span class="slug-count" id="slug-count"></span>
                     </div>
                     <div class="opts-panel" id="opts-panel" hidden>
                         <div class="opts-grid">
@@ -938,25 +970,6 @@ export const indexHtml = buildPage({
                             </label>
                         </div>
                     </div>
-                    <div class="opts-panel" id="batch-panel" hidden>
-                        <div class="batch-rows" id="batch-rows"></div>
-                        <div class="batch-ops">
-                            <button type="button" class="btn-ghost batch-op" id="batch-add">${ICON_PLUS}<span>添加一行</span></button>
-                            <button type="button" class="btn-ghost batch-op" id="batch-import-toggle" aria-expanded="false" aria-controls="batch-import">${ICON_PENCIL}<span>从文本导入</span></button>
-                            <button type="button" class="btn-ghost batch-op" id="batch-clear">${ICON_TRASH}<span>清空</span></button>
-                        </div>
-                        <div class="batch-import-wrap" id="batch-import-wrap" hidden>
-                            <p class="settings-hint">支持两种方式导入：① 将文本内容粘贴到下方输入框，每行一条；② 直接选择 .txt / .csv 文件导入，每行一条，一次最多 20 条。格式：链接 [自定义短链] [备注]（空格分隔）</p>
-                            <textarea id="batch-import" rows="3" placeholder="https://example.com/a my-link&#10;https://example.com/b"></textarea>
-                            <div class="batch-import-ops">
-                                <label class="btn-ghost batch-op">选择 .txt / .csv 文件<input type="file" id="batch-import-file" accept=".txt,.csv,text/plain,text/csv" hidden></label>
-                                <button type="button" class="btn-ghost batch-op" id="batch-import-go">确认导入</button>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn-primary batch-submit">${ICON_CHAIN}<span>生成短链</span></button>
-                        <p class="hint-line">每行生成一条短链，「自定义短链 / 备注」可逐行填写（留空则随机生成）；上方「更多选项」将应用到全部，一次最多 20 条。</p>
-                    </div>
-                    <p class="hint-line">仅支持 http/https 开头的完整链接；自定义短链可使用字母、数字、短横线、下划线，最长 64 位。</p>
                     <div class="message error" id="error-message"></div>
                 </form>
             </section>
@@ -1012,8 +1025,12 @@ export const indexHtml = buildPage({
             const slugRowEl = document.querySelector('.slug-row');
             const optsToggle = document.getElementById('opts-toggle');
             const optsPanel = document.getElementById('opts-panel');
-            const batchToggle = document.getElementById('batch-toggle');
-            const batchPanel = document.getElementById('batch-panel');
+            // 单条/批量互斥模式：两个 tab 按钮 + 两个面板，mode 为唯一状态源
+            const modeSwitch = document.getElementById('mode-switch');
+            const modeSingleBtn = document.getElementById('mode-single');
+            const modeBatchBtn = document.getElementById('mode-batch');
+            const paneSingle = document.getElementById('pane-single');
+            const paneBatch = document.getElementById('pane-batch');
             const batchRowsEl = document.getElementById('batch-rows');
             const batchImportWrap = document.getElementById('batch-import-wrap');
             const batchImportEl = document.getElementById('batch-import');
@@ -1031,6 +1048,45 @@ export const indexHtml = buildPage({
             // 二维码样式来自运行时设置（服务端注入到 window.__QR_CFG__，见本脚本头部）
             const submitLabel = submitBtn.querySelector('span');
 
+            // ---------- 单条 / 批量模式切换 ----------
+            // 显式 mode 状态：'single' | 'batch'。两个面板各含完整表单体与提交按钮，
+            // 切换只改显隐，不清值——两模式输入互不覆盖，来回切换不丢已填内容。
+            // 批量行编辑器首次进入时初始化 3 行（惰性，避免载入即建 DOM）。
+            // 注意：setCreateMode 必须先于 restorePending 定义——批量草稿恢复依赖它。
+            let createMode = 'single';
+            // 滑块：移动 .mode-thumb 到当前模式按钮下方（像素取自按钮几何，
+            // 两按钮不等宽/手机全宽等分都能对齐）；resize 时重算
+            const modeThumb = modeSwitch.querySelector('.mode-thumb');
+            function syncModeThumb() {
+                const btn = createMode === 'batch' ? modeBatchBtn : modeSingleBtn;
+                modeThumb.style.width = btn.offsetWidth + 'px';
+                modeThumb.style.transform = 'translateX(' + btn.offsetLeft + 'px)';
+            }
+            window.addEventListener('resize', syncModeThumb);
+            if (document.fonts && document.fonts.ready) document.fonts.ready.then(syncModeThumb).catch(function () {});
+            function setCreateMode(mode) {
+                if (mode === createMode) return;
+                createMode = mode;
+                const batch = mode === 'batch';
+                paneSingle.hidden = batch;
+                paneBatch.hidden = !batch;
+                // 滑块胶囊位移到当前按钮下方
+                syncModeThumb();
+                modeSingleBtn.setAttribute('aria-selected', batch ? 'false' : 'true');
+                modeSingleBtn.tabIndex = batch ? -1 : 0;
+                modeBatchBtn.setAttribute('aria-selected', batch ? 'true' : 'false');
+                modeBatchBtn.tabIndex = batch ? 0 : -1;
+                errorMessage.style.display = 'none';
+                if (batch) {
+                    if (!batchRowsEl.children.length) { batchAddRow(); batchAddRow(); batchAddRow(); }
+                    const first = batchRowsEl.querySelector('.br-url');
+                    if (first) first.focus();
+                } else {
+                    urlInput.focus();
+                }
+            }
+            syncModeThumb();
+
             // 恢复会话过期前未提交的内容（登录成功回到本页时触发）
             (function restorePending() {
                 let savedUrl = '', savedSlug = '';
@@ -1041,14 +1097,17 @@ export const indexHtml = buildPage({
                 if (!savedUrl) return;
                 try { sessionStorage.removeItem('pending_create_url'); sessionStorage.removeItem('pending_create_slug'); } catch (err) {}
                 if (savedUrl.includes('\\n')) {
-                    // 批量草稿：展开批量面板，按行回填（每行「链接 [短链]」）
-                    batchPanel.hidden = false;
-                    batchToggle.setAttribute('aria-expanded', 'true');
-                    urlRow.hidden = true;
+                    // 批量草稿：切到批量模式，按行回填（每行「链接 [短链]」）。
+                    // 批量模式惰性建行：setCreateMode 已建 3 行空行，草稿行追加在其后，
+                    // 提交时空行会被跳过，不影响结果
+                    setCreateMode('batch');
                     savedUrl.split('\\n').forEach(function (line) {
                         const tokens = line.trim().split(/\\s+/).filter(Boolean);
                         if (tokens.length) batchAddRow(tokens[0], tokens[1] || '');
                     });
+                    // 聚焦第一个「非空」草稿行（querySelector 会命中惰性空行，需过滤）
+                    const firstDraft = [...batchRowsEl.querySelectorAll('.br-url')].find(function (i) { return i.value; });
+                    if (firstDraft) firstDraft.focus();
                 } else {
                     urlInput.value = savedUrl;
                     if (savedSlug) {
@@ -1057,29 +1116,26 @@ export const indexHtml = buildPage({
                     }
                 }
                 showToastClosable('已恢复上次填写的内容，点击「生成短链」继续。', 3600);
-                urlInput.focus();
+                if (!savedUrl.includes('\\n')) urlInput.focus();
             })();
 
-            // 「更多选项 / 批量创建」折叠面板切换；批量模式隐藏单链接输入行
+            // 「更多选项」共享面板切换：对两种模式生效（单条作用于本条，批量应用到全部）；
+            // 面板在两个模式面板之外，切换模式时保持展开状态与已填值
             optsToggle.addEventListener('click', () => {
                 const opening = optsPanel.hidden;
                 optsPanel.hidden = !opening;
                 optsToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
             });
-            batchToggle.addEventListener('click', () => {
-                const opening = batchPanel.hidden;
-                batchPanel.hidden = !opening;
-                batchToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
-                urlRow.hidden = opening;
-                // 自定义短链仅适用于单条创建：批量模式下隐藏
-                slugRowEl.hidden = opening;
-                if (opening) {
-                    if (!batchRowsEl.children.length) { batchAddRow(); batchAddRow(); batchAddRow(); }
-                    const first = batchRowsEl.querySelector('.br-url');
-                    if (first) first.focus();
-                } else {
-                    urlInput.focus();
-                }
+
+            // ---------- 单条 / 批量模式切换 ----------
+            // tab 键盘导航：左右方向键在两个模式间移动（role=tablist 惯例）
+            modeSingleBtn.addEventListener('click', function () { setCreateMode('single'); });
+            modeBatchBtn.addEventListener('click', function () { setCreateMode('batch'); });
+            document.querySelector('.mode-switch').addEventListener('keydown', function (e) {
+                if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+                const next = createMode === 'single' ? 'batch' : 'single';
+                setCreateMode(next);
+                (next === 'single' ? modeSingleBtn : modeBatchBtn).focus();
             });
 
             // ---------- 批量逐行编辑器 ----------
@@ -1374,7 +1430,7 @@ export const indexHtml = buildPage({
                 if (opts.error) { showError(opts.error); return; }
 
                 // 批量模式：逐行收集 → 校验 → 一次性提交（最多 20 条）
-                if (!batchPanel.hidden) {
+                if (createMode === 'batch') {
                     const rowEls = [...batchRowsEl.querySelectorAll('.batch-row-edit')];
                     rowEls.forEach(function (r) { r.classList.remove('invalid'); });
                     const items = [];
