@@ -342,11 +342,17 @@ td .skel { width: 82%; }
 
 /* ---------- 确认弹窗（删除等破坏性操作） ---------- */
 dialog { width: min(520px, calc(100% - 32px)); border: 1px solid var(--border); border-radius: 16px; padding: 24px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+dialog[open] { animation: dialog-pop .22s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 dialog h2 { margin: 0 0 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
 /* 弹窗标题图标默认主色；危险弹窗（删除确认 / 格式警告）加 .danger-title 转红 */
 dialog h2 svg { width: 18px; height: 18px; color: var(--primary); }
 .danger-title svg { color: var(--error); }
-dialog::backdrop { background: var(--scrim); }
+dialog::backdrop { background: var(--scrim); animation: backdrop-fade .2s ease forwards; }
+@keyframes dialog-pop { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes backdrop-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { dialog[open] { animation: none; } dialog::backdrop { animation: none; } }
+/* 列表项删除 / 恢复退出动效 */
+tr.row-exit { opacity: 0 !important; transform: translateX(18px); transition: opacity .2s ease, transform .2s ease; }
 .dialog-text { margin: 0 0 18px; font-size: .9rem; color: var(--muted); line-height: 1.6; word-break: break-all; }
 .dialog-text b { color: var(--text); font-family: var(--mono); }
 .row-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

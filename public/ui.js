@@ -160,8 +160,37 @@
     if (ts) { el.textContent = fmtRelativeDay(ts); el.title = fmtFullDateTime(ts); el.classList.add('stat-value-text'); }
     else { el.textContent = '—'; el.removeAttribute('title'); el.classList.remove('stat-value-text'); }
   }
+  // 数字平滑滚动动效（CountUp）
+  function animateNumber(el, target, duration) {
+    if (!el) return;
+    var end = Number(target) || 0;
+    var dur = duration || 500;
+    var startTime = null;
+    var startVal = 0;
+    var curText = (el.textContent || '').replace(/,/g, '').trim();
+    if (/^\d+$/.test(curText)) startVal = Number(curText);
+    if (startVal === end) {
+      el.textContent = numberFormat(end);
+      return;
+    }
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.textContent = numberFormat(end);
+      return;
+    }
+    function step(timestamp) {
+      if (!startTime) startTime = timestamp;
+      var progress = Math.min((timestamp - startTime) / dur, 1);
+      var ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      var current = Math.round(startVal + (end - startVal) * ease);
+      el.textContent = numberFormat(current);
+      if (progress < 1) requestAnimationFrame(step);
+      else el.textContent = numberFormat(end);
+    }
+    requestAnimationFrame(step);
+  }
   window.pad2 = pad2;
   window.numberFormat = numberFormat;
+  window.animateNumber = animateNumber;
   window.fmtDateShort = fmtDateShort;
   window.fmtDateTime = fmtDateTime;
   window.fmtFullDateTime = fmtFullDateTime;

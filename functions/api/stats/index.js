@@ -3,7 +3,7 @@
 // 列表接口默认不携带逐日数据（瘦身字段），趋势图由本端点按需全量扫描聚合，供统计视图懒加载。
 // 只聚合有效短链（排除回收站），与列表 / 统计卡口径一致；扫描上限与 /api/links 相同（2000 条）。
 
-import { jsonResponse, getKV, checkAdmin, getSettings } from '../../utils.js';
+import { jsonResponse, getKV, checkAdmin, getSettings, mapConcurrent } from '../../utils.js';
 
 // 内部键：与 /api/links 相同的跳过规则（rlp: 为密码试错限流键，与 utils 内部前缀列表同步）
 function isInternalKey(key, adminPath) {
@@ -65,7 +65,7 @@ export async function onRequest({ request, env = {} }) {
     let linkCount = 0;
     let latestCreatedAt = 0;
 
-    await Promise.all(allKeys.map(async ({ key }) => {
+    await mapConcurrent(allKeys, 30, async ({ key }) => {
       if (isInternalKey(key, adminPath)) return;
       const value = await DB.get(key).catch(() => null);
       if (!value) return;
@@ -78,7 +78,7 @@ export async function onRequest({ request, env = {} }) {
         const d = data.daily || {};
         for (const k of dayKeys) daily[k] += d[k] || 0;
       } catch (e) {}
-    }));
+    });
 
     return jsonResponse({
       windowDays: days,

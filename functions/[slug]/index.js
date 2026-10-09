@@ -217,6 +217,9 @@ export async function onRequest(context) {
           });
           if (typeof context.waitUntil === 'function') context.waitUntil(visitUpdate);
           else await visitUpdate;
+          if (settings.safeIntermediary) {
+            return new Response(safeIntermediaryHtml(linkData.original), { headers: HTML_HEADERS });
+          }
           return Response.redirect(linkData.original, redirectCode);
         }
 
@@ -290,6 +293,9 @@ export async function onRequest(context) {
             await visitUpdate;
           }
         }
+        if (settings.safeIntermediary) {
+          return new Response(safeIntermediaryHtml(linkData.original), { headers: HTML_HEADERS });
+        }
         return Response.redirect(linkData.original, settings.redirectCode === 301 ? 301 : 302);
       } else {
         return new Response(errorPageHtml({ code: '404', title: '链接不存在', message: '该短链接不存在或已被删除，请向分享者确认链接是否正确。' }), { status: 404, headers: HTML_HEADERS });
@@ -325,4 +331,44 @@ export async function onRequest(context) {
 async function getClientIpHash(request) {
   const ip = getClientIp(request);
   return sha256(ip).then(h => h.slice(0, 16));
+}
+
+// 安全中转提醒页（防恶意钓鱼、主域名风控拦截防护）
+function safeIntermediaryHtml(url) {
+  const safeTarget = String(url).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="3;url=${safeTarget}">
+  <title>安全中转提示 - EdgeOne-ShortURL</title>
+  <link rel="stylesheet" href="/app.css">
+  <style>
+    .safe-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+    .safe-card { width: min(480px, 100%); padding: 32px 24px; text-align: center; }
+    .safe-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; background: var(--teal-soft); color: var(--teal); font-size: 0.82rem; font-weight: 700; margin-bottom: 16px; }
+    .safe-title { font-size: 1.25rem; font-weight: 800; margin: 0 0 10px; color: var(--text); }
+    .safe-desc { color: var(--muted); font-size: 0.88rem; margin: 0 0 18px; line-height: 1.5; }
+    .safe-url { word-break: break-all; font-family: var(--mono); background: var(--input-bg); border: 1px solid var(--border-strong); padding: 12px 14px; border-radius: 12px; font-size: 0.88rem; margin: 0 0 20px; color: var(--link); text-align: left; }
+    .safe-prog { height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; margin-bottom: 20px; }
+    .safe-bar { height: 100%; background: linear-gradient(90deg, var(--primary), var(--teal)); width: 0%; animation: safe-bar 3s linear forwards; }
+    @keyframes safe-bar { from { width: 0%; } to { width: 100%; } }
+    .safe-btn { width: 100%; height: 46px; text-decoration: none; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <div class="deco" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="safe-wrap">
+    <div class="card safe-card">
+      <div class="safe-badge"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> 安全中转提醒</div>
+      <h2 class="safe-title">即将离开本站访问目标链接</h2>
+      <p class="safe-desc">您访问的短链接目标为外部页面，请确认网址安全：</p>
+      <div class="safe-url">${safeTarget}</div>
+      <div class="safe-prog"><div class="safe-bar"></div></div>
+      <a class="btn-primary safe-btn" href="${safeTarget}">立即前往</a>
+    </div>
+  </div>
+</body>
+</html>`;
 }

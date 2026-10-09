@@ -33,7 +33,9 @@ export const DEFAULT_SETTINGS = {
   extraReserved: [],
   qr: { centerLogo: false, dark: '#16181d' },
   dedupMin: 0,
-  tzOffsetMin: 0
+  tzOffsetMin: 0,
+  blockPrivateIp: false,
+  safeIntermediary: false
 };
 
 // 运行时设置进程内短缓存：同一函数实例的连续请求复用，跳转热路径每次跳转省 1 次 KV 读。
@@ -243,6 +245,59 @@ export function isHostAllowed(url, whitelist) {
   });
 }
 
+// 并发控制池：将大并发任务限制在最大 concurrency 个并行通道中，避免边缘 KV 网络雪崩与连接耗尽
+export async function mapConcurrent(items, concurrency, fn) {
+  if (!Array.isArray(items) || !items.length) return [];
+  const results = new Array(items.length);
+  let index = 0;
+  const poolSize = Math.max(1, Math.min(concurrency || 25, items.length));
+  const workers = new Array(poolSize);
+  for (let w = 0; w < poolSize; w++) {
+    workers[w] = (async () => {
+      while (index < items.length) {
+        const i = index++;
+        results[i] = await fn(items[i], i);
+      }
+    })();
+  }
+  await Promise.all(workers);
+  return results;
+}
+
+// 检查目标主机是否为私有 / 内网保留 IP 或本地环路主机（防内网探测与 SSRF 风险）
+export function isPrivateHost(hostOrUrl) {
+  let hostname = String(hostOrUrl || '').trim();
+  try {
+    if (hostname.includes('://')) {
+      hostname = new URL(hostname).hostname;
+    }
+  } catch (e) {
+    return false;
+  }
+  hostname = hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local') || hostname.endsWith('.internal')) {
+    return true;
+  }
+  // IPv4 检测（0.0.0.0/8, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16）
+  const ipv4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const a = Number(ipv4[1]);
+    const b = Number(ipv4[2]);
+    const c = Number(ipv4[3]);
+    const d = Number(ipv4[4]);
+    if (a > 255 || b > 255 || c > 255 || d > 255) return false;
+    if (a === 0 || a === 127 || a === 10) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 169 && b === 254) return true;
+  }
+  // IPv6 本地环路 / 链路本地 / 唯一本地地址
+  if (hostname === '::1' || hostname === '0:0:0:0:0:0:0:1' || hostname.startsWith('fe80:') || hostname.startsWith('fc') || hostname.startsWith('fd')) {
+    return true;
+  }
+  return false;
+}
+
 // 客户端 IP：优先平台注入头（不可伪造），回退 XFF 取「最右侧」一段。
 // XFF 由客户端可随意写入、CDN 边缘把真实 IP 追加在末尾：取第一段会让登录限流、
 // 创建限流、每日配额、访问去重全部因伪造头而失效，因此绝不能信任 XFF 的左侧值。
@@ -332,7 +387,9 @@ export function sessionTtlMs(settings) {
 }
 
 // 校验长期 API Token（请求头 X-API-Token，SHA-256 比对 cfg:tokens 中的哈希）
-export async function verifyApiToken(request, env, DB) {
+// 支持可选权限范围：'admin'（全权限，默认）、'create'（仅建链）、'read'（仅读取）
+// 向下兼容：旧版 Token 或无 scope 字段的记录默认享有完整 admin 权限
+export async function verifyApiToken(request, env, DB, requiredScope = '') {
   const token = request.headers.get('X-API-Token');
   if (!token || !/^[a-f0-9]{32,128}$/.test(token) || !DB) return false;
   try {
@@ -341,7 +398,13 @@ export async function verifyApiToken(request, env, DB) {
     const tokens = JSON.parse(raw);
     if (!Array.isArray(tokens) || !tokens.length) return false;
     const hash = await sha256(token);
-    return tokens.some(t => t && t.hash === hash);
+    const matched = tokens.find(t => t && t.hash === hash);
+    if (!matched) return false;
+    const tokenScope = matched.scope || 'admin';
+    if (!requiredScope || tokenScope === 'admin') return true;
+    if (requiredScope === 'create') return tokenScope === 'create' || tokenScope === 'admin';
+    if (requiredScope === 'read') return tokenScope === 'read' || tokenScope === 'admin';
+    return tokenScope === requiredScope;
   } catch (e) {
     return false;
   }
@@ -350,8 +413,8 @@ export async function verifyApiToken(request, env, DB) {
 // 管理类接口统一鉴权：API Token 或「Admin-Slug 头 + 会话」
 // 会话校验使用滑动续期版：在后台持续操作时会话同样续期，避免「越用越掉线」
 // 语义与原 links/delete 一致：未设置 ADMIN_PATH 时仅 Token 可用
-export async function checkAdmin(request, env, DB) {
-  if (await verifyApiToken(request, env, DB)) return true;
+export async function checkAdmin(request, env, DB, requiredScope = 'admin') {
+  if (await verifyApiToken(request, env, DB, requiredScope)) return true;
   const adminPath = env.ADMIN_PATH;
   if (!adminPath || request.headers.get('X-Admin-Slug') !== adminPath) return false;
   return verifySessionWithRenewal(request, env, DB);
@@ -359,6 +422,6 @@ export async function checkAdmin(request, env, DB) {
 
 // 创建类接口鉴权：会话或 API Token（与原 /api/create 一致，不要求 Admin-Slug 头）
 export async function checkCreateAuth(request, env, DB) {
-  if (await verifyApiToken(request, env, DB)) return true;
+  if (await verifyApiToken(request, env, DB, 'create')) return true;
   return verifySession(request, env, DB);
 }

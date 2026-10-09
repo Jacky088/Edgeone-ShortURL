@@ -5,7 +5,7 @@
 // ?slug=xxx 精确查询单条（含聚合统计，供访问详情弹窗按需拉取）。
 // 超过 2000 条时返回 { links, truncated: true } 并由前端提示（不再静默截断）。
 
-import { jsonResponse, getKV, checkAdmin } from '../../utils.js';
+import { jsonResponse, getKV, checkAdmin, mapConcurrent } from '../../utils.js';
 
 // 内部键：不以短链数据存储，列表时跳过（rlp: = 密码试错限流键）
 function isInternalKey(key, adminPath) {
@@ -70,7 +70,8 @@ export async function onRequest({ request, env = {} }) {
     const result = await DB.list(pageCursor ? { cursor: pageCursor } : {}).catch(() => null);
     if (!result) return jsonResponse({ error: 'Failed to fetch links' }, 500);
     const items = [];
-    for (const { key } of (result.keys || []).slice(0, pageLimit)) {
+    for (const { key } of (result.keys || [])) {
+      if (items.length >= pageLimit) break;
       if (isInternalKey(key, adminPath)) continue;
       const value = await DB.get(key).catch(() => null);
       if (!value) continue;
@@ -128,8 +129,10 @@ export async function onRequest({ request, env = {} }) {
       if (allKeys.length >= MAX_KEYS) { truncated = !complete; break; }
     } while (!complete);
 
-    const links = await Promise.all(
-      allKeys.map(async ({ key }) => {
+    const links = await mapConcurrent(
+      allKeys,
+      30,
+      async ({ key }) => {
         if (isInternalKey(key, adminPath)) {
           return null;
         }
@@ -165,7 +168,7 @@ export async function onRequest({ request, env = {} }) {
           }
         }
         return null;
-      })
+      }
     );
 
     const list = links.filter(Boolean);

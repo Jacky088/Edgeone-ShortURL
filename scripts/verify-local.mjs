@@ -106,7 +106,7 @@ try {
 }
 {
   const idx = await (await req('/')).text();
-  ok('B7 主页含创建表单+管理入口+批量', idx.includes('id="link-form"') && idx.includes('管理后台') && idx.includes('id="batch-panel"'));
+  ok('B7 主页含创建表单+管理入口+批量', idx.includes('id="link-form"') && idx.includes('管理后台') && (idx.includes('id="pane-batch"') || idx.includes('id="batch-panel"')));
   ok('B8 主页QR配置已注入', /window\.__QR_CFG__ = \{/.test(idx));
   const adm = await (await req('/admin')).text();
   ok('B9 后台四视图齐全', ['id="links-table-body"', 'id="view-stats"', 'id="view-settings"', 'id="about-dialog"'].every((k) => adm.includes(k)));

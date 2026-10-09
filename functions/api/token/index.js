@@ -63,10 +63,12 @@ export async function onRequest({ request, env = {} }) {
   }
   const name = String(body.name || '').trim().slice(0, 30);
   if (!name) return jsonResponse({ error: 'Token 名称必填（1-30 字）' }, 400);
+  const validScopes = ['admin', 'create', 'read'];
+  const scope = (body.scope && validScopes.includes(body.scope)) ? body.scope : 'admin';
   const token = generateToken();
-  const record = { id: tokenId(), name, hash: await sha256(token), createdAt: Date.now() };
+  const record = { id: tokenId(), name, scope, hash: await sha256(token), createdAt: Date.now() };
   tokens.push(record);
   await DB.put(TOKENS_KEY, JSON.stringify(tokens));
 
-  return jsonResponse({ id: record.id, name: record.name, createdAt: record.createdAt, token });
+  return jsonResponse({ id: record.id, name: record.name, scope: record.scope, createdAt: record.createdAt, token });
 }

@@ -5,7 +5,7 @@
 
 import {
   jsonResponse, getKV, isAllowedUrl, isValidSlug, isReservedSlug, USAGE_KEY,
-  getSettings, generateSlug, isHostAllowed, getClientIp,
+  getSettings, generateSlug, isHostAllowed, isPrivateHost, getClientIp,
   sha256, checkCreateAuth, windowedKey
 } from '../../utils.js';
 
@@ -203,6 +203,10 @@ export async function onRequest({ request, env = {} }) {
     }
     if (!isAllowedUrl(url)) {
       errors.push({ index, url, error: '链接格式不正确，请以 http/https 开头' });
+      continue;
+    }
+    if (settings.blockPrivateIp && isPrivateHost(url)) {
+      errors.push({ index, url, error: '目标链接不允许为内网或私有 IP 地址' });
       continue;
     }
     if (!isHostAllowed(url, settings.domainWhitelist)) {
